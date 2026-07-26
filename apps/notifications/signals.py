@@ -1,14 +1,16 @@
 """
-سیگنال‌های اپ احراز هویت
+سیگنال‌های اپ اعلان‌ها
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import CustomUser
+from apps.accounts.models import CustomUser
 
 
 @receiver(post_save, sender=CustomUser)
-def user_post_save(sender, instance, created, **kwargs):
-    """پس از ذخیره کاربر، کیف پول هم بساز"""
+def create_wallet_for_new_user(sender, instance, created, **kwargs):
+    """
+    با ساخت کاربر جدید، کیف پول هم برایش ساخته شود
+    """
     if created:
         # import در داخل تابع برای جلوگیری از circular import
         from apps.payments.models import Wallet

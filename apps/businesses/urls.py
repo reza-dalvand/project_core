@@ -1,10 +1,8 @@
-"""
-URL configuration for businesses app (API endpoints)
-"""
+# apps/businesses/urls.py
 from django.urls import path
 
 app_name = 'businesses'
 
 urlpatterns = [
-    # بعداً API های کسب‌وکارها اینجا اضافه میشن
+    # بعداً API های کسب‌وکارها اضافه می‌شود
 ]

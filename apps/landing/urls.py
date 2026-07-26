@@ -1,11 +1,15 @@
 """
-URL configuration for landing app (سایت معرفی)
+URL Configuration برای اپ landing
 """
 from django.urls import path
+from . import views
 
 app_name = 'landing'
 
 urlpatterns = [
-    # بعداً view های landing اینجا اضافه میشن
-    # path('', views.index, name='index'),
+    # صفحه اصلی سایت معرفی
+    path('', views.index, name='index'),
+
+    # API برای ارسال فرم تماس
+    path('api/contact/', views.submit_contact, name='submit_contact'),
 ]

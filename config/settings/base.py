@@ -92,8 +92,11 @@ ROOT_URLCONF = 'config.urls'
 # ═══════════════════════════════════════════════
 #   Templates (Jinja2 + Django)
 # ═══════════════════════════════════════════════
+# ═══════════════════════════════════════════════
+#   Templates (Jinja2 + Django)
+# ═══════════════════════════════════════════════
 TEMPLATES = [
-    # ─── Jinja2 Engine (برای Landing و Dashboard) ───
+    # ─── Jinja2 Engine (Primary for Landing) ───
     {
         'BACKEND': 'django_jinja.jinja2.Jinja2',
         'DIRS': [BASE_DIR / 'templates'],
@@ -108,6 +111,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # ─── Context Processors سفارشی landing ───
+                'apps.landing.context_processors.site_settings',
+                'apps.landing.context_processors.all_sections',
             ],
             'extensions': [
                 'jinja2.ext.do',
@@ -120,12 +126,17 @@ TEMPLATES = [
                 'django_jinja.builtins.extensions.StaticFilesExtension',
                 'django_jinja.builtins.extensions.DjangoFiltersExtension',
             ],
+            'bytecode_cache': {
+                'name': 'default',
+                'backend': 'django_jinja.cache.BytecodeCache',
+                'enabled': False,
+            },
             'autoescape': True,
             'auto_reload': DEBUG,
             'translation_engine': 'django.utils.translation',
         },
     },
-    # ─── Django Template Engine (برای Admin و Email) ───
+    # ─── Django Template Engine (Fallback for Admin + Emails) ───
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
@@ -136,10 +147,14 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # ─── Context Processors سفارشی landing ───
+                'apps.landing.context_processors.site_settings',
+                'apps.landing.context_processors.all_sections',
             ],
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
@@ -332,5 +347,162 @@ DASHBOARD_ADMIN_URL = env('DASHBOARD_ADMIN_URL', default='dashboard-admin/')
 LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 
-JAZZMIN_SETTINGS = {}
-JAZZMIN_UI_TWEAKS = {}
+# ═══════════════════════════════════════════════════════
+#   Jazzmin Settings (اعمال شده به admin.site پیش‌فرض)
+# ═══════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════
+#   Jazzmin Settings (Single Admin Site)
+# ═══════════════════════════════════════════════
+JAZZMIN_SETTINGS = {
+    "site_title": "زیبانو | پنل مدیریت",
+    "site_header": "زیبانو",
+    "site_brand": "Zibano Admin",
+    "welcome_sign": "به پنل مدیریت زیبانو خوش آمدید",
+    "copyright": "Zibano Co. © 2024-2026",
+    "user_avatar": "avatar",
+
+    "topmenu_links": [
+        {"name": "🏠 سایت معرفی", "url": "/", "new_window": True},
+        {"name": "📚 مستندات API", "url": "/api/docs/", "new_window": True},
+    ],
+
+    "show_sidebar": True,
+    "navigation_expanded": True,
+
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "accounts": "fas fa-user-shield",
+        "accounts.CustomUser": "fas fa-users",
+        "accounts.OTP": "fas fa-key",
+        "accounts.ActiveDevice": "fas fa-mobile-alt",
+        "businesses": "fas fa-store",
+        "businesses.Category": "fas fa-layer-group",
+        "businesses.SubCategory": "fas fa-folder",
+        "businesses.Province": "fas fa-map-marked-alt",
+        "businesses.City": "fas fa-city",
+        "businesses.Business": "fas fa-building",
+        "businesses.Service": "fas fa-concierge-bell",
+        "businesses.Portfolio": "fas fa-images",
+        "businesses.PortfolioImage": "fas fa-image",
+        "businesses.WorkingHours": "fas fa-clock",
+        "businesses.LineRentalAd": "fas fa-handshake",
+        "businesses.ModelRequest": "fas fa-user-tie",
+        "businesses.SocialMedia": "fas fa-share-alt",
+        "bookings": "fas fa-calendar-check",
+        "bookings.Appointment": "fas fa-calendar-alt",
+        "bookings.TimeSlot": "fas fa-hourglass-half",
+        "bookings.Schedule": "fas fa-calendar-week",
+        "bookings.CancellationRequest": "fas fa-times-circle",
+        "payments": "fas fa-credit-card",
+        "payments.Transaction": "fas fa-receipt",
+        "payments.BankAccount": "fas fa-university",
+        "payments.Settlement": "fas fa-money-check-alt",
+        "payments.RefundRequest": "fas fa-undo",
+        "payments.Wallet": "fas fa-wallet",
+        "reviews": "fas fa-star",
+        "reviews.Review": "fas fa-comment-alt",
+        "reviews.ReviewTag": "fas fa-tags",
+        "notifications": "fas fa-bell",
+        "notifications.Notification": "fas fa-bell",
+        "notifications.SMSTemplate": "fas fa-sms",
+        "notifications.SMSLog": "fas fa-envelope-open-text",
+        "landing": "fas fa-globe",
+        "landing.SiteSettings": "fas fa-cogs",
+        "landing.HeroSection": "fas fa-home",
+        "landing.FeaturesSection": "fas fa-star",
+        "landing.HowToSection": "fas fa-route",
+        "landing.ServicesSection": "fas fa-concierge-bell",
+        "landing.AboutSection": "fas fa-info-circle",
+        "landing.TeamSection": "fas fa-users",
+        "landing.StatsSection": "fas fa-chart-bar",
+        "landing.FAQSection": "fas fa-question-circle",
+        "landing.ContactSection": "fas fa-headset",
+        "landing.ContactMessage": "fas fa-envelope",
+        "landing.DownloadSection": "fas fa-download",
+        "landing.TrustBadge": "fas fa-shield-alt",
+    },
+
+    "show_ui_builder": False,
+    "changeform_format": "collapsible",
+    "related_modal_active": True,
+
+    # ═══ لینک‌های سفارشی بر اساس دسترسی ═══
+    "custom_links": {
+        "landing": [
+            {
+                "name": "👁️ پیش‌نمایش سایت",
+                "url": "/",
+                "icon": "fas fa-eye",
+                "permissions": ["landing.view_sitesettings"],
+                "new_window": True,
+            },
+        ],
+        "accounts": [
+            {
+                "name": "👥 کاربران جدید امروز",
+                "url": "/accounts/customuser/?date_joined__gte=today",
+                "icon": "fas fa-user-plus",
+                "permissions": ["accounts.view_customuser"],
+            },
+            {
+                "name": "🏢 کسب‌وکارهای در انتظار",
+                "url": "/businesses/business/?status__exact=pending",
+                "icon": "fas fa-hourglass-half",
+                "permissions": ["businesses.view_business"],
+            },
+        ],
+        "bookings": [
+            {
+                "name": "📅 نوبت‌های امروز",
+                "url": "/bookings/appointment/",
+                "icon": "fas fa-calendar-day",
+                "permissions": ["bookings.view_appointment"],
+            },
+        ],
+        "payments": [
+            {
+                "name": "💰 تسویه‌های در انتظار",
+                "url": "/payments/settlement/",
+                "icon": "fas fa-money-bill-wave",
+                "permissions": ["payments.view_settlement"],
+            },
+        ],
+        "reviews": [
+            {
+                "name": "⭐ نظرات تایید نشده",
+                "url": "/reviews/review/?is_approved__exact=False",
+                "icon": "fas fa-star-half-alt",
+                "permissions": ["reviews.view_review"],
+            },
+        ],
+    },
+
+    "order_with_respect_to": [
+        "accounts",
+        "businesses",
+        "bookings",
+        "payments",
+        "reviews",
+        "notifications",
+        "landing",
+        "auth",
+    ],
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "sidebar_fixed": True,
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "flatly",
+    "dark_mode_theme": "darkly",
+    "actions_sticky_top": True,
+}
+
