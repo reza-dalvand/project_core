@@ -1,0 +1,8 @@
+# apps/businesses/apps.py
+from django.apps import AppConfig
+
+
+class BusinessesConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.businesses'
+    verbose_name = '🏢 کسب‌وکارها و خدمات'

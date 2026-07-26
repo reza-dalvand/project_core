@@ -331,3 +331,6 @@ DASHBOARD_ADMIN_URL = env('DASHBOARD_ADMIN_URL', default='dashboard-admin/')
 # ═══════════════════════════════════════════════
 LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
+
+JAZZMIN_SETTINGS = {}
+JAZZMIN_UI_TWEAKS = {}
