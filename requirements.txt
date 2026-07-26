@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════
+#   زیبانو - بک‌اند | Django Dependencies
+# ═══════════════════════════════════════════════
+
+# ─── Core Framework ───
+Django==5.1.4
+django-environ==0.11.2
+
+# ─── Admin Panel UI ───
+django-jazzmin==3.0.1
+
+# ─── Jinja2 (Landing + Dashboard) ───
+Jinja2==3.1.4
+django-jinja==2.11.0
+
+# ─── REST API ───
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+drf-spectacular==0.27.2
+django-filter==24.3
+django-cors-headers==4.4.0
+
+# ─── Database ───
+psycopg2-binary==2.9.9
+django-redis==5.4.0
+
+# ─── Media & Storage ───
+Pillow==11.0.0
+django-cleanup==9.0.0
+django-storages==1.14.4
+
+# ─── Utilities ───
+django-ckeditor-5==0.2.14
+django-import-export==4.3.3
+celery==5.4.0
+django-celery-beat==2.7.0
+redis==5.1.1
+
+# ─── Persian / Jalali ───
+jdatetime==5.0.0
+kavenegar==1.1.2
+
+# ─── Production ───
+gunicorn==23.0.0
+whitenoise==6.8.2
+sentry-sdk==2.13.0
