@@ -1,11 +1,12 @@
 """
 سرویس کیف پول
+✅ بهینه‌شده: Conditional Aggregation برای خلاصه کیف پول
 """
 import logging
 from decimal import Decimal
 from django.db import transaction
+from django.db.models import Sum, Count, Case, When, Value, IntegerField, Q
 from django.utils import timezone
-
 from apps.payments.models import Wallet, WalletTransaction
 from apps.core.exceptions import (
     InsufficientBalanceException,
@@ -20,7 +21,7 @@ class WalletService:
 
     @classmethod
     def get_or_create_wallet(cls, user) -> Wallet:
-        """دریافت یا ایجاد کیف پول برای کاربر"""
+        """دریافت یا ایجاد کیف پول"""
         wallet, created = Wallet.objects.get_or_create(
             user=user,
             defaults={'balance': 0}
@@ -32,18 +33,7 @@ class WalletService:
     @classmethod
     @transaction.atomic
     def deposit(cls, user, amount: int, description: str = '', reference: str = '') -> WalletTransaction:
-        """
-        واریز به کیف پول
-
-        Args:
-            user: کاربر
-            amount: مبلغ به تومان
-            description: توضیحات
-            reference: ارجاع (مثلاً شناسه تراکنش)
-
-        Returns:
-            WalletTransaction: تراکنش ایجاد شده
-        """
+        """واریز به کیف پول"""
         if amount <= 0:
             raise PaymentException(
                 message='مبلغ واریزی باید بیشتر از صفر باشد',
@@ -58,12 +48,10 @@ class WalletService:
                 code='WALLET_FROZEN',
             )
 
-        # بروزرسانی موجودی
         wallet.balance += amount
         wallet.total_credit += amount
         wallet.save(update_fields=['balance', 'total_credit', 'updated_at'])
 
-        # ایجاد تراکنش
         tx = WalletTransaction.objects.create(
             wallet=wallet,
             amount=amount,
@@ -74,27 +62,14 @@ class WalletService:
         )
 
         logger.info(
-            f"Wallet deposit: user={user.phone}, amount={amount}, "
-            f"balance={wallet.balance}"
+            f"Wallet deposit: user={user.phone}, amount={amount}, balance={wallet.balance}"
         )
-
         return tx
 
     @classmethod
     @transaction.atomic
     def withdraw(cls, user, amount: int, description: str = '', reference: str = '') -> WalletTransaction:
-        """
-        برداشت از کیف پول
-
-        Args:
-            user: کاربر
-            amount: مبلغ به تومان
-            description: توضیحات
-            reference: ارجاع
-
-        Returns:
-            WalletTransaction: تراکنش ایجاد شده
-        """
+        """برداشت از کیف پول"""
         if amount <= 0:
             raise PaymentException(
                 message='مبلغ برداشتی باید بیشتر از صفر باشد',
@@ -119,12 +94,10 @@ class WalletService:
                 },
             )
 
-        # بروزرسانی موجودی
         wallet.balance -= amount
         wallet.total_debit += amount
         wallet.save(update_fields=['balance', 'total_debit', 'updated_at'])
 
-        # ایجاد تراکنش
         tx = WalletTransaction.objects.create(
             wallet=wallet,
             amount=amount,
@@ -135,33 +108,24 @@ class WalletService:
         )
 
         logger.info(
-            f"Wallet withdraw: user={user.phone}, amount={amount}, "
-            f"balance={wallet.balance}"
+            f"Wallet withdraw: user={user.phone}, amount={amount}, balance={wallet.balance}"
         )
-
         return tx
 
     @classmethod
     @transaction.atomic
     def pay_from_wallet(cls, user, amount: int, description: str = '', reference: str = '') -> WalletTransaction:
-        """
-        پرداخت از کیف پول (مثل خرید خدمت یا بیعانه)
-        """
+        """پرداخت از کیف پول"""
         tx = cls.withdraw(user, amount, description or 'پرداخت از کیف پول', reference)
         return tx
 
     @classmethod
     @transaction.atomic
     def refund_to_wallet(cls, user, amount: int, description: str = '', reference: str = '') -> WalletTransaction:
-        """
-        استرداد وجه به کیف پول
-        """
+        """استرداد وجه به کیف پول"""
         tx = cls.deposit(user, amount, description or 'استرداد وجه به کیف پول', reference)
-
-        # بروزرسانی نوع تراکنش به refund
         tx.type = WalletTransaction.Type.REFUND
         tx.save(update_fields=['type'])
-
         return tx
 
     @classmethod
@@ -172,23 +136,37 @@ class WalletService:
 
     @classmethod
     def get_wallet_summary(cls, user) -> dict:
-        """خلاصه وضعیت کیف پول"""
+        """
+        ✅ بهینه: فقط ۲ کوئری (wallet + aggregate)
+        به جای N کوئری با حلقه Python
+        """
         wallet = cls.get_or_create_wallet(user)
 
-        # آمار ۳۰ روز اخیر
         thirty_days_ago = timezone.now() - timezone.timedelta(days=30)
-        recent_txs = WalletTransaction.objects.filter(
+
+        # ✅ همه محاسبات در یک کوئری
+        stats = WalletTransaction.objects.filter(
             wallet=wallet,
             created_at__gte=thirty_days_ago,
-        )
-
-        total_deposits = sum(
-            tx.amount for tx in recent_txs
-            if tx.type in [WalletTransaction.Type.DEPOSIT, WalletTransaction.Type.REFUND]
-        )
-        total_withdrawals = sum(
-            tx.amount for tx in recent_txs
-            if tx.type == WalletTransaction.Type.WITHDRAWAL
+        ).aggregate(
+            recent_deposits=Sum(
+                Case(
+                    When(
+                        type__in=[WalletTransaction.Type.DEPOSIT, WalletTransaction.Type.REFUND],
+                        then='amount',
+                    ),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ),
+            recent_withdrawals=Sum(
+                Case(
+                    When(type=WalletTransaction.Type.WITHDRAWAL, then='amount'),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ),
+            recent_transactions_count=Count('id'),
         )
 
         return {
@@ -196,7 +174,7 @@ class WalletService:
             'total_credit': wallet.total_credit,
             'total_debit': wallet.total_debit,
             'is_frozen': wallet.is_frozen,
-            'recent_deposits': total_deposits,
-            'recent_withdrawals': total_withdrawals,
-            'recent_transactions_count': recent_txs.count(),
+            'recent_deposits': stats['recent_deposits'] or 0,
+            'recent_withdrawals': stats['recent_withdrawals'] or 0,
+            'recent_transactions_count': stats['recent_transactions_count'] or 0,
         }

@@ -1,18 +1,18 @@
 """
 سرویس سیستم دعوت از دوستان
+✅ بهینه‌شده: Conditional Aggregation برای آمار
 """
 from django.db import models, transaction
+from django.db.models import Count, Case, When, Value, IntegerField, Sum, Q
 from django.utils import timezone
-
 from apps.advanced.models import ReferralCode, Referral
 
 
 class ReferralService:
     """سرویس مدیریت دعوت از دوستان"""
 
-    # پاداش‌ها
-    REFERRER_REWARD = 50000  # ۵۰ هزار تومان
-    REFERRED_REWARD = 30000  # ۳۰ هزار تومان
+    REFERRER_REWARD = 50000
+    REFERRED_REWARD = 30000
 
     @classmethod
     def get_or_create_code(cls, user):
@@ -22,36 +22,21 @@ class ReferralService:
 
     @classmethod
     def apply_referral_code(cls, referrer_code, new_user):
-        """
-        اعمال کد معرف برای کاربر جدید
-        """
-        # بررسی معتبر بودن کد
+        """اعمال کد معرف برای کاربر جدید"""
         try:
             referral_code = ReferralCode.objects.select_related('user').get(
                 code=referrer_code,
                 is_active=True,
             )
         except ReferralCode.DoesNotExist:
-            return {
-                'success': False,
-                'message': 'کد معرف نامعتبر است',
-            }
+            return {'success': False, 'message': 'کد معرف نامعتبر است'}
 
-        # بررسی: کاربر نمی‌تواند خودش را دعوت کند
         if referral_code.user == new_user:
-            return {
-                'success': False,
-                'message': 'شما نمی‌توانید از کد معرف خودتان استفاده کنید',
-            }
+            return {'success': False, 'message': 'شما نمی‌توانید از کد معرف خودتان استفاده کنید'}
 
-        # بررسی تکراری نبودن
         if Referral.objects.filter(referred=new_user).exists():
-            return {
-                'success': False,
-                'message': 'شما قبلاً از کد معرف استفاده کرده‌اید',
-            }
+            return {'success': False, 'message': 'شما قبلاً از کد معرف استفاده کرده‌اید'}
 
-        # ایجاد دعوت
         referral = Referral.objects.create(
             referrer=referral_code.user,
             referred=new_user,
@@ -68,31 +53,24 @@ class ReferralService:
     @classmethod
     @transaction.atomic
     def complete_referral(cls, referral, booking):
-        """
-        تکمیل دعوت (بعد از اولین رزرو موفق)
-        """
+        """تکمیل دعوت (بعد از اولین رزرو موفق)"""
         if referral.status != Referral.Status.PENDING:
             return False
-
         referral.status = Referral.Status.COMPLETED
         referral.first_booking = booking
         referral.completed_at = timezone.now()
         referral.save()
-
         return True
 
     @classmethod
     @transaction.atomic
     def reward_referral(cls, referral):
-        """
-        پرداخت پاداش به هر دو طرف
-        """
+        """پرداخت پاداش به هر دو طرف"""
         if referral.status != Referral.Status.COMPLETED:
             return False
 
         from apps.payments.services.wallet_service import WalletService
 
-        # پاداش دعوت‌کننده
         WalletService.deposit(
             user=referral.referrer,
             amount=cls.REFERRER_REWARD,
@@ -100,7 +78,6 @@ class ReferralService:
             reference=f'REFERRAL-{referral.id}-REFERRER',
         )
 
-        # پاداش دعوت‌شده
         WalletService.deposit(
             user=referral.referred,
             amount=cls.REFERRED_REWARD,
@@ -108,36 +85,55 @@ class ReferralService:
             reference=f'REFERRAL-{referral.id}-REFERRED',
         )
 
-        # بروزرسانی Referral
         referral.status = Referral.Status.REWARDED
         referral.referrer_reward = cls.REFERRER_REWARD
         referral.referred_reward = cls.REFERRED_REWARD
         referral.rewarded_at = timezone.now()
         referral.save()
 
-        # بروزرسانی آمار کد معرف
-        referral.referral_code.total_referrals += 1
-        referral.referral_code.total_rewards += cls.REFERRER_REWARD + cls.REFERRED_REWARD
-        referral.referral_code.save()
+        # ✅ بهینه: استفاده از F() برای جلوگیری از race condition
+        ReferralCode.objects.filter(id=referral.referral_code_id).update(
+            total_referrals=models.F('total_referrals') + 1,
+            total_rewards=models.F('total_rewards') + cls.REFERRER_REWARD + cls.REFERRED_REWARD,
+        )
 
         return True
 
     @classmethod
     def get_user_stats(cls, user):
-        """آمار دعوت‌های کاربر"""
+        """
+        ✅ بهینه: همه آمار در یک کوئری با Conditional Aggregation
+        به جای ۵ کوئری جداگانه
+        """
         code = cls.get_or_create_code(user)
 
-        referrals = Referral.objects.filter(referrer=user)
+        stats = Referral.objects.filter(referrer=user).aggregate(
+            total=Count('id'),
+            completed=Count(
+                Case(When(status=Referral.Status.COMPLETED, then=1), output_field=IntegerField())
+            ),
+            rewarded=Count(
+                Case(When(status=Referral.Status.REWARDED, then=1), output_field=IntegerField())
+            ),
+            pending=Count(
+                Case(When(status=Referral.Status.PENDING, then=1), output_field=IntegerField())
+            ),
+            total_rewards=Sum(
+                Case(
+                    When(status=Referral.Status.REWARDED, then='referrer_reward'),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            ),
+        )
 
         return {
             'code': code.code,
-            'total_referrals': referrals.count(),
-            'completed': referrals.filter(status=Referral.Status.COMPLETED).count(),
-            'rewarded': referrals.filter(status=Referral.Status.REWARDED).count(),
-            'pending': referrals.filter(status=Referral.Status.PENDING).count(),
-            'total_rewards': referrals.filter(
-                status=Referral.Status.REWARDED
-            ).aggregate(total=models.Sum('referrer_reward'))['total'] or 0,
+            'total_referrals': stats['total'] or 0,
+            'completed': stats['completed'] or 0,
+            'rewarded': stats['rewarded'] or 0,
+            'pending': stats['pending'] or 0,
+            'total_rewards': stats['total_rewards'] or 0,
             'referrer_reward': cls.REFERRER_REWARD,
             'referred_reward': cls.REFERRED_REWARD,
         }
@@ -148,8 +144,6 @@ class ReferralService:
         qs = Referral.objects.filter(referrer=user).select_related(
             'referred', 'first_booking'
         )
-
         if status:
             qs = qs.filter(status=status)
-
         return qs.order_by('-created_at')

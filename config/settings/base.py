@@ -31,30 +31,39 @@ SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 # ═══════════════════════════════════════════════
 #   Application Definition
 # ═══════════════════════════════════════════════
-DJANGO_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-]
+# config/settings/base.py
 
+# ═══════════════════════════════════════════════
+#   Application Definition
+# ═══════════════════════════════════════════════
+
+# ✅ اصلاح مهم: Jazzmin باید قبل از django.contrib.admin باشد
 THIRD_PARTY_APPS = [
-    # Jazzmin باید قبل از django.contrib.admin باشد
+    # ═══ Jazzmin باید اول از همه باشد (قبل از admin) ═══
     'jazzmin',
+
     # REST API
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # ✅ این خط اضافه شود
+    'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'django_filters',
     'corsheaders',
+
     # Utils
     'django_cleanup.apps.CleanupConfig',
     'django_ckeditor_5',
     'import_export',
     'django_celery_beat',
+]
+
+DJANGO_APPS = [
+    'django.contrib.admin',  # ✅ حالا admin بعد از jazzmin می‌آید
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
 ]
 
 LOCAL_APPS = [
@@ -71,7 +80,8 @@ LOCAL_APPS = [
     'apps.advanced.apps.AdvancedConfig',
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+# ✅ ترتیب نهایی: THIRD_PARTY (شامل jazzmin) → DJANGO (شامل admin) → LOCAL
+INSTALLED_APPS = THIRD_PARTY_APPS + DJANGO_APPS + LOCAL_APPS
 
 # ═══════════════════════════════════════════════
 #   Middleware
@@ -106,7 +116,7 @@ TEMPLATES = [
         'OPTIONS': {
             'environment': 'config.jinja2_env.environment',
             'match_extension': '.html',
-            'match_regex': None,
+            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/).*\.html$',
             'app_dirname': 'templates',
             'context_processors': [
                 'django.template.context_processors.debug',

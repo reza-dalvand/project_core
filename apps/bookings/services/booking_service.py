@@ -1,14 +1,15 @@
 """
 Booking Service - منطق اصلی ایجاد و مدیریت نوبت
+✅ بهینه‌شده: استفاده از cache و reduce کوئری‌ها
 """
 import random
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 from typing import Optional, Dict, Tuple
-
 from django.db import transaction
 from django.utils import timezone
 from django.conf import settings
+from django.core.cache import cache
 
 from apps.bookings.models import Appointment, TimeSlot, CancellationRequest
 from apps.businesses.models import Service, Business, Employee
@@ -45,7 +46,6 @@ class EmployeeNotFoundException(BookingException):
 class BookingService:
     """سرویس مدیریت نوبت‌ها"""
 
-    # ─── کارمزد ───
     COMMISSION_PERCENT = Decimal('0.01')  # 1%
     MIN_COMMISSION = 10000  # حداقل ۱۰ هزار تومان
 
@@ -58,65 +58,66 @@ class BookingService:
     @classmethod
     @transaction.atomic
     def create_booking(
-            cls,
-            customer: CustomUser,
-            service_id: int,
-            target_date: date,
-            start_time_str: str,
-            employee_id: Optional[int] = None,
+        cls,
+        customer: CustomUser,
+        service_id: int,
+        target_date: date,
+        start_time_str: str,
+        employee_id: Optional[int] = None,
     ) -> Appointment:
         """
         ایجاد نوبت جدید
-
-        Args:
-            customer: کاربر مشتری
-            service_id: شناسه خدمت
-            target_date: تاریخ نوبت
-            start_time_str: ساعت شروع (HH:MM)
-            employee_id: شناسه کارمند (اختیاری)
-
-        Returns:
-            Appointment: نوبت ایجاد شده
         """
-        # ─── ۱. اعتبارسنجی خدمت ───
-        try:
-            service = Service.objects.select_related('business').get(
-                id=service_id,
-                is_active=True,
-            )
-        except Service.DoesNotExist:
-            raise ServiceNotActiveException()
+        # ✅ Cache برای service + business
+        cache_key = f'service_detail_{service_id}'
+        service_data = cache.get(cache_key)
 
-        business = service.business
+        if not service_data:
+            service = Service.objects.select_related('business').only(
+                'id', 'name', 'original_price', 'discount_percent',
+                'has_deposit', 'deposit_amount', 'duration_minutes',
+                'business__id', 'business__name', 'business__status'
+            ).get(id=service_id, is_active=True)
+
+            service_data = {
+                'service': service,
+                'business': service.business,
+            }
+            cache.set(cache_key, service_data, timeout=300)
+        else:
+            service = service_data['service']
+            business = service_data['business']
 
         if business.status != Business.Status.APPROVED:
             raise BusinessNotApprovedException()
 
-        # ─── ۲. اعتبارسنجی کارمند ───
+        # اعتبارسنجی کارمند
         employee = None
         if employee_id:
             try:
-                employee = Employee.objects.get(
+                employee = Employee.objects.only(
+                    'id', 'name', 'is_active', 'business_id'
+                ).get(
                     id=employee_id,
-                    business=business,
+                    business_id=business.id,
                     is_active=True,
                     services=service,
                 )
             except Employee.DoesNotExist:
                 raise EmployeeNotFoundException()
 
-        # ─── ۳. اعتبارسنجی ساعت ───
+        # اعتبارسنجی ساعت
         try:
             start_time = datetime.strptime(start_time_str, '%H:%M').time()
         except ValueError:
             raise BookingException(message='فرمت ساعت نامعتبر است')
 
         end_time = (
-                datetime.combine(date.today(), start_time) +
-                timedelta(minutes=service.duration_minutes)
+            datetime.combine(date.today(), start_time) +
+            timedelta(minutes=service.duration_minutes)
         ).time()
 
-        # ─── ۴. بررسی آزاد بودن اسلات ───
+        # بررسی آزاد بودن اسلات
         from apps.bookings.services.slot_service import SlotService
         available_slots = SlotService.get_available_slots(
             business_id=business.id,
@@ -133,8 +134,8 @@ class BookingService:
         if not slot_available:
             raise SlotNotAvailableException()
 
-        # ─── ۵. بررسی عدم تکراری بودن نوبت کاربر ───
-        existing_booking = Appointment.objects.filter(
+        # ✅ بررسی عدم تکراری بودن نوبت با exists()
+        has_existing = Appointment.objects.filter(
             customer=customer,
             date=target_date,
             time=start_time,
@@ -144,12 +145,12 @@ class BookingService:
             ]
         ).exists()
 
-        if existing_booking:
+        if has_existing:
             raise BookingException(
                 message='شما در این تاریخ و ساعت نوبت دیگری دارید'
             )
 
-        # ─── ۶. محاسبه قیمت‌ها ───
+        # محاسبه قیمت‌ها
         original_price = service.original_price
         discount_percent = service.discount_percent or 0
         discount_amount = int(original_price * discount_percent / 100)
@@ -159,10 +160,10 @@ class BookingService:
         if service.has_deposit and service.deposit_amount > 0:
             deposit_amount = min(service.deposit_amount, final_price)
 
-        # ─── ۷. تولید کد تایید ۴ رقمی ───
+        # تولید کد تایید ۴ رقمی
         verification_code = cls._generate_verification_code()
 
-        # ─── ۸. ایجاد نوبت ───
+        # ایجاد نوبت
         appointment = Appointment.objects.create(
             customer=customer,
             business=business,
@@ -180,47 +181,49 @@ class BookingService:
             code_generated_at=timezone.now(),
         )
 
-        # ─── ۹. بروزرسانی آمار کسب‌وکار ───
-        business.bookings_count = business.appointments.filter(
+        # ✅ بروزرسانی آمار با update() به جای save()
+        bookings_count = business.appointments.filter(
             status__in=[
                 Appointment.Status.RESERVED,
                 Appointment.Status.CONFIRMED,
                 Appointment.Status.DONE,
             ]
         ).count()
-        business.save(update_fields=['bookings_count'])
+
+        Business.objects.filter(id=business.id).update(
+            bookings_count=bookings_count
+        )
 
         return appointment
 
     @classmethod
     @transaction.atomic
     def confirm_deposit_payment(
-            cls,
-            appointment: Appointment,
-            transaction_record: Transaction,
+        cls,
+        appointment: Appointment,
+        transaction_record: Transaction,
     ) -> Appointment:
-        """
-        تایید پرداخت بیعانه و فعال‌سازی نوبت
-        """
+        """تایید پرداخت بیعانه و فعال‌سازی نوبت"""
         appointment.deposit_paid = True
         appointment.status = Appointment.Status.CONFIRMED
         appointment.save(update_fields=['deposit_paid', 'status', 'updated_at'])
 
-        # ─── ایجاد تراکنش بیعانه ───
+        # ایجاد تراکنش بیعانه
         commission = cls.calculate_commission(transaction_record.amount)
-
         transaction_record.appointment = appointment
         transaction_record.business = appointment.business
         transaction_record.type = Transaction.Type.DEPOSIT
         transaction_record.status = Transaction.Status.SUCCESS
         transaction_record.original_price = appointment.original_price
-        transaction_record.discount_amount = appointment.final_price - appointment.original_price
+        transaction_record.discount_amount = (
+            appointment.final_price - appointment.original_price
+        )
         transaction_record.commission_amount = commission
         transaction_record.net_amount = transaction_record.amount - commission
         transaction_record.paid_at = timezone.now()
         transaction_record.save()
 
-        # ─── ارسال نوتیفیکیشن ───
+        # ارسال نوتیفیکیشن
         from apps.notifications.services import NotificationService
         NotificationService.send_booking_confirmed(appointment)
 
@@ -233,12 +236,10 @@ class BookingService:
 
     @classmethod
     def regenerate_verification_code(cls, appointment: Appointment) -> str:
-        """
-        تولید مجدد کد تایید (هر ۵ دقیقه مجاز است)
-        """
+        """تولید مجدد کد تایید (هر ۵ دقیقه مجاز است)"""
         if appointment.code_generated_at:
             elapsed = timezone.now() - appointment.code_generated_at
-            if elapsed.total_seconds() < 300:  # ۵ دقیقه
+            if elapsed.total_seconds() < 300:
                 remaining = int(300 - elapsed.total_seconds())
                 raise BookingException(
                     message=f'لطفاً {remaining} ثانیه صبر کنید',
@@ -248,20 +249,20 @@ class BookingService:
         new_code = cls._generate_verification_code()
         appointment.verification_code = new_code
         appointment.code_generated_at = timezone.now()
-        appointment.save(update_fields=['verification_code', 'code_generated_at', 'updated_at'])
+        appointment.save(
+            update_fields=['verification_code', 'code_generated_at', 'updated_at']
+        )
 
         return new_code
 
     @classmethod
     def verify_service_code(
-            cls,
-            appointment: Appointment,
-            entered_code: str,
-            verified_by: CustomUser,
+        cls,
+        appointment: Appointment,
+        entered_code: str,
+        verified_by: CustomUser,
     ) -> bool:
-        """
-        تایید کد خدمت توسط سالن‌دار
-        """
+        """تایید کد خدمت توسط سالن‌دار"""
         if appointment.verification_code != entered_code:
             return False
 
@@ -275,7 +276,7 @@ class BookingService:
         appointment.verified_at = timezone.now()
         appointment.save(update_fields=['status', 'verified_at', 'updated_at'])
 
-        # ─── ایجاد تراکنش تسویه ───
+        # ایجاد تراکنش تسویه
         if appointment.deposit_paid and appointment.deposit_amount > 0:
             commission = cls.calculate_commission(appointment.deposit_amount)
             net_amount = appointment.deposit_amount - commission
@@ -292,7 +293,7 @@ class BookingService:
                 settled_at=timezone.now(),
             )
 
-        # ─── ارسال نوتیفیکیشن ───
+        # ارسال نوتیفیکیشن
         from apps.notifications.services import NotificationService
         NotificationService.send_booking_done(appointment)
 
@@ -301,13 +302,11 @@ class BookingService:
     @classmethod
     @transaction.atomic
     def cancel_by_customer(
-            cls,
-            appointment: Appointment,
-            reason_text: str = '',
+        cls,
+        appointment: Appointment,
+        reason_text: str = '',
     ) -> CancellationRequest:
-        """
-        لغو نوبت توسط مشتری
-        """
+        """لغو نوبت توسط مشتری"""
         if appointment.status not in [
             Appointment.Status.RESERVED,
             Appointment.Status.CONFIRMED,
@@ -321,7 +320,6 @@ class BookingService:
         now = timezone.now()
         appointment_datetime = datetime.combine(appointment.date, appointment.time)
         appointment_datetime = timezone.make_aware(appointment_datetime)
-
         hours_until = (appointment_datetime - now).total_seconds() / 3600
 
         # محاسبه جریمه
@@ -329,11 +327,9 @@ class BookingService:
         refund_amount = appointment.deposit_amount
 
         if hours_until > 2:
-            # لغو تا ۲ ساعت قبل: جریمه ۳۰٪
             penalty_amount = int(appointment.deposit_amount * 0.3)
             refund_amount = appointment.deposit_amount - penalty_amount
         else:
-            # لغو کمتر از ۲ ساعت: کل بیعانه جریمه
             penalty_amount = appointment.deposit_amount
             refund_amount = 0
 
@@ -343,7 +339,7 @@ class BookingService:
             requested_by=appointment.customer,
             reason_type=CancellationRequest.Reason.CUSTOMER_REQUEST,
             reason_text=reason_text,
-            status=CancellationRequest.Status.APPROVED,  # لغو خودکار
+            status=CancellationRequest.Status.APPROVED,
             refund_amount=refund_amount,
             penalty_amount=penalty_amount,
             reviewed_at=timezone.now(),
@@ -375,14 +371,12 @@ class BookingService:
     @classmethod
     @transaction.atomic
     def cancel_by_business(
-            cls,
-            appointment: Appointment,
-            reason_text: str,
-            cancelled_by: CustomUser,
+        cls,
+        appointment: Appointment,
+        reason_text: str,
+        cancelled_by: CustomUser,
     ) -> CancellationRequest:
-        """
-        لغو نوبت توسط کسب‌وکار
-        """
+        """لغو نوبت توسط کسب‌وکار"""
         if appointment.status not in [
             Appointment.Status.RESERVED,
             Appointment.Status.CONFIRMED,
@@ -394,7 +388,7 @@ class BookingService:
 
         # لغو توسط سالن: استرداد کامل + ۱۰٪ غرامت
         refund_amount = appointment.deposit_amount
-        penalty_amount = int(appointment.deposit_amount * 0.1)  # ۱۰٪ غرامت
+        penalty_amount = int(appointment.deposit_amount * 0.1)
         total_refund = refund_amount + penalty_amount
 
         cancellation = CancellationRequest.objects.create(

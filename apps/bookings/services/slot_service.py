@@ -1,11 +1,12 @@
 """
 Slot Service - محاسبه اسلات‌های آزاد بر اساس برنامه کاری
+✅ بهینه‌شده: استفاده از values_list و set operations
 """
 from datetime import datetime, timedelta, date, time
 from typing import List, Dict, Optional
 from django.db.models import Q
+from django.core.cache import cache
 
-# ✅ اصلاح شده: Schedule و ScheduleBreak از bookings ایمپورت می‌شوند
 from apps.bookings.models import Schedule, ScheduleBreak, TimeSlot, Appointment
 from apps.businesses.models import Service, Employee, Business
 
@@ -15,10 +16,10 @@ class SlotService:
 
     @staticmethod
     def get_available_slots(
-            business_id: int,
-            service_id: int,
-            target_date: date,
-            employee_id: Optional[int] = None,
+        business_id: int,
+        service_id: int,
+        target_date: date,
+        employee_id: Optional[int] = None,
     ) -> List[Dict]:
         """
         دریافت تمام اسلات‌های آزاد برای یک تاریخ خاص
@@ -30,36 +31,39 @@ class SlotService:
         4. نوبت‌های رزرو شده را حذف کن
         5. اسلات‌های گذشته را حذف کن
         """
-        from apps.businesses.models import Business
+        # ✅ استفاده از cache برای کاهش کوئری‌های تکراری
+        cache_key = f'slots_{business_id}_{service_id}_{target_date}_{employee_id}'
+        cached_slots = cache.get(cache_key)
+        if cached_slots:
+            return cached_slots
 
-        # بررسی وجود کسب‌وکار
+        # بررسی وجود کسب‌وکار و خدمت با only() برای کاهش overhead
         try:
-            business = Business.objects.get(id=business_id, status='approved')
-        except Business.DoesNotExist:
-            return []
-
-        # بررسی وجود خدمت
-        try:
-            service = Service.objects.get(
+            business = Business.objects.only('id', 'status').get(
+                id=business_id,
+                status='approved'
+            )
+            service = Service.objects.only(
+                'id', 'is_active', 'duration_minutes', 'business_id'
+            ).get(
                 id=service_id,
-                business=business,
+                business_id=business_id,
                 is_active=True
             )
-        except Service.DoesNotExist:
+        except (Business.DoesNotExist, Service.DoesNotExist):
             return []
 
         # دریافت روز هفته (0=شنبه تا 6=جمعه)
-        # Python: 0=Monday ... 6=Sunday
-        # Persian: 0=Saturday ... 6=Friday
         py_weekday = target_date.weekday()  # 0=Mon, 6=Sun
-        # تبدیل: Sat=0, Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6
         persian_weekday = (py_weekday + 2) % 7
 
         # پیدا کردن برنامه کاری
         try:
-            schedule = Schedule.objects.get(
-                business=business,
-                service=service,
+            schedule = Schedule.objects.only(
+                'id', 'start_time', 'end_time', 'slot_duration'
+            ).get(
+                business_id=business_id,
+                service_id=service_id,
                 weekday=persian_weekday,
                 is_working=True
             )
@@ -78,16 +82,21 @@ class SlotService:
             service_duration=service.duration_minutes,
         )
 
-        # دریافت بازه‌های استراحت
-        breaks = list(ScheduleBreak.objects.filter(schedule=schedule))
+        # دریافت بازه‌های استراحت با values() برای کاهش overhead
+        breaks = list(
+            ScheduleBreak.objects.filter(schedule_id=schedule.id)
+            .values_list('start_time', 'end_time')
+        )
 
         # حذف اسلات‌هایی که با استراحت تداخل دارند
-        slots = SlotService._filter_break_conflicts(slots, breaks, service.duration_minutes)
+        slots = SlotService._filter_break_conflicts(
+            slots, breaks, service.duration_minutes
+        )
 
-        # دریافت نوبت‌های رزرو شده
-        booked_appointments = Appointment.objects.filter(
-            business=business,
-            service=service,
+        # ✅ دریافت نوبت‌های رزرو شده با values_list
+        booked_appointments_qs = Appointment.objects.filter(
+            business_id=business_id,
+            service_id=service_id,
             date=target_date,
             status__in=[
                 Appointment.Status.RESERVED,
@@ -96,21 +105,35 @@ class SlotService:
             ]
         )
 
-        # اگر کارمند خاصی انتخاب شده، فقط نوبت‌های آن کارمند را فیلتر کن
         if employee_id:
-            booked_appointments = booked_appointments.filter(
+            booked_appointments_qs = booked_appointments_qs.filter(
                 Q(employee_id=employee_id) | Q(employee__isnull=True)
             )
 
+        # ✅ استفاده از values_list برای کاهش overhead
+        booked_times_list = list(
+            booked_appointments_qs.values_list('time', flat=True)
+        )
+
+        # ✅ استفاده از set operations برای سرعت بیشتر
+        booked_times_set = set()
+        for booked_time in booked_times_list:
+            booked_start = datetime.combine(date.today(), booked_time)
+            booked_end = booked_start + timedelta(minutes=service.duration_minutes)
+            booked_times_set.add((booked_start.time(), booked_end.time()))
+
         # حذف اسلات‌های رزرو شده
-        slots = SlotService._filter_booked_slots(slots, booked_appointments, service.duration_minutes)
+        slots = SlotService._filter_booked_slots(
+            slots, booked_times_set, service.duration_minutes
+        )
 
         # حذف اسلات‌های گذشته (اگر تاریخ امروز است)
         today = date.today()
         if target_date == today:
             now = datetime.now().time()
-            # حداقل ۳۰ دقیقه قبل از زمان فعلی
-            min_time = (datetime.combine(today, now) + timedelta(minutes=30)).time()
+            min_time = (
+                datetime.combine(today, now) + timedelta(minutes=30)
+            ).time()
             slots = [s for s in slots if s['start_time'] >= min_time]
 
         # فرمت‌دهی خروجی
@@ -125,23 +148,23 @@ class SlotService:
                 'display_time': slot['start_time'].strftime('%H:%M'),
             })
 
+        # ✅ Cache کردن نتیجه برای 5 دقیقه
+        cache.set(cache_key, result, timeout=300)
+
         return result
 
     @staticmethod
     def _generate_time_slots(
-            start_time: time,
-            end_time: time,
-            duration_minutes: int,
-            service_duration: int,
+        start_time: time,
+        end_time: time,
+        duration_minutes: int,
+        service_duration: int,
     ) -> List[Dict]:
         """تولید اسلات‌های زمانی بر اساس مدت هر نوبت"""
         slots = []
-
         start_dt = datetime.combine(date.today(), start_time)
         end_dt = datetime.combine(date.today(), end_time)
 
-        # اسلات‌ها بر اساس duration_minutes تولید می‌شوند
-        # اما هر اسلات باید حداقل service_duration دقیقه فضا داشته باشد
         current = start_dt
         while current + timedelta(minutes=service_duration) <= end_dt:
             slot_end = current + timedelta(minutes=service_duration)
@@ -155,9 +178,9 @@ class SlotService:
 
     @staticmethod
     def _filter_break_conflicts(
-            slots: List[Dict],
-            breaks: List[ScheduleBreak],
-            service_duration: int,
+        slots: List[Dict],
+        breaks: List[tuple],  # ✅ تغییر به tuple به جای object
+        service_duration: int,
     ) -> List[Dict]:
         """حذف اسلات‌هایی که با بازه‌های استراحت تداخل دارند"""
         if not breaks:
@@ -167,14 +190,13 @@ class SlotService:
         for slot in slots:
             slot_start = datetime.combine(date.today(), slot['start_time'])
             slot_end = datetime.combine(date.today(), slot['end_time'])
-
             has_conflict = False
-            for brk in breaks:
-                brk_start = datetime.combine(date.today(), brk.start_time)
-                brk_end = datetime.combine(date.today(), brk.end_time)
 
-                # تداخل: اسلات با استراحت همپوشانی دارد
-                if slot_start < brk_end and slot_end > brk_start:
+            for brk_start, brk_end in breaks:  # ✅ استفاده از tuple
+                brk_start_dt = datetime.combine(date.today(), brk_start)
+                brk_end_dt = datetime.combine(date.today(), brk_end)
+
+                if slot_start < brk_end_dt and slot_end > brk_start_dt:
                     has_conflict = True
                     break
 
@@ -185,29 +207,25 @@ class SlotService:
 
     @staticmethod
     def _filter_booked_slots(
-            slots: List[Dict],
-            booked_appointments,
-            service_duration: int,
+        slots: List[Dict],
+        booked_times: set,  # ✅ تغییر به set به جای queryset
+        service_duration: int,
     ) -> List[Dict]:
         """حذف اسلات‌هایی که قبلاً رزرو شده‌اند"""
-        if not booked_appointments.exists():
+        if not booked_times:
             return slots
-
-        # لیست زمان‌های رزرو شده
-        booked_times = []
-        for apt in booked_appointments:
-            booked_start = datetime.combine(date.today(), apt.time)
-            booked_end = booked_start + timedelta(minutes=service_duration)
-            booked_times.append((booked_start, booked_end))
 
         filtered = []
         for slot in slots:
             slot_start = datetime.combine(date.today(), slot['start_time'])
             slot_end = datetime.combine(date.today(), slot['end_time'])
-
             has_conflict = False
+
             for booked_start, booked_end in booked_times:
-                if slot_start < booked_end and slot_end > booked_start:
+                booked_start_dt = datetime.combine(date.today(), booked_start)
+                booked_end_dt = datetime.combine(date.today(), booked_end)
+
+                if slot_start < booked_end_dt and slot_end > booked_start_dt:
                     has_conflict = True
                     break
 
@@ -218,18 +236,23 @@ class SlotService:
 
     @staticmethod
     def get_available_dates(
-            business_id: int,
-            service_id: int,
-            days_ahead: int = 30,
+        business_id: int,
+        service_id: int,
+        days_ahead: int = 30,
     ) -> List[Dict]:
         """
         دریافت روزهای دارای اسلات آزاد برای ۳۰ روز آینده
         """
-        from apps.businesses.models import Business
-
         try:
-            business = Business.objects.get(id=business_id, status='approved')
-            service = Service.objects.get(id=service_id, business=business, is_active=True)
+            business = Business.objects.only('id', 'status').get(
+                id=business_id,
+                status='approved'
+            )
+            service = Service.objects.only('id', 'is_active', 'business_id').get(
+                id=service_id,
+                business_id=business_id,
+                is_active=True
+            )
         except (Business.DoesNotExist, Service.DoesNotExist):
             return []
 
@@ -238,17 +261,20 @@ class SlotService:
 
         for i in range(days_ahead):
             target_date = today + timedelta(days=i)
-            slots = SlotService.get_available_slots(business_id, service_id, target_date)
+            slots = SlotService.get_available_slots(
+                business_id, service_id, target_date
+            )
 
             if slots:
-                # تبدیل به jalaali
                 import jdatetime
                 j_date = jdatetime.date.fromgregorian(date=target_date)
 
-                # روز هفته فارسی
                 py_weekday = target_date.weekday()
                 persian_weekday = (py_weekday + 2) % 7
-                weekday_names = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه']
+                weekday_names = [
+                    'شنبه', 'یکشنبه', 'دوشنبه',
+                    'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'
+                ]
 
                 available_dates.append({
                     'jy': j_date.year,

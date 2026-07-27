@@ -1,11 +1,12 @@
 """
-سیگنال‌های اپ businesses - نسخه اصلاح شده
-استفاده از pre_save برای ذخیره وضعیت قبلی
+سیگنال‌های اپ businesses
+✅ بهینه‌شده: استفاده از update() به جای save()
 """
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Count
 from .models import Business, Service
 import logging
 
@@ -14,10 +15,7 @@ logger = logging.getLogger(__name__)
 
 @receiver(pre_save, sender=Business)
 def store_old_business_status(sender, instance, **kwargs):
-    """
-    ✅ ذخیره وضعیت قبلی قبل از save
-    این signal قبل از save اجرا می‌شود و وضعیت فعلی را ذخیره می‌کند
-    """
+    """ذخیره وضعیت قبلی قبل از save"""
     if instance.pk:
         try:
             old_instance = Business.objects.get(pk=instance.pk)
@@ -30,32 +28,22 @@ def store_old_business_status(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Business)
 def business_status_changed(sender, instance, created, **kwargs):
-    """
-    ✅ اصلاح شده: تشخیص دقیق تغییر وضعیت
-    با استفاده از _old_status که در pre_save ذخیره شده
-    """
+    """تشخیص دقیق تغییر وضعیت"""
     if created:
-        # کسب‌وکار جدید ایجاد شده
         logger.info(f"New business created: {instance.name}")
         return
 
-    # بررسی اینکه آیا وضعیت واقعاً تغییر کرده
     old_status = getattr(instance, '_old_status', None)
-
     if old_status is None or old_status == instance.status:
-        # وضعیت تغییر نکرده
         return
 
-    # وضعیت تغییر کرده - انجام عملیات مربوطه
     logger.info(
         f"Business status changed: {instance.name} "
         f"from {old_status} to {instance.status}"
     )
 
     if instance.status == Business.Status.APPROVED and old_status != Business.Status.APPROVED:
-        # ✅ کسب‌وکار تایید شده
         try:
-            # ارسال ایمیل تایید
             if getattr(instance.owner, 'email', ''):
                 send_mail(
                     subject=f'تایید کسب‌وکار {instance.name}',
@@ -67,23 +55,16 @@ def business_status_changed(sender, instance, created, **kwargs):
                     recipient_list=[instance.owner.email],
                     fail_silently=True,
                 )
-
-            # ارسال نوتیفیکیشن
             try:
                 from apps.notifications.services import NotificationService
                 NotificationService.send_business_approved(instance)
             except Exception as e:
                 logger.error(f"Failed to send approval notification: {e}")
-
-            logger.info(f"✅ Business approved: {instance.name}")
-
         except Exception as e:
             logger.error(f"Error sending approval notification: {e}")
 
     elif instance.status == Business.Status.REJECTED and old_status != Business.Status.REJECTED:
-        # ✅ کسب‌وکار رد شده
         try:
-            # ارسال ایمیل رد
             if getattr(instance.owner, 'email', ''):
                 send_mail(
                     subject=f'رد کسب‌وکار {instance.name}',
@@ -96,16 +77,11 @@ def business_status_changed(sender, instance, created, **kwargs):
                     recipient_list=[instance.owner.email],
                     fail_silently=True,
                 )
-
-            # ارسال نوتیفیکیشن
             try:
                 from apps.notifications.services import NotificationService
                 NotificationService.send_business_rejected(instance)
             except Exception as e:
                 logger.error(f"Failed to send rejection notification: {e}")
-
-            logger.info(f"❌ Business rejected: {instance.name}")
-
         except Exception as e:
             logger.error(f"Error sending rejection notification: {e}")
 
@@ -113,8 +89,18 @@ def business_status_changed(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Service)
 @receiver(post_delete, sender=Service)
 def update_business_services_count(sender, instance, **kwargs):
-    """بروزرسانی تعداد خدمات کسب‌وکار"""
+    """
+    ✅ بهینه: استفاده از update() به جای save()
+    یک کوئری به جای دو کوئری
+    """
     business = instance.business
     if business:
-        business.services_count = business.services.filter(is_active=True).count()
-        business.save(update_fields=['services_count'])
+        count = Service.objects.filter(
+            business=business,
+            is_active=True
+        ).count()
+
+        # ✅ update() یک کوئری است
+        Business.objects.filter(id=business.id).update(
+            services_count=count
+        )

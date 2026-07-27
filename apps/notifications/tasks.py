@@ -1,6 +1,6 @@
 """
-Celery Tasks برای نوتیفیکیشن‌ها و وظایف پس‌زمینه
-✅ نسخه اصلاح شده: تسک‌های تکراری حذف شدند
+Celery Tasks برای نوتیفیکیشن‌ها
+✅ بهینه‌شده: Batch delete برای پاکسازی
 """
 import logging
 from celery import shared_task
@@ -10,15 +10,9 @@ from datetime import timedelta
 logger = logging.getLogger(__name__)
 
 
-# ══════════════════════════════════════════
-#    یادآوری نوبت‌ها
-# ══════════════════════════════════════════
 @shared_task(bind=True, max_retries=3)
 def send_booking_reminders(self):
-    """
-    ارسال یادآوری نوبت‌های فردا
-    هر روز ساعت ۹ صبح اجرا می‌شود
-    """
+    """ارسال یادآوری نوبت‌های فردا"""
     from apps.bookings.models import Appointment
     from apps.notifications.services import NotificationService
 
@@ -37,20 +31,15 @@ def send_booking_reminders(self):
             NotificationService.send_booking_reminder(appointment)
             sent_count += 1
         except Exception as e:
-            logger.error(
-                f"Reminder failed for appointment {appointment.id}: {e}"
-            )
+            logger.error(f"Reminder failed for appointment {appointment.id}: {e}")
 
-    logger.info(f"Booking reminders sent: {sent_count}/{appointments.count()}")
-    return {'sent': sent_count, 'total': appointments.count()}
+    logger.info(f"Booking reminders sent: {sent_count}")
+    return {'sent': sent_count}
 
 
 @shared_task(bind=True, max_retries=3)
 def send_same_day_reminders(self):
-    """
-    ارسال یادآوری نوبت‌های امروز (۲ ساعت قبل)
-    هر ساعت اجرا می‌شود
-    """
+    """ارسال یادآوری نوبت‌های امروز (۲ ساعت قبل)"""
     from apps.bookings.models import Appointment
     from apps.notifications.services import NotificationService
 
@@ -93,19 +82,12 @@ def send_same_day_reminders(self):
         except Exception as e:
             logger.error(f"Same-day reminder failed: {e}")
 
-    logger.info(f"Same-day reminders sent: {sent_count}")
     return {'sent': sent_count}
 
 
-# ══════════════════════════════════════════
-#    بررسی تراکنش‌ها
-# ══════════════════════════════════════════
 @shared_task
 def verify_unconfirmed_payments():
-    """
-    بررسی و تایید پرداخت‌های تایید نشده از درگاه
-    هر ۵ دقیقه اجرا می‌شود
-    """
+    """بررسی و تایید پرداخت‌های تایید نشده"""
     from apps.payments.models import Transaction
     from apps.payments.services.zibal_service import ZibalService
     from apps.payments.services.settlement_service import SettlementService
@@ -124,7 +106,6 @@ def verify_unconfirmed_payments():
                 track_id=int(tx.gateway_ref_id),
                 expected_amount_toman=tx.amount,
             )
-
             if result.get('success'):
                 if tx.appointment:
                     SettlementService.process_deposit_payment(
@@ -135,58 +116,86 @@ def verify_unconfirmed_payments():
                     tx.paid_at = timezone.now()
                     tx.gateway_ref_id = result.get('ref_number', tx.gateway_ref_id)
                     tx.save()
-
                 verified += 1
-
         except Exception as e:
-            logger.debug(
-                f"Payment {tx.id} not yet confirmed: {e}"
-            )
+            logger.debug(f"Payment {tx.id} not yet confirmed: {e}")
 
     if verified > 0:
         logger.info(f"Verified {verified} unconfirmed payments")
-
     return {'verified': verified}
 
 
-# ══════════════════════════════════════════
-#    پاکسازی
-# ══════════════════════════════════════════
 @shared_task
 def cleanup_old_notifications():
     """
-    حذف اعلان‌های قدیمی (بیش از ۹۰ روز)
-    هر روز ساعت ۳ صبح اجرا می‌شود
+    ✅ بهینه: حذف دسته‌ای برای جلوگیری از lock شدن table
     """
-    from apps.notifications.services import NotificationService
-    count = NotificationService.delete_old_notifications(days=90)
-    logger.info(f"Cleaned up {count} old notifications")
-    return {'deleted': count}
+    from apps.notifications.models import Notification
+
+    cutoff = timezone.now() - timedelta(days=90)
+    total_deleted = 0
+    batch_size = 1000
+
+    while True:
+        ids_to_delete = list(
+            Notification.objects.filter(
+                created_at__lt=cutoff,
+                is_read=True,
+            ).values_list('id', flat=True)[:batch_size]
+        )
+
+        if not ids_to_delete:
+            break
+
+        deleted_count, _ = Notification.objects.filter(
+            id__in=ids_to_delete
+        ).delete()
+        total_deleted += deleted_count
+
+        if len(ids_to_delete) < batch_size:
+            break
+
+    logger.info(f"Cleaned up {total_deleted} old notifications")
+    return {'deleted': total_deleted}
 
 
 @shared_task
 def cleanup_old_otp_codes():
     """
-    حذف کدهای OTP قدیمی (بیش از ۲۴ ساعت)
-    هر روز ساعت ۴ صبح اجرا می‌شود
+    ✅ بهینه: حذف دسته‌ای
     """
     from apps.accounts.models import OTP
+
     cutoff = timezone.now() - timedelta(hours=24)
-    count, _ = OTP.objects.filter(
-        created_at__lt=cutoff,
-        is_used=True,
-    ).delete()
-    logger.info(f"Cleaned up {count} old OTP codes")
-    return {'deleted': count}
+    total_deleted = 0
+    batch_size = 2000
+
+    while True:
+        ids = list(
+            OTP.objects.filter(
+                created_at__lt=cutoff,
+                is_used=True,
+            ).values_list('id', flat=True)[:batch_size]
+        )
+
+        if not ids:
+            break
+
+        deleted, _ = OTP.objects.filter(id__in=ids).delete()
+        total_deleted += deleted
+
+        if len(ids) < batch_size:
+            break
+
+    logger.info(f"Cleaned up {total_deleted} old OTP codes")
+    return {'deleted': total_deleted}
 
 
 @shared_task
 def cleanup_expired_time_slots():
-    """
-    منقضی کردن اسلات‌های زمانی گذشته
-    هر ساعت اجرا می‌شود
-    """
+    """منقضی کردن اسلات‌های زمانی گذشته"""
     from apps.bookings.models import TimeSlot
+
     now = timezone.now()
     count = TimeSlot.objects.filter(
         date__lt=now.date(),
@@ -195,5 +204,4 @@ def cleanup_expired_time_slots():
 
     if count > 0:
         logger.info(f"Expired {count} old time slots")
-
     return {'expired': count}

@@ -1,11 +1,11 @@
 """
-سرویس جستجوی پیشرفته با PostgreSQL Full-Text Search
+سرویس جستجوی پیشرفته
+✅ بهینه‌شده: بهینه‌سازی تاریخچه جستجو
 """
 from django.db import connection
 from django.db.models import Q, Value, CharField
 from django.db.models.functions import Concat
 from apps.businesses.models import Business, Service
-from apps.bookings.models import Appointment
 
 
 def _is_postgres():
@@ -15,14 +15,13 @@ def _is_postgres():
 
 class SearchService:
     """سرویس جستجوی یکپارچه"""
-
     MAX_HISTORY_PER_USER = 50
     MIN_QUERY_LENGTH = 2
 
     @classmethod
     def search_businesses(cls, query, province_id=None, city_id=None,
-                          category_id=None, min_rating=0, has_discount=False,
-                          limit=20):
+                           category_id=None, min_rating=0, has_discount=False,
+                           limit=20):
         """جستجو در کسب‌وکارها"""
         qs = Business.objects.filter(status=Business.Status.APPROVED)
 
@@ -39,14 +38,12 @@ class SearchService:
 
         if query and len(query) >= cls.MIN_QUERY_LENGTH:
             if _is_postgres():
-                # PostgreSQL: استفاده از TrigramSimilarity
                 from django.contrib.postgres.search import TrigramSimilarity
                 qs = qs.annotate(
                     similarity=TrigramSimilarity('name', query) +
                                TrigramSimilarity('about', query)
                 ).filter(similarity__gt=0.1).order_by('-similarity')
             else:
-                # SQLite / سایر: استفاده از icontains
                 qs = qs.filter(
                     Q(name__icontains=query) | Q(about__icontains=query)
                 ).order_by('-rating_avg', '-bookings_count')
@@ -59,8 +56,8 @@ class SearchService:
 
     @classmethod
     def search_services(cls, query, business_id=None, category_id=None,
-                        min_price=0, max_price=None, has_discount=False,
-                        limit=20):
+                         min_price=0, max_price=None, has_discount=False,
+                         limit=20):
         """جستجو در خدمات"""
         qs = Service.objects.filter(is_active=True)
 
@@ -93,13 +90,9 @@ class SearchService:
 
     @classmethod
     def global_search(cls, query, user=None, limit_per_type=5):
-        """جستجوی کلی در تمام بخش‌ها"""
+        """جستجوی کلی"""
         if not query or len(query) < cls.MIN_QUERY_LENGTH:
-            return {
-                'businesses': [],
-                'services': [],
-                'total': 0,
-            }
+            return {'businesses': [], 'services': [], 'total': 0}
 
         businesses = list(cls.search_businesses(query, limit=limit_per_type))
         services = list(cls.search_services(query, limit=limit_per_type))
@@ -143,27 +136,35 @@ class SearchService:
 
     @classmethod
     def _save_history(cls, user, query, result_count):
-        """ذخیره تاریخچه جستجو"""
+        """
+        ✅ بهینه: حذف رکوردهای اضافی با یک کوئری
+        """
         from apps.advanced.models import SearchHistory
 
+        # حذف تکراری
         SearchHistory.objects.filter(
             user=user,
             query__iexact=query,
         ).delete()
 
+        # ایجاد جدید
         SearchHistory.objects.create(
             user=user,
             query=query,
             result_count=result_count,
         )
 
-        history_ids = list(
+        # ✅ حذف رکوردهای اضافی با یک کوئری
+        keep_ids = list(
             SearchHistory.objects.filter(user=user)
             .order_by('-created_at')
-            .values_list('id', flat=True)[cls.MAX_HISTORY_PER_USER:]
+            .values_list('id', flat=True)[:cls.MAX_HISTORY_PER_USER]
         )
-        if history_ids:
-            SearchHistory.objects.filter(id__in=history_ids).delete()
+
+        if keep_ids:
+            SearchHistory.objects.filter(user=user).exclude(
+                id__in=keep_ids
+            ).delete()
 
     @classmethod
     def get_user_history(cls, user, limit=20):
