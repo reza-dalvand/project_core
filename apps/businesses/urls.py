@@ -13,6 +13,28 @@ from .views.business import (
     ImageUploadView,
     BusinessDeleteView,
 )
+from .views.service import (
+    ServiceListView,
+    ServiceDetailView,
+    ServiceToggleActiveView,
+)
+from .views.employee import (
+    EmployeeListView,
+    EmployeeDetailView,
+    EmployeeToggleActiveView,
+    EmployeeAssignServicesView,
+)
+from .views.schedule import (
+    ScheduleListView,
+    ScheduleDetailView,
+    WeeklyScheduleView,
+)
+from .views.portfolio import (
+    PortfolioListView,
+    PortfolioDetailView,
+    PortfolioToggleActiveView,
+    PortfolioReorderView,
+)
 
 app_name = 'businesses'
 
@@ -33,4 +55,26 @@ urlpatterns = [
     path('detail/', BusinessDetailView.as_view(), name='business-detail'),
     path('upload-image/', ImageUploadView.as_view(), name='upload-image'),
     path('delete/', BusinessDeleteView.as_view(), name='business-delete'),
+
+    # ═══════════ Services Management ═══════════
+    path('services/', ServiceListView.as_view(), name='service-list'),
+    path('services/<int:pk>/', ServiceDetailView.as_view(), name='service-detail'),
+    path('services/<int:pk>/toggle-active/', ServiceToggleActiveView.as_view(), name='service-toggle-active'),
+
+    # ═══════════ Employees Management ═══════════
+    path('employees/', EmployeeListView.as_view(), name='employee-list'),
+    path('employees/<int:pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
+    path('employees/<int:pk>/toggle-active/', EmployeeToggleActiveView.as_view(), name='employee-toggle-active'),
+    path('employees/<int:pk>/assign-services/', EmployeeAssignServicesView.as_view(), name='employee-assign-services'),
+
+    # ═══════════ Schedule Management ═══════════
+    path('schedules/', ScheduleListView.as_view(), name='schedule-list'),
+    path('schedules/<int:pk>/', ScheduleDetailView.as_view(), name='schedule-detail'),
+    path('schedules/weekly/', WeeklyScheduleView.as_view(), name='weekly-schedule'),
+
+    # ═══════════ Portfolio Management ═══════════
+    path('portfolios/', PortfolioListView.as_view(), name='portfolio-list'),
+    path('portfolios/<int:pk>/', PortfolioDetailView.as_view(), name='portfolio-detail'),
+    path('portfolios/<int:pk>/toggle-active/', PortfolioToggleActiveView.as_view(), name='portfolio-toggle-active'),
+    path('portfolios/reorder/', PortfolioReorderView.as_view(), name='portfolio-reorder'),
 ]

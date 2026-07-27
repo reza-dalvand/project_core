@@ -1,23 +1,16 @@
 """
-URL configuration for API app
+URL configuration for API app - نسخه نهایی
 """
 from django.urls import path, include
 
 app_name = 'api'
 
 urlpatterns = [
-    # Accounts & Auth
     path('accounts/', include('apps.accounts.urls')),
-
-    # Businesses
     path('businesses/', include('apps.businesses.urls')),
-
-    # Bookings (بعداً)
-    # path('bookings/', include('apps.bookings.urls')),
-
-    # Payments (بعداً)
-    # path('payments/', include('apps.payments.urls')),
-
-    # Reviews (بعداً)
-    # path('reviews/', include('apps.reviews.urls')),
+    path('bookings/', include('apps.bookings.urls')),
+    path('payments/', include('apps.payments.urls')),
+    path('reviews/', include('apps.reviews.urls')),
+    path('notifications/', include('apps.notifications.urls')),
+    path('', include('apps.advanced.urls')),  # ✅ ویژگی‌های پیشرفته
 ]

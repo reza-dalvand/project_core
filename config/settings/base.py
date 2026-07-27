@@ -68,6 +68,7 @@ LOCAL_APPS = [
     'apps.landing.apps.LandingConfig',
     'apps.dashboard.apps.DashboardConfig',
     'apps.api.apps.ApiConfig',
+    'apps.advanced.apps.AdvancedConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -534,3 +535,58 @@ JAZZMIN_UI_TWEAKS = {
     "actions_sticky_top": True,
 }
 
+# ═══════════════════════════════════════════════
+#   Celery Beat Schedule
+# ═══════════════════════════════════════════════
+from celery.schedules import crontab
+
+# ═══════════════════════════════════════════════
+#   Celery Beat Schedule
+# ═══════════════════════════════════════════════
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    # ─── یادآوری نوبت‌ها ───
+    'daily-booking-reminders': {
+        'task': 'apps.notifications.tasks.send_booking_reminders',
+        'schedule': crontab(hour=9, minute=0),  # هر روز ۹ صبح
+    },
+    'same-day-booking-reminders': {
+        'task': 'apps.notifications.tasks.send_same_day_reminders',
+        'schedule': crontab(minute=0),  # هر ساعت
+    },
+
+    # ─── تسویه خودکار ───
+    'auto-settle-appointments': {
+        'task': 'apps.notifications.tasks.auto_settle_completed_appointments',
+        'schedule': crontab(minute=0),  # هر ساعت
+    },
+    'process-pending-settlements': {
+        'task': 'apps.notifications.tasks.process_pending_settlements',
+        'schedule': crontab(minute=0, hour='*/6'),  # هر ۶ ساعت
+    },
+
+    # ─── بررسی تراکنش‌ها ───
+    'check-expired-transactions': {
+        'task': 'apps.notifications.tasks.check_expired_pending_transactions',
+        'schedule': crontab(minute='*/10'),  # هر ۱۰ دقیقه
+    },
+    'verify-unconfirmed-payments': {
+        'task': 'apps.notifications.tasks.verify_unconfirmed_payments',
+        'schedule': crontab(minute='*/5'),  # هر ۵ دقیقه
+    },
+
+    # ─── پاکسازی ───
+    'cleanup-old-notifications': {
+        'task': 'apps.notifications.tasks.cleanup_old_notifications',
+        'schedule': crontab(hour=3, minute=0),  # هر روز ۳ صبح
+    },
+    'cleanup-old-otp-codes': {
+        'task': 'apps.notifications.tasks.cleanup_old_otp_codes',
+        'schedule': crontab(hour=4, minute=0),  # هر روز ۴ صبح
+    },
+    'cleanup-expired-time-slots': {
+        'task': 'apps.notifications.tasks.cleanup_expired_time_slots',
+        'schedule': crontab(minute=0),  # هر ساعت
+    },
+}

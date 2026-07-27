@@ -355,3 +355,20 @@ class ImageUploadResponseSerializer(serializers.Serializer):
     image_url = serializers.URLField()
     image_type = serializers.CharField()
     message = serializers.CharField()
+
+
+# ─── این serializer را به فایل business.py اضافه کنید ───
+
+class ServiceBriefSerializer(serializers.ModelSerializer):
+    """Serializer خلاصه برای خدمت (استفاده در Appointment)"""
+    subcategory_name = serializers.CharField(
+        source='subcategory.name', read_only=True, default=None
+    )
+
+    class Meta:
+        model = Service
+        fields = [
+            'id', 'name', 'original_price', 'discount_percent',
+            'final_price', 'duration_minutes', 'has_deposit',
+            'deposit_amount', 'subcategory_name',
+        ]
