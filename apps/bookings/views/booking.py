@@ -457,7 +457,9 @@ class AppointmentStatsView(APIView, StandardResponseMixin):
         business = request.user.business
         today = date.today()
 
-        appointments = Appointment.objects.filter(business=business)
+        appointments = Appointment.objects.filter(
+            business=business
+        ).select_related('customer', 'service', 'employee')
 
         stats = {
             'total': appointments.count(),

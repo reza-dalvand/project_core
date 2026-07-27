@@ -8,6 +8,7 @@ from django.conf import settings
 from apps.core.utils import normalize_phone, to_english_digits
 from apps.core.exceptions import ShahkarException, ShahkarMismatchException
 from apps.core.validators import validate_national_id
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,6 @@ class ShahkarService:
             }
 
         # حالت عادی: ۷۰٪ احتمال موفقیت
-        import random
         if random.random() < 0.7:
             return {
                 'success': True,

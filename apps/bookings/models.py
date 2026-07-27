@@ -1,9 +1,11 @@
 """
-مدل‌های نوبت‌دهی
+مدل‌های نوبت‌دهی - نسخه اصلاح شده
 """
+import random
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 class Schedule(models.Model):
@@ -32,7 +34,6 @@ class Schedule(models.Model):
         null=True,
         blank=True,
     )
-
     weekday = models.PositiveSmallIntegerField(
         'روز هفته',
         choices=WeekDay.choices,
@@ -45,7 +46,6 @@ class Schedule(models.Model):
         default=30,
         validators=[MinValueValidator(15), MaxValueValidator(120)],
     )
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -61,7 +61,6 @@ class Schedule(models.Model):
 
 class ScheduleBreak(models.Model):
     """بازه استراحت در برنامه کاری"""
-
     schedule = models.ForeignKey(
         Schedule,
         on_delete=models.CASCADE,
@@ -221,17 +220,19 @@ class Appointment(models.Model):
             models.Index(fields=['customer', 'status']),
             models.Index(fields=['business', 'date', 'status']),
             models.Index(fields=['date', 'time']),
+            # ✅ Index های جدید برای بهبود performance
+            models.Index(fields=['business', 'status', 'date']),
+            models.Index(fields=['deposit_paid', 'status']),
+            models.Index(fields=['status', 'verified_at']),
         ]
 
     def __str__(self):
         return f'{self.customer.phone} - {self.service.name} ({self.date})'
 
     def save(self, *args, **kwargs):
-        # تولید کد تایید ۴ رقمی
+        # ✅ import ها به ابتدای فایل منتقل شدند
         if not self.verification_code and self.status == self.Status.RESERVED:
-            import random
             self.verification_code = str(random.randint(1000, 9999))
-            from django.utils import timezone
             self.code_generated_at = timezone.now()
         super().save(*args, **kwargs)
 

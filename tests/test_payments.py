@@ -220,3 +220,37 @@ class TestPaymentAPI:
         url = '/api/v1/payments/business/stats/'
         response = authenticated_customer_client.get(url)
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestPaymentCeleryTasks:
+    """تست‌های Celery Tasks مربوط به پرداخت"""
+
+    def test_check_expired_transactions(self, customer_user):
+        """تست بررسی تراکنش‌های منقضی شده"""
+        from apps.payments.models import Transaction
+        from apps.payments.tasks import check_expired_pending_transactions
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # ایجاد تراکنش قدیمی PENDING (بیش از ۳۰ دقیقه پیش)
+        tx = Transaction.objects.create(
+            user=customer_user,
+            type=Transaction.Type.DEPOSIT,
+            status=Transaction.Status.PENDING,
+            amount=100000,
+        )
+        Transaction.objects.filter(id=tx.id).update(
+            created_at=timezone.now() - timedelta(minutes=35)
+        )
+
+        # اجرای تسک
+        result = check_expired_pending_transactions()
+
+        # بررسی نتیجه
+        assert result['expired'] >= 1
+
+        # بررسی تغییر وضعیت در دیتابیس
+        tx.refresh_from_db()
+        assert tx.status == Transaction.Status.FAILED
+        assert 'انقضا' in tx.failure_reason

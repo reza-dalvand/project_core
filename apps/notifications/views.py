@@ -1,11 +1,13 @@
 """
-Views برای نوتیفیکیشن‌ها
+Views برای نوتیفیکیشن‌ها - نسخه اصلاح شده
+✅ import ها به ابتدای فایل منتقل شدند
 """
+from django.db import models
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from apps.core.mixins import StandardResponseMixin
@@ -20,11 +22,7 @@ from .services import NotificationService
 
 
 class NotificationListView(ListAPIView, StandardResponseMixin):
-    """
-    لیست اعلان‌های کاربر
-
-    GET /api/v1/notifications/
-    """
+    """لیست اعلان‌های کاربر"""
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
     pagination_class = StandardResultsSetPagination
@@ -52,12 +50,10 @@ class NotificationListView(ListAPIView, StandardResponseMixin):
             user=self.request.user,
         ).order_by('-created_at')
 
-        # فیلتر خوانده/نخوانده
         is_read = self.request.query_params.get('is_read')
         if is_read is not None:
             qs = qs.filter(is_read=is_read.lower() == 'true')
 
-        # فیلتر نوع
         notif_type = self.request.query_params.get('type')
         if notif_type:
             qs = qs.filter(type=notif_type)
@@ -66,11 +62,7 @@ class NotificationListView(ListAPIView, StandardResponseMixin):
 
 
 class NotificationCountView(APIView, StandardResponseMixin):
-    """
-    تعداد اعلان‌های خوانده نشده
-
-    GET /api/v1/notifications/count/
-    """
+    """تعداد اعلان‌های خوانده نشده"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -80,17 +72,16 @@ class NotificationCountView(APIView, StandardResponseMixin):
     )
     def get(self, request):
         user = request.user
-
         total = Notification.objects.filter(user=user).count()
         unread = NotificationService.get_unread_count(user)
 
-        # تعداد بر اساس نوع
         by_type = {}
         type_counts = (
             Notification.objects.filter(user=user, is_read=False)
             .values('type')
             .annotate(count=models.Count('id'))
         )
+
         for item in type_counts:
             by_type[item['type']] = item['count']
 
@@ -104,18 +95,13 @@ class NotificationCountView(APIView, StandardResponseMixin):
 
 
 class MarkAsReadView(APIView, StandardResponseMixin):
-    """
-    علامت‌گذاری اعلان به عنوان خوانده شده
-
-    POST /api/v1/notifications/mark-read/
-    """
+    """علامت‌گذاری اعلان به عنوان خوانده شده"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=MarkAsReadSerializer,
         tags=['Notifications'],
         summary='خوانده شده',
-        description='علامت‌گذاری یک یا همه اعلان‌ها به عنوان خوانده شده',
     )
     def post(self, request):
         serializer = MarkAsReadSerializer(data=request.data)
@@ -124,11 +110,6 @@ class MarkAsReadView(APIView, StandardResponseMixin):
         notification_ids = serializer.validated_data.get('notification_ids')
 
         if notification_ids:
-            count = NotificationService.mark_as_read(
-                user=request.user,
-                notification_id=None,  # علامت‌گذاری همه
-            )
-            # فیلتر فقط ID های مشخص
             count = Notification.objects.filter(
                 user=request.user,
                 id__in=notification_ids,
@@ -147,11 +128,7 @@ class MarkAsReadView(APIView, StandardResponseMixin):
 
 
 class DeleteNotificationView(APIView, StandardResponseMixin):
-    """
-    حذف اعلان
-
-    DELETE /api/v1/notifications/<id>/
-    """
+    """حذف اعلان"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -177,11 +154,7 @@ class DeleteNotificationView(APIView, StandardResponseMixin):
 
 
 class DeleteAllNotificationsView(APIView, StandardResponseMixin):
-    """
-    حذف همه اعلان‌های خوانده شده
-
-    DELETE /api/v1/notifications/delete-all/
-    """
+    """حذف همه اعلان‌های خوانده شده"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -198,8 +171,3 @@ class DeleteAllNotificationsView(APIView, StandardResponseMixin):
             data={'deleted_count': count},
             message=f'{count} اعلان حذف شد',
         )
-
-
-# Import برای annotation
-from django.db import models
-from django.utils import timezone

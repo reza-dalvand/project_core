@@ -1,7 +1,8 @@
 """
-Views برای کیف پول
+Views برای کیف پول - نسخه اصلاح شده
 """
 import logging
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
@@ -11,25 +12,21 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsCustomer
 from apps.core.pagination import StandardResultsSetPagination
-from apps.payments.models import WalletTransaction
+from apps.payments.models import Transaction, WalletTransaction
 from apps.payments.services.wallet_service import WalletService
+from apps.payments.services.zibal_service import ZibalService
 from apps.payments.serializers.wallet import (
     WalletSerializer,
     WalletSummarySerializer,
     WalletTransactionSerializer,
     WalletChargeSerializer,
-    WalletWithdrawSerializer,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class WalletDetailView(APIView, StandardResponseMixin):
-    """
-    اطلاعات کیف پول
-
-    GET /api/v1/payments/wallet/
-    """
+    """اطلاعات کیف پول"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -44,11 +41,7 @@ class WalletDetailView(APIView, StandardResponseMixin):
 
 
 class WalletSummaryView(APIView, StandardResponseMixin):
-    """
-    خلاصه وضعیت کیف پول
-
-    GET /api/v1/payments/wallet/summary/
-    """
+    """خلاصه وضعیت کیف پول"""
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -63,11 +56,7 @@ class WalletSummaryView(APIView, StandardResponseMixin):
 
 
 class WalletTransactionListView(ListAPIView, StandardResponseMixin):
-    """
-    لیست تراکنش‌های کیف پول
-
-    GET /api/v1/payments/wallet/transactions/
-    """
+    """لیست تراکنش‌های کیف پول"""
     permission_classes = [IsAuthenticated]
     serializer_class = WalletTransactionSerializer
     pagination_class = StandardResultsSetPagination
@@ -87,18 +76,15 @@ class WalletTransactionListView(ListAPIView, StandardResponseMixin):
     def get_queryset(self):
         wallet = WalletService.get_or_create_wallet(self.request.user)
         qs = WalletTransaction.objects.filter(wallet=wallet)
-
         tx_type = self.request.query_params.get('type', 'all')
         if tx_type != 'all':
             qs = qs.filter(type=tx_type)
-
         return qs.order_by('-created_at')
 
 
 class WalletChargeView(APIView, StandardResponseMixin):
     """
     شارژ کیف پول
-
     POST /api/v1/payments/wallet/charge/
     """
     permission_classes = [IsAuthenticated]
@@ -107,29 +93,27 @@ class WalletChargeView(APIView, StandardResponseMixin):
         request=WalletChargeSerializer,
         tags=['Wallet'],
         summary='شارژ کیف پول',
-        description='شارژ کیف پول از طریق درگاه بانکی',
     )
     def post(self, request):
         serializer = WalletChargeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         amount = serializer.validated_data['amount']
 
-        # ایجاد تراکنش شارژ کیف پول
-        from apps.payments.models import Transaction
-        tx = Transaction.objects.create(
+        # ✅ ایجاد تراکنش شارژ کیف پول با کارمزد صفر
+        tx = Transaction(
             user=request.user,
             type=Transaction.Type.WALLET_TOPUP,
             status=Transaction.Status.PENDING,
             amount=amount,
+            commission_amount=0,  # ✅ شارژ کیف پول کارمزد ندارد
+            net_amount=amount,    # ✅ مبلغ خالص = مبلغ کل
             gateway=Transaction.Gateway.ZIBAL,
             ip_address=request.META.get('REMOTE_ADDR'),
         )
+        tx.save()
 
         # اتصال به درگاه
-        from apps.payments.services.zibal_service import ZibalService
         from django.conf import settings
-
         callback_url = f"{settings.SITE_DOMAIN}/api/v1/payments/wallet/callback/"
 
         try:
@@ -165,9 +149,7 @@ class WalletChargeView(APIView, StandardResponseMixin):
 
 
 class WalletChargeCallbackView(APIView, StandardResponseMixin):
-    """
-    Callback شارژ کیف پول
-    """
+    """Callback شارژ کیف پول"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -184,7 +166,6 @@ class WalletChargeCallbackView(APIView, StandardResponseMixin):
         tx_id = order_id.replace('WALLET-', '')
 
         try:
-            from apps.payments.models import Transaction
             tx = Transaction.objects.get(id=tx_id, type=Transaction.Type.WALLET_TOPUP)
         except Transaction.DoesNotExist:
             return self.error_response(
@@ -194,7 +175,6 @@ class WalletChargeCallbackView(APIView, StandardResponseMixin):
 
         if success == '1':
             try:
-                from apps.payments.services.zibal_service import ZibalService
                 result = ZibalService.verify_payment(
                     track_id=int(track_id),
                     expected_amount_toman=tx.amount,

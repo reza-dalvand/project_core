@@ -1,10 +1,6 @@
 """
-مدل‌های مالی و پرداخت
-- Wallet: کیف پول کاربران و کسب‌وکارها
-- BankAccount: اطلاعات حساب بانکی صاحبان کسب‌وکار
-- Transaction: تراکنش‌ها (بیعانه، پرداخت کامل، استرداد، تسویه)
-- Settlement: درخواست‌های تسویه حساب
-- RefundRequest: درخواست‌های استرداد وجه
+مدل‌های مالی و پرداخت - نسخه اصلاح شده
+بدون Business Logic در متد save
 """
 import random
 import string
@@ -23,6 +19,37 @@ def generate_ref_number():
     """تولید شماره ارجاع"""
     now = timezone.now()
     return f"REF-{now.year}-{random.randint(100000, 999999)}"
+
+
+class TransactionManager(models.Manager):
+    """
+    Custom Manager برای ایجاد ایمن تراکنش‌ها
+    تضمین می‌کند که کارمزد همیشه به درستی محاسبه شود
+    """
+
+    def create_transaction(self, user, amount, tx_type, **kwargs):
+        """
+        Factory Method برای ایجاد تراکنش با محاسبه خودکار کارمزد
+
+        Args:
+            user: کاربر
+            amount: مبلغ تراکنش
+            tx_type: نوع تراکنش
+            **kwargs: سایر فیلدها
+        """
+        from apps.payments.services.settlement_service import SettlementService
+
+        # محاسبه خودکار کارمزد فقط برای تراکنش‌های پرداخت
+        if tx_type in [self.model.Type.DEPOSIT, self.model.Type.FULL_PAYMENT]:
+            commission, net_amount = SettlementService.calculate_net_amount(amount)
+            kwargs.setdefault('commission_amount', commission)
+            kwargs.setdefault('net_amount', net_amount)
+        else:
+            # سایر تراکنش‌ها کارمزد ندارند
+            kwargs.setdefault('commission_amount', 0)
+            kwargs.setdefault('net_amount', amount)
+
+        return self.create(user=user, amount=amount, type=tx_type, **kwargs)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -56,6 +83,8 @@ class Wallet(models.Model):
         help_text='در صورت مسدود بودن، امکان برداشت وجود ندارد',
     )
     updated_at = models.DateTimeField('آخرین بروزرسانی', auto_now=True)
+
+    objects = models.Manager()
 
     class Meta:
         verbose_name = '👛 کیف پول'
@@ -190,7 +219,7 @@ class BankAccount(models.Model):
 
 
 # ═══════════════════════════════════════════════════════════════
-#                    تراکنش اصلی
+#                    تراکنش اصلی (اصلاح شده)
 # ═══════════════════════════════════════════════════════════════
 class Transaction(models.Model):
     """تراکنش‌های اصلی سیستم"""
@@ -216,6 +245,7 @@ class Transaction(models.Model):
         IDPAY = 'idpay', 'آی‌دی‌پی'
         MELAT = 'melat', 'بانک ملت'
         WALLET = 'wallet', 'کیف پول'
+        ZIBAL = 'zibal', 'زیبال'
 
     # ─── اطلاعات اصلی ───
     tracking_code = models.CharField(
@@ -275,7 +305,7 @@ class Transaction(models.Model):
     commission_amount = models.PositiveBigIntegerField(
         'کارمزد زیبانو (تومان)',
         default=0,
-        help_text='کارمزد ۵٪ که توسط زیبانو کسر می‌شود',
+        help_text='کارمزد که توسط زیبانو کسر می‌شود (محاسبه شده توسط Service)',
     )
     net_amount = models.PositiveBigIntegerField(
         'مبلغ خالص (تومان)',
@@ -321,6 +351,9 @@ class Transaction(models.Model):
     settled_at = models.DateTimeField('تاریخ تسویه', null=True, blank=True)
     refunded_at = models.DateTimeField('تاریخ استرداد', null=True, blank=True)
 
+    # ─── Manager سفارشی ───
+    objects = TransactionManager()
+
     class Meta:
         verbose_name = '💰 تراکنش'
         verbose_name_plural = '💰 تراکنش‌ها'
@@ -330,17 +363,16 @@ class Transaction(models.Model):
             models.Index(fields=['business', 'status']),
             models.Index(fields=['tracking_code']),
             models.Index(fields=['type', 'status']),
+            # Index های جدید برای بهبود performance
+            models.Index(fields=['business', 'status', 'created_at']),
+            models.Index(fields=['appointment', 'type']),
         ]
 
     def __str__(self):
         return f'{self.tracking_code} - {self.get_type_display()} - {self.amount:,} تومان'
 
-    def save(self, *args, **kwargs):
-        # محاسبه کارمزد و مبلغ خالص اگر هنوز محاسبه نشده
-        if self.amount > 0 and self.commission_amount == 0 and self.type in [self.Type.DEPOSIT, self.Type.FULL_PAYMENT]:
-            self.commission_amount = int(self.amount * 0.05)  # ۵٪ کارمزد
-            self.net_amount = self.amount - self.commission_amount
-        super().save(*args, **kwargs)
+    # ❌ متد save حذف شد - Business Logic نباید در مدل باشد
+    # کارمزد باید توسط SettlementService محاسبه شود
 
 
 # ═══════════════════════════════════════════════════════════════

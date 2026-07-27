@@ -1,5 +1,6 @@
 """
 Celery Tasks برای نوتیفیکیشن‌ها و وظایف پس‌زمینه
+✅ نسخه اصلاح شده: تسک‌های تکراری حذف شدند
 """
 import logging
 from celery import shared_task
@@ -12,7 +13,6 @@ logger = logging.getLogger(__name__)
 # ══════════════════════════════════════════
 #    یادآوری نوبت‌ها
 # ══════════════════════════════════════════
-
 @shared_task(bind=True, max_retries=3)
 def send_booking_reminders(self):
     """
@@ -23,7 +23,6 @@ def send_booking_reminders(self):
     from apps.notifications.services import NotificationService
 
     tomorrow = timezone.now().date() + timedelta(days=1)
-
     appointments = Appointment.objects.filter(
         date=tomorrow,
         status__in=[
@@ -54,13 +53,11 @@ def send_same_day_reminders(self):
     """
     from apps.bookings.models import Appointment
     from apps.notifications.services import NotificationService
-    from datetime import datetime
 
     now = timezone.now()
     today = now.date()
     two_hours_later = (now + timedelta(hours=2)).time()
 
-    # نوبت‌هایی که در ۲ ساعت آینده هستند
     appointments = Appointment.objects.filter(
         date=today,
         time__lte=two_hours_later,
@@ -101,116 +98,10 @@ def send_same_day_reminders(self):
 
 
 # ══════════════════════════════════════════
-#    تسویه خودکار
-# ══════════════════════════════════════════
-
-@shared_task(bind=True, max_retries=3)
-def auto_settle_completed_appointments(self):
-    """
-    تسویه خودکار نوبت‌های انجام شده
-    هر ۱ ساعت اجرا می‌شود
-    """
-    from apps.bookings.models import Appointment
-    from apps.payments.models import Transaction
-    from apps.payments.services.settlement_service import SettlementService
-
-    # نوبت‌های انجام شده که بیعانه پرداخت شده
-    appointments = Appointment.objects.filter(
-        status=Appointment.Status.DONE,
-        deposit_paid=True,
-        verified_at__isnull=False,
-    ).select_related('business', 'service')
-
-    processed = 0
-    errors = 0
-
-    for appointment in appointments:
-        # پیدا کردن تراکنش بیعانه
-        tx = Transaction.objects.filter(
-            appointment=appointment,
-            type=Transaction.Type.DEPOSIT,
-            status=Transaction.Status.SUCCESS,
-            settled_at__isnull=True,
-        ).first()
-
-        if tx:
-            try:
-                SettlementService.release_deposit(appointment, tx)
-                processed += 1
-            except Exception as e:
-                logger.error(
-                    f"Auto-settle failed for appointment {appointment.id}: {e}"
-                )
-                errors += 1
-
-    logger.info(
-        f"Auto-settle completed: {processed} processed, {errors} errors"
-    )
-    return {'processed': processed, 'errors': errors}
-
-
-@shared_task(bind=True, max_retries=3)
-def process_pending_settlements(self):
-    """
-    پردازش تسویه‌های در انتظار (بیش از ۲۴ ساعت)
-    هر ۶ ساعت اجرا می‌شود
-    """
-    from apps.payments.models import Settlement
-    from apps.payments.services.settlement_service import SettlementService
-
-    cutoff = timezone.now() - timedelta(hours=24)
-
-    settlements = Settlement.objects.filter(
-        status=Settlement.Status.PENDING,
-        requested_at__lte=cutoff,
-    ).select_related('business', 'bank_account')
-
-    processed = 0
-    for settlement in settlements:
-        try:
-            SettlementService.process_settlement(settlement)
-            processed += 1
-        except Exception as e:
-            logger.error(
-                f"Process settlement {settlement.id} failed: {e}"
-            )
-
-    logger.info(f"Pending settlements processed: {processed}")
-    return {'processed': processed}
-
-
-# ══════════════════════════════════════════
 #    بررسی تراکنش‌ها
 # ══════════════════════════════════════════
-
 @shared_task
-def check_expired_pending_transactions():
-    """
-    بررسی تراکنش‌های PENDING که بیش از ۳۰ دقیقه گذشته
-    هر ۱۰ دقیقه اجرا می‌شود
-    """
-    from apps.payments.models import Transaction
-
-    cutoff = timezone.now() - timedelta(minutes=30)
-
-    expired = Transaction.objects.filter(
-        status=Transaction.Status.PENDING,
-        created_at__lt=cutoff,
-    )
-
-    count = expired.update(
-        status=Transaction.Status.FAILED,
-        failure_reason='انقضای زمان پرداخت (۳۰ دقیقه)',
-    )
-
-    if count > 0:
-        logger.info(f"Expired {count} pending transactions")
-
-    return {'expired': count}
-
-
-@shared_task(bind=True, max_retries=3)
-def verify_unconfirmed_payments(self):
+def verify_unconfirmed_payments():
     """
     بررسی و تایید پرداخت‌های تایید نشده از درگاه
     هر ۵ دقیقه اجرا می‌شود
@@ -219,7 +110,6 @@ def verify_unconfirmed_payments(self):
     from apps.payments.services.zibal_service import ZibalService
     from apps.payments.services.settlement_service import SettlementService
 
-    # تراکنش‌های PENDING که gateway_ref_id دارند
     transactions = Transaction.objects.filter(
         status=Transaction.Status.PENDING,
         gateway_ref_id__isnull=False,
@@ -262,7 +152,6 @@ def verify_unconfirmed_payments(self):
 # ══════════════════════════════════════════
 #    پاکسازی
 # ══════════════════════════════════════════
-
 @shared_task
 def cleanup_old_notifications():
     """
@@ -270,7 +159,6 @@ def cleanup_old_notifications():
     هر روز ساعت ۳ صبح اجرا می‌شود
     """
     from apps.notifications.services import NotificationService
-
     count = NotificationService.delete_old_notifications(days=90)
     logger.info(f"Cleaned up {count} old notifications")
     return {'deleted': count}
@@ -283,13 +171,11 @@ def cleanup_old_otp_codes():
     هر روز ساعت ۴ صبح اجرا می‌شود
     """
     from apps.accounts.models import OTP
-
     cutoff = timezone.now() - timedelta(hours=24)
     count, _ = OTP.objects.filter(
         created_at__lt=cutoff,
         is_used=True,
     ).delete()
-
     logger.info(f"Cleaned up {count} old OTP codes")
     return {'deleted': count}
 
@@ -301,7 +187,6 @@ def cleanup_expired_time_slots():
     هر ساعت اجرا می‌شود
     """
     from apps.bookings.models import TimeSlot
-
     now = timezone.now()
     count = TimeSlot.objects.filter(
         date__lt=now.date(),
