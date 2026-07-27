@@ -26,7 +26,7 @@ def business_status_changed(sender, instance, created, **kwargs):
         # ارسال نوتیفیکیشن تایید
         try:
             # ارسال ایمیل (اگر تنظیم شده باشد)
-            if instance.owner.email:
+            if getattr(instance.owner, 'email', ''):
                 send_mail(
                     subject=f'تایید کسب‌وکار {instance.name}',
                     message=f'تبریک! کسب‌وکار "{instance.name}" شما در زیبانو تایید شد.\n\n'
@@ -51,7 +51,7 @@ def business_status_changed(sender, instance, created, **kwargs):
     elif instance.status == Business.Status.REJECTED:
         # ارسال نوتیفیکیشن رد
         try:
-            if instance.owner.email:
+            if getattr(instance.owner, 'email', ''):
                 send_mail(
                     subject=f'رد کسب‌وکار {instance.name}',
                     message=f'متاسفانه کسب‌وکار "{instance.name}" شما در زیبانو تایید نشد.\n\n'

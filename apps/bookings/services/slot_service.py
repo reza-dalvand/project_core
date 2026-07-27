@@ -5,8 +5,9 @@ from datetime import datetime, timedelta, date, time
 from typing import List, Dict, Optional
 from django.db.models import Q
 
-from apps.businesses.models import Schedule, ScheduleBreak, Service, Employee
-from apps.bookings.models import TimeSlot, Appointment
+# ✅ اصلاح شده: Schedule و ScheduleBreak از bookings ایمپورت می‌شوند
+from apps.bookings.models import Schedule, ScheduleBreak, TimeSlot, Appointment
+from apps.businesses.models import Service, Employee, Business
 
 
 class SlotService:

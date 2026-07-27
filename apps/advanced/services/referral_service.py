@@ -1,11 +1,10 @@
 """
 سرویس سیستم دعوت از دوستان
 """
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.advanced.models import ReferralCode, Referral
-from apps.accounts.models import CustomUser
 
 
 class ReferralService:

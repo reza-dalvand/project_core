@@ -6,11 +6,11 @@ from datetime import date, timedelta, time
 from django.urls import reverse
 from rest_framework import status
 
-from apps.bookings.models import Appointment
+# ✅ اصلاح شده: Schedule و ScheduleBreak از bookings ایمپورت می‌شوند
+from apps.bookings.models import Appointment, Schedule, ScheduleBreak
 from apps.bookings.services.slot_service import SlotService
+from apps.businesses.models import Service, Business
 from apps.bookings.services.booking_service import BookingService, BookingException
-from apps.businesses.models import Service, Schedule, ScheduleBreak, Business, Employee
-
 
 @pytest.fixture
 def approved_business_with_service(business_owner_user):

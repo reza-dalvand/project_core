@@ -372,3 +372,23 @@ class ServiceBriefSerializer(serializers.ModelSerializer):
             'final_price', 'duration_minutes', 'has_deposit',
             'deposit_amount', 'subcategory_name',
         ]
+
+class BusinessListSerializer(serializers.ModelSerializer):
+    """Serializer برای لیست کسب‌وکارها (مناسب برای جستجو و لیست‌ها)"""
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    province_name = serializers.CharField(source='province.name', read_only=True)
+    city_name = serializers.CharField(source='city.name', read_only=True)
+
+    class Meta:
+        model = Business
+        fields = [
+            'id', 'slug', 'name',
+            'category_name', 'province_name', 'city_name',
+            'address', 'latitude', 'longitude',
+            'logo', 'cover', 'about',
+            'rating_avg', 'rating_count',
+            'services_count', 'bookings_count',
+            'booking_link', 'status',
+            'created_at',
+        ]
+

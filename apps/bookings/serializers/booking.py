@@ -90,7 +90,15 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     def get_date_display(self, obj):
         import jdatetime
         j_date = jdatetime.date.fromgregorian(date=obj.date)
-        return f"{j_date.day} {j_date.jmonth_name} {j_date.year}"
+        # لیست ماه‌های فارسی
+        jalali_months = [
+            'فروردین', 'اردیبهشت', 'خرداد',
+            'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر',
+            'دی', 'بهمن', 'اسفند'
+        ]
+        month_name = jalali_months[j_date.month - 1]
+        return f"{j_date.day} {month_name} {j_date.year}"
 
     def get_can_cancel(self, obj):
         if obj.status not in [Appointment.Status.RESERVED, Appointment.Status.CONFIRMED]:

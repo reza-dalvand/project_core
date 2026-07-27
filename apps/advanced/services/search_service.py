@@ -1,26 +1,22 @@
 """
 سرویس جستجوی پیشرفته با PostgreSQL Full-Text Search
 """
+from django.db import connection
 from django.db.models import Q, Value, CharField
 from django.db.models.functions import Concat
-from django.contrib.postgres.search import (
-    SearchVector,
-    SearchQuery,
-    SearchRank,
-    TrigramSimilarity,
-)
-
 from apps.businesses.models import Business, Service
 from apps.bookings.models import Appointment
+
+
+def _is_postgres():
+    """بررسی اینکه دیتابیس PostgreSQL است یا نه"""
+    return connection.vendor == 'postgresql'
 
 
 class SearchService:
     """سرویس جستجوی یکپارچه"""
 
-    # حداکثر تاریخچه ذخیره شده
     MAX_HISTORY_PER_USER = 50
-
-    # حداقل تعداد کاراکتر برای جستجو
     MIN_QUERY_LENGTH = 2
 
     @classmethod
@@ -30,7 +26,6 @@ class SearchService:
         """جستجو در کسب‌وکارها"""
         qs = Business.objects.filter(status=Business.Status.APPROVED)
 
-        # فیلترها
         if province_id:
             qs = qs.filter(province_id=province_id)
         if city_id:
@@ -42,12 +37,19 @@ class SearchService:
         if has_discount:
             qs = qs.filter(services__discount_percent__gt=0).distinct()
 
-        # جستجو با Trigram (بهترین برای فارسی)
         if query and len(query) >= cls.MIN_QUERY_LENGTH:
-            qs = qs.annotate(
-                similarity=TrigramSimilarity('name', query) +
-                           TrigramSimilarity('about', query)
-            ).filter(similarity__gt=0.1).order_by('-similarity')
+            if _is_postgres():
+                # PostgreSQL: استفاده از TrigramSimilarity
+                from django.contrib.postgres.search import TrigramSimilarity
+                qs = qs.annotate(
+                    similarity=TrigramSimilarity('name', query) +
+                               TrigramSimilarity('about', query)
+                ).filter(similarity__gt=0.1).order_by('-similarity')
+            else:
+                # SQLite / سایر: استفاده از icontains
+                qs = qs.filter(
+                    Q(name__icontains=query) | Q(about__icontains=query)
+                ).order_by('-rating_avg', '-bookings_count')
         else:
             qs = qs.order_by('-rating_avg', '-bookings_count')
 
@@ -74,10 +76,16 @@ class SearchService:
             qs = qs.filter(discount_percent__gt=0)
 
         if query and len(query) >= cls.MIN_QUERY_LENGTH:
-            qs = qs.annotate(
-                similarity=TrigramSimilarity('name', query) +
-                           TrigramSimilarity('description', query)
-            ).filter(similarity__gt=0.1).order_by('-similarity')
+            if _is_postgres():
+                from django.contrib.postgres.search import TrigramSimilarity
+                qs = qs.annotate(
+                    similarity=TrigramSimilarity('name', query) +
+                               TrigramSimilarity('description', query)
+                ).filter(similarity__gt=0.1).order_by('-similarity')
+            else:
+                qs = qs.filter(
+                    Q(name__icontains=query) | Q(description__icontains=query)
+                ).order_by('-created_at')
         else:
             qs = qs.order_by('-created_at')
 
@@ -85,9 +93,7 @@ class SearchService:
 
     @classmethod
     def global_search(cls, query, user=None, limit_per_type=5):
-        """
-        جستجوی کلی در تمام بخش‌ها
-        """
+        """جستجوی کلی در تمام بخش‌ها"""
         if not query or len(query) < cls.MIN_QUERY_LENGTH:
             return {
                 'businesses': [],
@@ -98,7 +104,6 @@ class SearchService:
         businesses = list(cls.search_businesses(query, limit=limit_per_type))
         services = list(cls.search_services(query, limit=limit_per_type))
 
-        # ذخیره تاریخچه
         if user:
             cls._save_history(user, query, len(businesses) + len(services))
 
@@ -110,29 +115,24 @@ class SearchService:
 
     @classmethod
     def get_suggestions(cls, query, user=None, limit=10):
-        """
-        پیشنهادات جستجو (Autocomplete)
-        """
+        """پیشنهادات جستجو (Autocomplete)"""
         if not query or len(query) < cls.MIN_QUERY_LENGTH:
             return []
 
         suggestions = set()
 
-        # پیشنهادات از نام کسب‌وکارها
         businesses = Business.objects.filter(
             status=Business.Status.APPROVED,
             name__icontains=query,
         ).values_list('name', flat=True)[:5]
         suggestions.update(businesses)
 
-        # پیشنهادات از نام خدمات
         services = Service.objects.filter(
             is_active=True,
             name__icontains=query,
         ).values_list('name', flat=True)[:5]
         suggestions.update(services)
 
-        # پیشنهادات از تاریخچه کاربر
         if user:
             history = cls.get_user_history(user, limit=5)
             for h in history:
@@ -146,7 +146,6 @@ class SearchService:
         """ذخیره تاریخچه جستجو"""
         from apps.advanced.models import SearchHistory
 
-        # جلوگیری از تکرار
         SearchHistory.objects.filter(
             user=user,
             query__iexact=query,
@@ -158,7 +157,6 @@ class SearchService:
             result_count=result_count,
         )
 
-        # محدود کردن تاریخچه
         history_ids = list(
             SearchHistory.objects.filter(user=user)
             .order_by('-created_at')
@@ -171,7 +169,6 @@ class SearchService:
     def get_user_history(cls, user, limit=20):
         """دریافت تاریخچه جستجوی کاربر"""
         from apps.advanced.models import SearchHistory
-
         return list(
             SearchHistory.objects.filter(user=user)
             .order_by('-created_at')

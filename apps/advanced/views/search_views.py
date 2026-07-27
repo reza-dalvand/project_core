@@ -13,10 +13,8 @@ from apps.advanced.serializers import (
     SearchHistorySerializer,
     SuggestionSerializer,
 )
-from apps.businesses.serializers.business import (
-    BusinessListSerializer,
-    ServiceListSerializer,
-)
+from apps.businesses.serializers.business import BusinessListSerializer
+from apps.businesses.serializers.service import ServiceListSerializer
 
 
 class SearchView(APIView, StandardResponseMixin):

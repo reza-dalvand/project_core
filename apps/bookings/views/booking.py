@@ -2,6 +2,8 @@
 Views برای مدیریت نوبت‌ها
 """
 from datetime import datetime
+
+from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response

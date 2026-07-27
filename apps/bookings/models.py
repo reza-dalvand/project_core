@@ -24,6 +24,15 @@ class Schedule(models.Model):
         related_name='schedules',
         verbose_name='کسب‌وکار',
     )
+    service = models.ForeignKey(
+        'businesses.Service',
+        on_delete=models.CASCADE,
+        related_name='schedules',
+        verbose_name='خدمت',
+        null=True,
+        blank=True,
+    )
+
     weekday = models.PositiveSmallIntegerField(
         'روز هفته',
         choices=WeekDay.choices,
@@ -145,6 +154,14 @@ class Appointment(models.Model):
         on_delete=models.PROTECT,
         related_name='appointments',
         verbose_name='خدمت',
+    )
+    employee = models.ForeignKey(
+        'businesses.Employee',
+        on_delete=models.SET_NULL,
+        related_name='appointments',
+        verbose_name='کارمند ارائه‌دهنده',
+        null=True,
+        blank=True,
     )
     time_slot = models.OneToOneField(
         TimeSlot,

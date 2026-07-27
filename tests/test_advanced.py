@@ -3,10 +3,8 @@
 """
 import pytest
 from django.urls import reverse
-
-from apps.advanced.models import (
-    SearchHistory, Favorite, ReferralCode, Referral
-)
+from django.contrib.auth import get_user_model
+from apps.advanced.models import SearchHistory, Favorite
 from apps.advanced.services.search_service import SearchService
 from apps.advanced.services.favorite_service import FavoriteService
 from apps.advanced.services.referral_service import ReferralService
@@ -105,17 +103,18 @@ class TestReferralService:
         assert code.code.startswith('ZIBANO-')
 
     def test_apply_code(self, customer_user):
+        User = get_user_model()
+
         referrer = customer_user
         code = ReferralService.get_or_create_code(referrer)
 
-        referred = CustomUser.objects.create_user(
+        # ✅ به جای CustomUser از User استفاده شد
+        referred = User.objects.create_user(
             phone='09121111111',
             is_verified=True,
         )
-
         result = ReferralService.apply_referral_code(code.code, referred)
         assert result['success'] is True
-
     def test_self_referral_rejected(self, customer_user):
         code = ReferralService.get_or_create_code(customer_user)
         result = ReferralService.apply_referral_code(code.code, customer_user)

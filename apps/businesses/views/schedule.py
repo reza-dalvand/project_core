@@ -8,7 +8,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 
-from apps.businesses.models import Schedule, ScheduleBreak, Service
+from apps.bookings.models import Schedule, ScheduleBreak
+from apps.businesses.models import Service
 from apps.businesses.serializers.schedule import (
     ScheduleListSerializer,
     ScheduleDetailSerializer,

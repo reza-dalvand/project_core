@@ -2,8 +2,8 @@
 Serializers برای مدیریت زمان‌بندی
 """
 from rest_framework import serializers
-from apps.businesses.models import Schedule, ScheduleBreak, Service
-import datetime
+from apps.bookings.models import Schedule, ScheduleBreak
+from apps.businesses.models import Service
 
 
 class ScheduleBreakSerializer(serializers.ModelSerializer):
