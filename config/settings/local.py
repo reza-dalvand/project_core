@@ -36,3 +36,6 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 # ✅ اصلاح شده: Jazzmin UI Builder برای توسعه
 JAZZMIN_SETTINGS['show_ui_builder'] = True
+
+REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}

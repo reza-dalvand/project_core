@@ -1,5 +1,5 @@
 """
-اعتبارسنج‌های سفارشی برای پروژه
+اعتبارسنج‌های سفارشی
 """
 import re
 from django.core.exceptions import ValidationError
@@ -8,8 +8,8 @@ from .utils import to_english_digits
 
 def validate_iranian_phone(value):
     """اعتبارسنجی شماره موبایل ایران"""
-    cleaned = to_english_digits(value).strip()
-    # حذف +98 یا 0098
+    cleaned = to_english_digits(str(value)).strip()
+
     if cleaned.startswith('+98'):
         cleaned = '0' + cleaned[3:]
     elif cleaned.startswith('0098'):
@@ -24,7 +24,7 @@ def validate_iranian_phone(value):
 
 def validate_national_id(value):
     """اعتبارسنجی کد ملی ایران"""
-    cleaned = to_english_digits(value).strip()
+    cleaned = to_english_digits(str(value)).strip()
 
     if len(cleaned) != 10:
         raise ValidationError('کد ملی باید دقیقاً ۱۰ رقم باشد')
@@ -50,7 +50,7 @@ def validate_national_id(value):
 
 def validate_sheba(value):
     """اعتبارسنجی شماره شبا"""
-    cleaned = to_english_digits(value).strip().upper()
+    cleaned = to_english_digits(str(value)).strip().upper()
 
     if not cleaned.startswith('IR'):
         raise ValidationError('شماره شبا باید با IR شروع شود')
@@ -59,12 +59,15 @@ def validate_sheba(value):
     if len(digits) != 24:
         raise ValidationError('شماره شبا باید ۲۴ رقم بعد از IR باشد')
 
-    return cleaned
+    if not digits.isdigit():
+        raise ValidationError('شماره شبا فقط باید شامل ارقام باشد')
+
+    return f'IR{digits}'
 
 
 def validate_card_number(value):
     """اعتبارسنجی شماره کارت بانکی"""
-    cleaned = to_english_digits(value).strip()
+    cleaned = to_english_digits(str(value)).strip()
     cleaned = re.sub(r'[\s-]', '', cleaned)
 
     if len(cleaned) != 16:
@@ -74,3 +77,12 @@ def validate_card_number(value):
         raise ValidationError('شماره کارت فقط باید شامل ارقام باشد')
 
     return cleaned
+
+
+def validate_amount(value, min_value=0, max_value=None):
+    """اعتبارسنجی مبلغ"""
+    if value < min_value:
+        raise ValidationError(f'مبلغ باید حداقل {min_value} باشد')
+    if max_value and value > max_value:
+        raise ValidationError(f'مبلغ نباید بیشتر از {max_value} باشد')
+    return value

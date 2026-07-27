@@ -46,6 +46,7 @@ THIRD_PARTY_APPS = [
     # REST API
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',  # ✅ این خط اضافه شود
     'drf_spectacular',
     'django_filters',
     'corsheaders',
@@ -218,11 +219,13 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ═══════════════════════════════════════════════
-#   Django REST Framework
+#   اضافه کردن به base.py
 # ═══════════════════════════════════════════════
+
+# ─── Custom Exception Handler ───
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.api.authentication.CustomJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
@@ -247,13 +250,12 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
+    'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
 }
 
-# ═══════════════════════════════════════════════
-#   Simple JWT
-# ═══════════════════════════════════════════════
+# ─── JWT Settings ───
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -263,7 +265,33 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
+
+# ─── Kavenegar SMS ───
+KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
+
+# ─── Shahkar API ───
+SHAHKAR_API_URL = env('SHAHKAR_API_URL', default='')
+SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='')
+
+# ─── Zibal Payment Gateway ───
+ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='zibal')
+ZIBAL_START_URL = 'https://gate.zibal.ir/start/'
+ZIBAL_VERIFY_URL = 'https://verify.zibal.ir/verify/'
+ZIBAL_CALLBACK_URL = env('ZIBAL_CALLBACK_URL', default='http://localhost:8000/api/v1/payments/callback/')
+
+# ─── Arvan Cloud Storage (S3 Compatible) ───
+ARVAN_ACCESS_KEY = env('ARVAN_ACCESS_KEY', default='')
+ARVAN_SECRET_KEY = env('ARVAN_SECRET_KEY', default='')
+ARVAN_BUCKET_NAME = env('ARVAN_BUCKET_NAME', default='zibano')
+ARVAN_ENDPOINT = env('ARVAN_ENDPOINT', default='https://s3.ir-thr-at1.arvanstorage.ir')
+ARVAN_REGION = env('ARVAN_REGION', default='ir-thr-at1')
+ARVAN_CDN_URL = env('ARVAN_CDN_URL', default='')
+
+# ─── File Upload Settings ───
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 
 # ═══════════════════════════════════════════════
 #   DRF Spectacular (OpenAPI / Swagger)

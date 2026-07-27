@@ -44,3 +44,27 @@ kavenegar==1.1.2
 gunicorn==23.0.0
 whitenoise==6.8.2
 sentry-sdk==2.13.0
+
+
+# ═══════════════════════════════════════════════
+#   اضافه‌شده به requirements.txt
+# ═══════════════════════════════════════════════
+
+# ─── Storage (Arvan Cloud S3) ───
+boto3==1.35.0
+django-storages[s3]==1.14.4
+
+# ─── Payment (Zibal) ───
+requests==2.32.3
+
+# ─── Testing ───
+pytest==8.3.3
+pytest-django==4.9.0
+pytest-cov==5.0.0
+pytest-asyncio==0.24.0
+factory-boy==3.3.1
+faker==30.0.0
+
+# ─── Production ───
+gunicorn==23.0.0
+sentry-sdk[django]==2.13.0

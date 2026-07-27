@@ -5,27 +5,41 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
-import os
+from apps.core.storage import get_business_image_storage, get_user_avatar_storage
 
 
+# بروزرسانی توابع مسیر تصاویر
 def business_logo_path(instance, filename):
     """مسیر ذخیره لوگوی کسب‌وکار"""
+    import os
+    from django.utils.text import slugify
     ext = filename.split('.')[-1]
-    return f'businesses/logos/{instance.id}_{instance.name[:20]}.{ext}'
+    business_slug = slugify(instance.name, allow_unicode=True)[:50]
+    return f'businesses/{instance.id}/logo_{business_slug}.{ext}'
 
 
 def business_cover_path(instance, filename):
     """مسیر ذخیره کاور کسب‌وکار"""
+    import os
+    from django.utils.text import slugify
     ext = filename.split('.')[-1]
-    return f'businesses/covers/{instance.id}_{instance.name[:20]}.{ext}'
+    business_slug = slugify(instance.name, allow_unicode=True)[:50]
+    return f'businesses/{instance.id}/cover_{business_slug}.{ext}'
+
+
+def business_owner_photo_path(instance, filename):
+    """مسیر ذخیره عکس صاحب کسب‌وکار"""
+    import os
+    ext = filename.split('.')[-1]
+    return f'businesses/{instance.id}/owner_photo.{ext}'
 
 
 def portfolio_image_path(instance, filename):
     """مسیر ذخیره تصاویر نمونه‌کار"""
     ext = filename.split('.')[-1]
-    return f'businesses/portfolios/{instance.portfolio.business.id}/{instance.portfolio.id}/{filename}'
-
-
+    # استفاده از portfolio_id برای جلوگیری از خطای کوئری در زمان آپلود اولیه
+    portfolio_id = instance.portfolio_id if instance.portfolio_id else 'temp'
+    return f'businesses/portfolios/{portfolio_id}/{filename}'
 # ═══════════════════════════════════════════════════════════
 #                    دسته‌بندی‌ها
 # ═══════════════════════════════════════════════════════════
@@ -180,22 +194,25 @@ class Business(models.Model):
     # ─── اطلاعات تماس ───
     phone = models.CharField('شماره تماس', max_length=20, blank=True, default='')
 
-    # ─── تصاویر ───
+    # ─── تصاویر با Storage سفارشی ───
     logo = models.ImageField(
         'لوگو',
         upload_to=business_logo_path,
+        storage=get_business_image_storage,
         blank=True,
         null=True,
     )
     cover = models.ImageField(
         'تصویر کاور',
         upload_to=business_cover_path,
+        storage=get_business_image_storage,
         blank=True,
         null=True,
     )
     owner_photo = models.ImageField(
         'عکس مالک',
-        upload_to='businesses/owners/',
+        upload_to=business_owner_photo_path,
+        storage=get_business_image_storage,
         blank=True,
         null=True,
     )

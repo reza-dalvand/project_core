@@ -59,3 +59,28 @@ if SENTRY_DSN:
         traces_sample_rate=0.1,
         profiles_sample_rate=0.1,
     )
+
+# ═══════════════════════════════════════════════
+#   Arvan Cloud Storage در Production
+# ═══════════════════════════════════════════════
+
+if ARVAN_ACCESS_KEY and ARVAN_SECRET_KEY:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "access_key": ARVAN_ACCESS_KEY,
+                "secret_key": ARVAN_SECRET_KEY,
+                "bucket_name": ARVAN_BUCKET_NAME,
+                "endpoint_url": ARVAN_ENDPOINT,
+                "region_name": ARVAN_REGION,
+                "default_acl": 'public-read',
+                "querystring_auth": False,
+                "file_overwrite": False,
+                "custom_domain": ARVAN_CDN_URL if ARVAN_CDN_URL else f'{ARVAN_BUCKET_NAME}.{ARVAN_ENDPOINT.replace("https://", "")}',
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }

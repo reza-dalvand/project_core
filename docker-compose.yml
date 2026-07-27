@@ -1,0 +1,149 @@
+version: '3.9'
+
+services:
+  # ═══════════ Database ═══════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: zibano_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zibano
+      POSTGRES_USER: zibano
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-zibano_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zibano"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ═══════════ Redis ═══════════
+  redis:
+    image: redis:7-alpine
+    container_name: zibano_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ═══════════ Backend App ═══════════
+  backend:
+    build:
+      context: .
+      target: ${DOCKER_TARGET:-development}
+    container_name: zibano_backend
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.local}
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=zibano
+      - DB_USER=zibano
+      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput || true &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+  # ═══════════ Celery Worker ═══════════
+  celery_worker:
+    build:
+      context: .
+      target: ${DOCKER_TARGET:-development}
+    container_name: zibano_celery_worker
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.local}
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=zibano
+      - DB_USER=zibano
+      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    command: celery -A config worker -l info -c 4
+
+  # ═══════════ Celery Beat ═══════════
+  celery_beat:
+    build:
+      context: .
+      target: ${DOCKER_TARGET:-development}
+    container_name: zibano_celery_beat
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.local}
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=zibano
+      - DB_USER=zibano
+      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  # ═══════════ Nginx (Production Only) ═══════════
+  nginx:
+    build:
+      context: ./nginx
+    container_name: zibano_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
