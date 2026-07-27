@@ -208,6 +208,8 @@ class Transaction(models.Model):
         FAILED = 'failed', 'ناموفق'
         CANCELLED = 'cancelled', 'لغو شده'
         REFUNDED = 'refunded', 'مسترد شده'
+        SETTLING = 'settling', 'در حال تسویه'
+        SETTLED = 'settled', 'تسویه شده'
 
     class Gateway(models.TextChoices):
         ZARINPAL = 'zarinpal', 'زرین‌پال'

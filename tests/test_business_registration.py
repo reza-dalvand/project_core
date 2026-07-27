@@ -7,6 +7,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from io import BytesIO
 from PIL import Image
 from django.contrib.auth import get_user_model
+
+from apps.bookings.models import Appointment
 from apps.businesses.models import Business, Category, Province, City
 
 User = get_user_model()
@@ -392,7 +394,7 @@ class TestBusinessDelete:
 
     def test_delete_business_with_active_appointments(self, api_client, verified_user, setup_lookup_data):
         """تست حذف کسب‌وکار با نوبت‌های فعال"""
-        from apps.bookings.models import Appointment, Service
+        from apps.businesses.models import Service
 
         business = Business.objects.create(
             owner=verified_user,

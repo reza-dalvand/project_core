@@ -39,3 +39,23 @@ JAZZMIN_SETTINGS['show_ui_builder'] = True
 
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
+
+# ═══════════════════════════════════════════════
+#   Storage: در محیط توسعه از فایل سیستم محلی استفاده کن
+# ═══════════════════════════════════════════════
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": BASE_DIR / "media",
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# Override کردن storage های سفارشی برای تست
+# تا از S3 استفاده نکنند
+ARVAN_ACCESS_KEY = ''
+ARVAN_SECRET_KEY = ''

@@ -48,17 +48,20 @@ class TestNotificationService:
         assert notification.body == 'متن تست'
         assert notification.is_read is False
 
-    def test_send_sms_notification(self, customer_user, sms_templates):
+    def test_send_sms_notification(self, customer_user, sms_templates, settings):
         """تست ارسال پیامک"""
+        # ✅ اضافه شد: غیرفعال کردن API Key واقعی برای استفاده از Mock داخلی
+        settings.KAVENEGAR_API_KEY = ''
+
         result = NotificationService.send_sms(
             phone=customer_user.phone,
             template_type=SMSTemplate.Type.OTP_LOGIN,
             variables={'code': '12345'},
             user=customer_user,
         )
-
         assert result['success'] is True
         assert SMSLog.objects.filter(phone=customer_user.phone).count() == 1
+
 
     def test_mark_as_read(self, customer_user):
         """تست علامت‌گذاری خوانده شده"""
@@ -205,14 +208,14 @@ class TestNotificationAPI:
 class TestCeleryTasks:
     """تست‌های Celery Tasks"""
 
-    def test_check_expired_transactions(self):
+    def test_check_expired_transactions(self, customer_user):  # ✅ اضافه شدن customer_user
         """تست بررسی تراکنش‌های منقضی"""
         from apps.payments.models import Transaction
         from apps.notifications.tasks import check_expired_pending_transactions
 
         # ایجاد تراکنش قدیمی PENDING
         tx = Transaction.objects.create(
-            user_id=1,  # فرضی
+            user=customer_user,  # ✅ اصلاح شد: استفاده از کاربر واقعی به جای user_id=1
             type=Transaction.Type.DEPOSIT,
             status=Transaction.Status.PENDING,
             amount=100000,
@@ -220,9 +223,9 @@ class TestCeleryTasks:
         Transaction.objects.filter(id=tx.id).update(
             created_at=timezone.now() - timedelta(minutes=35)
         )
-
         result = check_expired_pending_transactions()
         assert result['expired'] >= 1
+
 
     def test_cleanup_old_otp_codes(self, customer_user):
         """تست پاکسازی کدهای OTP قدیمی"""

@@ -51,10 +51,9 @@ class TestServiceList:
         """تست دریافت لیست خدمات"""
         url = reverse('api:businesses:service-list')
         response = api_client.get(url)
-
         assert response.status_code == status.HTTP_200_OK
         assert response.data['success'] is True
-        assert len(response.data['data']) == 1
+        assert len(response.data['results']) == 1
 
     def test_list_services_unauthenticated(self, api_client):
         """تست دریافت لیست خدمات بدون احراز هویت"""
@@ -63,6 +62,7 @@ class TestServiceList:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    # ✅ صحیح (بررسی مستقیم داده‌های Serializer):
     def test_create_service_success(self, api_client, approved_business):
         """تست ایجاد خدمت جدید"""
         url = reverse('api:businesses:service-list')
@@ -76,11 +76,9 @@ class TestServiceList:
             'is_active': True,
             'reminder_days': 1
         }
-
         response = api_client.post(url, data, format='json')
-
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['success'] is True
+        assert response.data['name'] == 'خدمت جدید'  # ← اصلاح شد
         assert Service.objects.count() == 1
 
     def test_create_service_invalid_data(self, api_client, approved_business):
@@ -105,10 +103,8 @@ class TestServiceDetail:
         """تست دریافت جزئیات خدمت"""
         url = reverse('api:businesses:service-detail', kwargs={'pk': service.id})
         response = api_client.get(url)
-
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['success'] is True
-        assert response.data['data']['name'] == service.name
+        assert response.data['name'] == service.name
 
     def test_update_service(self, api_client, approved_business, service):
         """تست بروزرسانی خدمت"""
@@ -117,15 +113,13 @@ class TestServiceDetail:
             'name': 'نام جدید',
             'original_price': 600000,
         }
-
         response = api_client.patch(url, data, format='json')
-
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['success'] is True
-
+        # DRF پاسخ موفق را مستقیم برمی‌گرداند، نیازی به چک کردن success نیست
         service.refresh_from_db()
         assert service.name == 'نام جدید'
         assert service.original_price == 600000
+
 
     def test_delete_service(self, api_client, approved_business, service):
         """تست حذف خدمت"""

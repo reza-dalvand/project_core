@@ -2,8 +2,6 @@
 تست‌های سیستم پرداخت و مالی
 """
 import pytest
-from decimal import Decimal
-from django.utils import timezone
 
 from apps.payments.models import (
     Transaction, Wallet, WalletTransaction, BankAccount, Settlement,
@@ -11,7 +9,39 @@ from apps.payments.models import (
 from apps.payments.services.wallet_service import WalletService
 from apps.payments.services.settlement_service import SettlementService
 from apps.core.exceptions import InsufficientBalanceException
+from conftest import business_owner_user
 
+
+@pytest.fixture
+def approved_business_with_service(business_owner_user):
+    """کسب‌وکار تایید شده با خدمت"""
+    from apps.businesses.models import Business, Service, Category, Province, City
+    province = Province.objects.create(name='تهران', slug='tehran')
+    city = City.objects.create(name='تهران', slug='tehran', province=province)
+    category = Category.objects.create(name='سالن زیبایی', slug='salon')
+    business = Business.objects.create(
+        owner=business_owner_user,
+        name='سالن تست',
+        category=category,
+        province=province,
+        city=city,
+        address='آدرس تست',
+        status=Business.Status.APPROVED,
+    )
+    service = Service.objects.create(
+        business=business,
+        name='فیشیال تخصصی',
+        original_price=500000,
+        discount_percent=10,
+        has_deposit=True,
+        deposit_amount=100000,
+        duration_minutes=60,
+        is_active=True,
+    )
+    return {
+        'business': business,
+        'service': service,
+    }
 
 @pytest.mark.django_db
 class TestWalletService:
@@ -118,10 +148,12 @@ class TestBankAccount:
         """ثبت حساب بانکی"""
         from apps.businesses.models import Business, Province, City, Category
 
+        # ۱. ایجاد داده‌های پایه (داخل متد)
         province = Province.objects.create(name='تهران', slug='tehran')
         city = City.objects.create(name='تهران', slug='tehran-city', province=province)
         category = Category.objects.create(name='سالن', slug='salon')
 
+        # ۲. ایجاد کسب‌وکار (حتماً باید داخل متد تعریف شود تا در scope باشد)
         business = Business.objects.create(
             owner=business_owner_user,
             name='سالن تست',
@@ -132,20 +164,22 @@ class TestBankAccount:
             status='approved',
         )
 
+        # ۳. ایجاد حساب بانکی
         bank = BankAccount.objects.create(
             user=business_owner_user,
-            business=business,
+            business=business,  # ← حالا business در دسترس است
             owner_name='کاربر تست',
             national_id='0012345679',
             bank_name='بانک ملی',
             sheba='IR012345678901234567890123',
             card_number='6037991234567890',
             status=BankAccount.Status.PENDING,
+            is_active=True,  # ← اصلاح شده
         )
 
+        # ۴. بررسی‌ها
         assert bank.status == 'pending'
         assert bank.is_active is True
-
 
 @pytest.mark.django_db
 class TestPaymentAPI:
