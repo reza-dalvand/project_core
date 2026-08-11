@@ -1,15 +1,16 @@
 """
-URL configuration for accounts app
+URL configuration for accounts app — بدون role
 """
 from django.urls import path
 from rest_framework_simplejwt.views import TokenVerifyView
+
 from .views.auth import (
     SendOTPView,
     VerifyOTPView,
     CustomTokenRefreshView,
     LogoutView,
     NationalIdVerificationView,
-    ActiveDeviceListView,
+    UserDeviceListView,
     RevokeDeviceView,
     DeleteAccountView,
 )
@@ -38,7 +39,7 @@ urlpatterns = [
     path('profile/change-phone/confirm/', ChangePhoneConfirmView.as_view(), name='change-phone-confirm'),
 
     # ═══════════ Devices ═══════════
-    path('devices/', ActiveDeviceListView.as_view(), name='device-list'),
+    path('devices/', UserDeviceListView.as_view(), name='device-list'),
     path('devices/<int:device_id>/revoke/', RevokeDeviceView.as_view(), name='device-revoke'),
 
     # ═══════════ Account ═══════════

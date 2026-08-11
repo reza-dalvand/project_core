@@ -1,0 +1,52 @@
+{% if about_section %}
+<!-- ═══════════ About ═══════════ -->
+<section class="section about reveal" id="about">
+    <div class="container">
+        <div class="about-wrap">
+            <div class="about-visual reveal">
+                <div class="about-visual-inner">
+                    <div class="about-logo-big">
+                        <span class="material-icons" style="font-size:52px">{{ site.logo_icon | default('spa') }}</span>
+                    </div>
+                    <div>
+                        <h3>{{ about_section.card_title }}</h3>
+                        <p>{{ about_section.card_description }}</p>
+                    </div>
+                    <div class="about-visual-stats">
+                        <div class="about-visual-stat">
+                            <span class="num">{{ about_section.card_stat1_value }}</span>
+                            <span class="lbl">{{ about_section.card_stat1_label }}</span>
+                        </div>
+                        <div class="about-visual-stat">
+                            <span class="num">{{ about_section.card_stat2_value }}</span>
+                            <span class="lbl">{{ about_section.card_stat2_label }}</span>
+                        </div>
+                        <div class="about-visual-stat">
+                            <span class="num">{{ about_section.card_stat3_value }}</span>
+                            <span class="lbl">{{ about_section.card_stat3_label }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="about-content reveal">
+                <span class="badge">{{ about_section.badge_text }}</span>
+                <h2>{{ about_section.title }}</h2>
+                <p>{{ about_section.description }}</p>
+                <div class="about-points">
+                    {% for point in about_points %}
+                    <div class="about-point">
+                        <div class="about-point-icon">
+                            <span class="material-icons">{{ point.icon }}</span>
+                        </div>
+                        <div>
+                            <h4>{{ point.title }}</h4>
+                            <p>{{ point.description }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}

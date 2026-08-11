@@ -1,6 +1,5 @@
 """
 Custom Exception Handler for DRF
-فرمت استاندارد و یکپارچه برای تمام error responses
 """
 import logging
 from rest_framework.views import exception_handler
@@ -13,24 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exc, context):
-    """
-    هندلر سفارشی برای تمام exceptions
-    فرمت خروجی یکپارچه:
-    {
-        "success": false,
-        "error": {
-            "code": "ERROR_CODE",
-            "message": "پیام خطا",
-            "details": {}
-        }
-    }
-    """
-    # اول handler پیش‌فرض DRF را صدا بزن
+    """هندلر سفارشی برای تمام exceptions"""
     response = exception_handler(exc, context)
     view = context.get('view', None)
     view_name = view.__class__.__name__ if view else 'Unknown'
 
-    # Error ساختار یافته
     error_response = {
         'success': False,
         'error': {
@@ -40,7 +26,6 @@ def custom_exception_handler(exc, context):
         }
     }
 
-    # ─── Django ValidationError ───
     if isinstance(exc, DjangoValidationError):
         error_response['error']['code'] = 'VALIDATION_ERROR'
         error_response['error']['message'] = 'داده‌های ورودی معتبر نیست'
@@ -49,19 +34,16 @@ def custom_exception_handler(exc, context):
         )
         return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
-    # ─── Http404 ───
     if isinstance(exc, Http404):
         error_response['error']['code'] = 'NOT_FOUND'
         error_response['error']['message'] = 'منبع مورد نظر یافت نشد'
         return Response(error_response, status=status.HTTP_404_NOT_FOUND)
 
-    # ─── Permission Denied ───
     if isinstance(exc, PermissionDenied):
         error_response['error']['code'] = 'PERMISSION_DENIED'
         error_response['error']['message'] = str(exc) or 'شما دسترسی لازم را ندارید'
         return Response(error_response, status=status.HTTP_403_FORBIDDEN)
 
-    # ─── DRF Response ───
     if response is not None:
         error_code_map = {
             400: 'BAD_REQUEST',
@@ -69,26 +51,16 @@ def custom_exception_handler(exc, context):
             403: 'FORBIDDEN',
             404: 'NOT_FOUND',
             405: 'METHOD_NOT_ALLOWED',
-            406: 'NOT_ACCEPTABLE',
-            408: 'REQUEST_TIMEOUT',
-            409: 'CONFLICT',
             429: 'TOO_MANY_REQUESTS',
             500: 'SERVER_ERROR',
-            502: 'BAD_GATEWAY',
-            503: 'SERVICE_UNAVAILABLE',
         }
-
         error_response['error']['code'] = error_code_map.get(
             response.status_code, 'ERROR'
         )
 
-        # استخراج جزئیات خطا
         if isinstance(response.data, dict):
             if 'detail' in response.data:
                 error_response['error']['message'] = str(response.data['detail'])
-                error_response['error']['details'] = response.data
-            elif 'messages' in response.data:
-                error_response['error']['message'] = response.data['messages']
             else:
                 error_response['error']['details'] = response.data
                 error_response['error']['message'] = 'خطای اعتبارسنجی'
@@ -98,16 +70,14 @@ def custom_exception_handler(exc, context):
         else:
             error_response['error']['message'] = str(response.data)
 
-        # پیام‌های سفارشی برای خطاهای رایج
         if response.status_code == 401:
             error_response['error']['message'] = 'احراز هویت ناموفق. لطفاً وارد شوید'
         elif response.status_code == 429:
-            error_response['error']['message'] = 'تعداد درخواست‌ها بیش از حد مجاز است. لطفاً بعداً تلاش کنید'
+            error_response['error']['message'] = 'تعداد درخواست‌ها بیش از حد مجاز است'
 
         response.data = error_response
         return response
 
-    # ─── Exceptions پیش‌بینی نشده ───
     logger.exception(f"Unhandled exception in {view_name}: {exc}")
     error_response['error']['code'] = 'INTERNAL_SERVER_ERROR'
     error_response['error']['message'] = 'خطای داخلی سرور. لطفاً بعداً تلاش کنید'
@@ -119,7 +89,7 @@ def custom_exception_handler(exc, context):
 # ═══════════════════════════════════════════════
 
 class ZibanoBaseException(Exception):
-    """Base exception for all Zibano custom exceptions"""
+    """Base exception"""
     default_message = 'خطایی رخ داده است'
     default_code = 'ZIBANO_ERROR'
     default_status = status.HTTP_400_BAD_REQUEST
@@ -184,11 +154,31 @@ class PaymentException(ZibanoBaseException):
     default_code = 'PAYMENT_ERROR'
 
 
-class BusinessApprovalException(ZibanoBaseException):
-    default_message = 'کسب‌وکار هنوز تایید نشده است'
-    default_code = 'BUSINESS_NOT_APPROVED'
-
-
 class InsufficientBalanceException(ZibanoBaseException):
     default_message = 'موجودی کافی نیست'
     default_code = 'INSUFFICIENT_BALANCE'
+
+
+class BookingException(ZibanoBaseException):
+    default_message = 'خطا در رزرو نوبت'
+    default_code = 'BOOKING_ERROR'
+
+
+class SlotNotAvailableException(BookingException):
+    default_message = 'این ساعت دیگر آزاد نیست'
+    default_code = 'SLOT_NOT_AVAILABLE'
+
+
+class ReviewException(ZibanoBaseException):
+    default_message = 'خطا در ثبت نظر'
+    default_code = 'REVIEW_ERROR'
+
+
+class ReviewAlreadyExistsException(ReviewException):
+    default_message = 'شما قبلاً برای این نوبت نظر ثبت کرده‌اید'
+    default_code = 'REVIEW_ALREADY_EXISTS'
+
+
+class AppointmentNotCompletedException(ReviewException):
+    default_message = 'فقط برای نوبت‌های انجام‌شده می‌توانید نظر ثبت کنید'
+    default_code = 'APPOINTMENT_NOT_COMPLETED'

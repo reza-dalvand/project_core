@@ -1,78 +1,17 @@
 """
-Permission های سفارشی برای DRF
+Permission های سفارشی برای DRF — بدون نقش (role)
+هر کاربر می‌تواند یک کسب‌وکار داشته باشد
 """
 from rest_framework import permissions
 
 
-class IsCustomer(permissions.BasePermission):
-    """فقط مشتریان"""
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in ['customer', 'business_owner']
-        )
-
-
-class IsBusinessOwner(permissions.BasePermission):
-    """فقط صاحبان کسب‌وکار"""
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == 'business_owner'
-        )
-
-
-class IsApprovedBusinessOwner(permissions.BasePermission):
-    """صاحب کسب‌وکاری که تایید شده است"""
-    message = 'کسب‌وکار شما هنوز تایید نشده است'
-
-    def has_permission(self, request, view):
-        if not (request.user and request.user.is_authenticated):
-            return False
-        if request.user.role != 'business_owner':
-            return False
-        return hasattr(request.user, 'business') and request.user.business.status == 'approved'
-
-
-class IsStaff(permissions.BasePermission):
-    """کارمندان اپ (پشتیبان و ادمین)"""
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in ['super_admin', 'app_admin', 'app_staff']
-        )
-
-
-class IsAdmin(permissions.BasePermission):
-    """فقط ادمین‌ها"""
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role in ['super_admin', 'app_admin']
-        )
-
-
-class IsSuperAdmin(permissions.BasePermission):
-    """فقط مدیر ارشد"""
-    def has_permission(self, request, view):
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.role == 'super_admin'
-        )
-
-
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """صاحب آبجکت یا فقط خواندنی"""
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # بررسی مالکیت
         if hasattr(obj, 'user'):
             return obj.user == request.user
         if hasattr(obj, 'owner'):
@@ -91,19 +30,35 @@ class IsBusinessOwnerOfObject(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
-        if request.user.role != 'business_owner':
-            return False
-        if not hasattr(request.user, 'business'):
+
+        # دریافت کسب‌وکار کاربر
+        user_business = request.user.businesses.filter(is_active=True).first()
+        if not user_business:
             return False
 
         # بررسی مالکیت
         if hasattr(obj, 'business'):
-            return obj.business == request.user.business
+            return obj.business == user_business
         if hasattr(obj, 'owner'):
             return obj.owner == request.user
-        if obj == request.user.business:
+        if obj == user_business:
             return True
         return False
+
+
+class IsApprovedBusinessOwner(permissions.BasePermission):
+    """کاربری که کسب‌وکار تایید شده دارد"""
+    message = 'کسب‌وکار شما هنوز تایید نشده است'
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+
+        business = request.user.businesses.filter(
+            is_active=True,
+            status='approved',
+        ).first()
+        return business is not None
 
 
 class AllowAnyVerified(permissions.BasePermission):

@@ -1,27 +1,42 @@
 """
-سرویس مدیریت نظرات و امتیازات
-✅ بهینه‌شده: Conditional Aggregation و update() به جای save()
+Review Service — مدیریت نظرات و امتیازات
+ساده‌سازی شده با reply در خود Review
 """
 import logging
 from django.db import transaction
 from django.db.models import Avg, Count, Case, When, Value, IntegerField
 from django.utils import timezone
-from apps.reviews.models import Review, ReviewResponse, ReviewTag
-from apps.bookings.models import Appointment
-from apps.businesses.models import Business
-from apps.core.exceptions import ZibanoBaseException
+
+from apps.reviews.models import Review
+from apps.appointments.models import Appointment
 
 logger = logging.getLogger(__name__)
 
 
-class ReviewException(ZibanoBaseException):
+class ReviewException(Exception):
+    """Base exception for review errors"""
     default_message = 'خطا در ثبت نظر'
     default_code = 'REVIEW_ERROR'
 
+    def __init__(self, message=None, code=None, details=None):
+        self.message = message or self.default_message
+        self.code = code or self.default_code
+        self.details = details or {}
+        super().__init__(self.message)
 
-class ReviewNotAllowedException(ReviewException):
-    default_message = 'شما مجاز به ثبت نظر برای این نوبت نیستید'
-    default_code = 'REVIEW_NOT_ALLOWED'
+    def as_response(self):
+        from rest_framework.response import Response
+        return Response(
+            {
+                'success': False,
+                'error': {
+                    'code': self.code,
+                    'message': self.message,
+                    'details': self.details,
+                }
+            },
+            status=400,
+        )
 
 
 class ReviewAlreadyExistsException(ReviewException):
@@ -56,7 +71,7 @@ class ReviewService:
         appointment_id: int,
         rating: int,
         comment: str = '',
-        tag_ids: list = None,
+        tags: list = None,
     ) -> Review:
         """ایجاد نظر جدید"""
         if not (1 <= rating <= 5):
@@ -67,7 +82,7 @@ class ReviewService:
 
         try:
             appointment = Appointment.objects.select_related(
-                'customer', 'business', 'service'
+                'customer', 'business', 'service',
             ).get(id=appointment_id)
         except Appointment.DoesNotExist:
             raise ReviewException(
@@ -77,49 +92,52 @@ class ReviewService:
 
         if not cls.can_review(customer, appointment):
             if appointment.customer != customer:
-                raise ReviewNotAllowedException()
+                raise ReviewException(
+                    message='شما مجاز به ثبت نظر برای این نوبت نیستید',
+                    code='REVIEW_NOT_ALLOWED',
+                )
             elif appointment.status != Appointment.Status.DONE:
                 raise AppointmentNotCompletedException()
             else:
                 raise ReviewAlreadyExistsException()
 
-        if comment and len(comment) > 500:
+        if comment and len(comment) > 300:
             raise ReviewException(
-                message='متن نظر نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد',
+                message='متن نظر نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد',
                 code='COMMENT_TOO_LONG',
             )
 
         review = Review.objects.create(
-            customer=customer,
-            appointment=appointment,
             business=appointment.business,
             service=appointment.service,
+            appointment=appointment,
+            customer=customer,
             rating=rating,
             comment=comment.strip() if comment else '',
-            is_approved=True,
+            tags=tags or [],
         )
 
-        if tag_ids:
-            tags = ReviewTag.objects.filter(id__in=tag_ids, is_active=True)
-            review.tags.set(tags)
-
+        # بروزرسانی آمار کسب‌وکار
         cls._update_business_stats(appointment.business)
+
+        # ارسال نوتیفیکیشن
         cls._notify_business(review)
 
         logger.info(
             f"Review created: customer={customer.phone}, "
             f"business={appointment.business.name}, rating={rating}"
         )
+
         return review
 
     @classmethod
     @transaction.atomic
-    def create_business_response(
+    def create_business_reply(
         cls,
-        business: Business,
+        business,
         review_id: int,
-        text: str,
-    ) -> ReviewResponse:
+        reply_text: str,
+    ) -> Review:
         """ثبت پاسخ کسب‌وکار به نظر"""
         try:
             review = Review.objects.select_related('business').get(id=review_id)
@@ -135,198 +153,63 @@ class ReviewService:
                 code='REVIEW_NOT_YOURS',
             )
 
-        if ReviewResponse.objects.filter(review=review).exists():
+        if review.reply:
             raise ReviewException(
                 message='شما قبلاً به این نظر پاسخ داده‌اید',
-                code='RESPONSE_ALREADY_EXISTS',
+                code='REPLY_ALREADY_EXISTS',
             )
 
-        if not text or len(text.strip()) < 10:
+        if not reply_text or len(reply_text.strip()) < 10:
             raise ReviewException(
                 message='متن پاسخ باید حداقل ۱۰ کاراکتر باشد',
-                code='RESPONSE_TOO_SHORT',
+                code='REPLY_TOO_SHORT',
             )
 
-        if len(text) > 500:
+        if len(reply_text) > 300:
             raise ReviewException(
-                message='متن پاسخ نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد',
-                code='RESPONSE_TOO_LONG',
+                message='متن پاسخ نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد',
+                code='REPLY_TOO_LONG',
             )
 
-        response = ReviewResponse.objects.create(
-            review=review,
-            business=business,
-            text=text.strip(),
-        )
-
-        cls._notify_customer_response(review, response)
+        review.reply = reply_text.strip()
+        review.replied_at = timezone.now()
+        review.save(update_fields=['reply', 'replied_at'])
 
         logger.info(
-            f"Business response created: business={business.name}, review={review.id}"
-        )
-        return response
-
-    @classmethod
-    @transaction.atomic
-    def update_business_response(
-        cls,
-        business: Business,
-        review_id: int,
-        text: str,
-    ) -> ReviewResponse:
-        """ویرایش پاسخ کسب‌وکار"""
-        try:
-            response = ReviewResponse.objects.select_related(
-                'review', 'review__business'
-            ).get(review_id=review_id)
-        except ReviewResponse.DoesNotExist:
-            raise ReviewException(
-                message='پاسخ مورد نظر یافت نشد',
-                code='RESPONSE_NOT_FOUND',
-            )
-
-        if response.review.business != business:
-            raise ReviewException(
-                message='این پاسخ متعلق به کسب‌وکار شما نیست',
-                code='RESPONSE_NOT_YOURS',
-            )
-
-        if not text or len(text.strip()) < 10:
-            raise ReviewException(
-                message='متن پاسخ باید حداقل ۱۰ کاراکتر باشد',
-                code='RESPONSE_TOO_SHORT',
-            )
-
-        if len(text) > 500:
-            raise ReviewException(
-                message='متن پاسخ نمی‌تواند بیشتر از ۵۰۰ کاراکتر باشد',
-                code='RESPONSE_TOO_LONG',
-            )
-
-        response.text = text.strip()
-        response.save(update_fields=['text', 'updated_at'])
-        return response
-
-    @classmethod
-    @transaction.atomic
-    def delete_business_response(
-        cls,
-        business: Business,
-        review_id: int,
-    ) -> None:
-        """حذف پاسخ کسب‌وکار"""
-        try:
-            response = ReviewResponse.objects.select_related(
-                'review', 'review__business'
-            ).get(review_id=review_id)
-        except ReviewResponse.DoesNotExist:
-            raise ReviewException(
-                message='پاسخ مورد نظر یافت نشد',
-                code='RESPONSE_NOT_FOUND',
-            )
-
-        if response.review.business != business:
-            raise ReviewException(
-                message='این پاسخ متعلق به کسب‌وکار شما نیست',
-                code='RESPONSE_NOT_YOURS',
-            )
-
-        response.delete()
-
-    @classmethod
-    def _update_business_stats(cls, business: Business) -> None:
-        """
-        ✅ بهینه: استفاده از update() به جای save()
-        یک کوئری به جای دو کوئری
-        """
-        stats = Review.objects.filter(
-            business=business,
-            is_approved=True,
-            is_hidden=False,
-        ).aggregate(
-            avg_rating=Avg('rating'),
-            count=Count('id'),
+            f"Business reply created: business={business.name}, review={review.id}"
         )
 
-        # ✅ update() یک کوئری است، save() دو کوئری
-        Business.objects.filter(id=business.id).update(
-            rating_avg=stats['avg_rating'] or 0,
-            rating_count=stats['count'] or 0,
-        )
-
-        # بروزرسانی instance cache
-        business.rating_avg = stats['avg_rating'] or 0
-        business.rating_count = stats['count'] or 0
-
-    @classmethod
-    def _notify_business(cls, review: Review) -> None:
-        """ارسال نوتیفیکیشن به کسب‌وکار"""
-        try:
-            from apps.notifications.services import NotificationService
-            NotificationService.send(
-                user=review.business.owner,
-                type='new_review',
-                title='نظر جدید دریافت شد',
-                body=f'{review.customer.full_name or review.customer.phone} '
-                     f'به کسب‌وکار شما {review.rating} ستاره داد',
-                data={'review_id': review.id, 'rating': review.rating},
-            )
-        except Exception as e:
-            logger.error(f"Failed to send review notification: {e}")
-
-    @classmethod
-    def _notify_customer_response(
-        cls,
-        review: Review,
-        response: ReviewResponse,
-    ) -> None:
-        """ارسال نوتیفیکیشن به مشتری"""
-        try:
-            from apps.notifications.services import NotificationService
-            NotificationService.send(
-                user=review.customer,
-                type='business_response',
-                title=f'پاسخ {review.business.name} به نظر شما',
-                body=response.text[:100] + '...' if len(response.text) > 100 else response.text,
-                data={'review_id': review.id, 'business_id': review.business.id},
-            )
-        except Exception as e:
-            logger.error(f"Failed to send response notification: {e}")
+        return review
 
     @classmethod
     def get_business_reviews(
         cls,
-        business: Business,
+        business,
         page: int = 1,
         page_size: int = 10,
         rating_filter: int = None,
     ) -> dict:
         """
-        ✅ بهینه: Conditional Aggregation برای توزیع امتیازات
-        ۳ کوئری به جای ۸ کوئری
+        دریافت نظرات کسب‌وکار
+        با Conditional Aggregation برای توزیع امتیازات
         """
         queryset = Review.objects.filter(
             business=business,
-            is_approved=True,
-            is_hidden=False,
         ).select_related(
-            'customer', 'service', 'response'
-        ).prefetch_related('tags').order_by('-created_at')
+            'customer', 'service',
+        ).order_by('-created_at')
 
         if rating_filter and 1 <= rating_filter <= 5:
             queryset = queryset.filter(rating=rating_filter)
 
-        # Pagination
         total = queryset.count()
         start = (page - 1) * page_size
         end = start + page_size
         reviews = queryset[start:end]
 
-        # ✅ محاسبه توزیع امتیازات + میانگین در یک کوئری
+        # محاسبه توزیع امتیازات + میانگین در یک کوئری
         stats = Review.objects.filter(
             business=business,
-            is_approved=True,
-            is_hidden=False,
         ).aggregate(
             avg_rating=Avg('rating'),
             **{
@@ -352,27 +235,33 @@ class ReviewService:
         }
 
     @classmethod
-    def get_user_reviews(
-        cls,
-        user,
-        page: int = 1,
-        page_size: int = 10,
-    ) -> dict:
-        """دریافت نظرات ثبت‌شده توسط کاربر"""
-        queryset = Review.objects.filter(
-            customer=user,
-        ).select_related(
-            'business', 'service', 'response'
-        ).prefetch_related('tags').order_by('-created_at')
+    def _update_business_stats(cls, business) -> None:
+        """بروزرسانی آمار کسب‌وکار"""
+        stats = Review.objects.filter(
+            business=business,
+        ).aggregate(
+            avg_rating=Avg('rating'),
+            count=Count('id'),
+        )
 
-        total = queryset.count()
-        start = (page - 1) * page_size
-        end = start + page_size
-        reviews = queryset[start:end]
+        business.rating = stats['avg_rating'] or 0
+        business.reviews_count = stats['count'] or 0
+        business.save(update_fields=['rating', 'reviews_count'])
 
-        return {
-            'reviews': list(reviews),
-            'total': total,
-            'page': page,
-            'page_size': page_size,
-        }
+    @classmethod
+    def _notify_business(cls, review: Review) -> None:
+        """ارسال نوتیفیکیشن به کسب‌وکار"""
+        try:
+            from apps.notifications.services import NotificationService
+            NotificationService.send(
+                user=review.business.owner,
+                type='new_review',
+                title='نظر جدید دریافت شد ⭐',
+                body=(
+                    f'{review.customer.full_name} '
+                    f'به کسب‌وکار شما {review.rating} ستاره داد.'
+                ),
+                data={'review_id': review.id, 'rating': review.rating},
+            )
+        except Exception as e:
+            logger.error(f"Failed to send review notification: {e}")

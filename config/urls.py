@@ -1,29 +1,44 @@
 """
-URL Configuration - Single Admin Site with Jazzmin
+URL Configuration - زیبانو — بدون apps/api
 """
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-# ═══════ سفارشی‌سازی Admin Site اصلی ═══════
+# ═══════ سفارشی‌سازی Admin ═══════
 admin.site.site_header = "پنل مدیریت زیبانو"
 admin.site.site_title = "زیبانو | مدیریت"
 admin.site.index_title = "داشبورد مدیریت"
 
 urlpatterns = [
-    # ═══════ Admin Site واحد با Jazzmin ═══════
+    # ═══════ Admin ═══════
     path(
-        settings.LANDING_ADMIN_URL,  # از env می‌خواند (مثلاً admin/)
+        settings.LANDING_ADMIN_URL,
         admin.site.urls,
         name='admin',
     ),
 
-    # ═══════ Landing Page (سایت معرفی) ═══════
+    # ═══════ Landing Page ═══════
     path('', include('apps.landing.urls')),
 
     # ═══════ REST API ═══════
-    path('api/v1/', include('apps.api.urls')),
+    path('api/v1/', include([
+        path('accounts/', include('apps.accounts.urls')),
+        path('categories/', include('apps.categories.urls')),
+        path('locations/', include('apps.locations.urls')),
+        path('businesses/', include('apps.businesses.urls')),
+        path('services/', include('apps.services.urls')),
+        path('schedules/', include('apps.schedules.urls')),
+        path('appointments/', include('apps.appointments.urls')),
+        path('payments/', include('apps.payments.urls')),
+        path('reviews/', include('apps.reviews.urls')),
+        path('favorites/', include('apps.favorites.urls')),
+        path('notifications/', include('apps.notifications.urls')),
+    ])),
+
+    # ═══════ Dashboard ═══════
+    path('dashboard/', include('apps.dashboard.urls')),
 ]
 
 # ═══════ Media & Static در توسعه ═══════
@@ -31,15 +46,15 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-    # DRF Spectacular (Swagger)
-    from drf_spectacular.views import (
-        SpectacularAPIView,
-        SpectacularSwaggerView,
-        SpectacularRedocView,
-    )
+# ═══════ DRF Spectacular ═══════
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 
-    urlpatterns += [
-        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-        path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-    ]
+urlpatterns += [
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+]

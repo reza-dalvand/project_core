@@ -13,19 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """
-    سرویس اصلی ارسال اعلان‌ها
-
-    روش‌های ارسال:
-    - in_app: فقط اعلان داخلی اپ
-    - sms: فقط پیامک
-    - push: فقط Push (فعلاً stub)
-    - all: همه روش‌ها
-    """
-
-    # ══════════════════════════════════════════
-    #    ارسال عمومی
-    # ══════════════════════════════════════════
+    """سرویس اصلی ارسال اعلان‌ها"""
 
     @classmethod
     def send(
@@ -39,22 +27,7 @@ class NotificationService:
         sms_template_type: str = None,
         sms_variables: dict = None,
     ) -> dict:
-        """
-        ارسال اعلان از طریق کانال‌های مختلف
-
-        Args:
-            user: کاربر مقصد
-            type: نوع اعلان (از Notification.Type)
-            title: عنوان
-            body: متن
-            data: داده‌های تکمیلی (JSON)
-            channels: لیست کانال‌ها ['in_app', 'sms', 'push']
-            sms_template_type: نوع قالب پیامک
-            sms_variables: متغیرهای قالب پیامک
-
-        Returns:
-            dict: نتیجه ارسال هر کانال
-        """
+        """ارسال اعلان از طریق کانال‌های مختلف"""
         if channels is None:
             channels = ['in_app']
 
@@ -64,10 +37,10 @@ class NotificationService:
             'push': False,
         }
 
-        # ─── In-App Notification ───
+        # In-App Notification
         if 'in_app' in channels:
             try:
-                notification = Notification.objects.create(
+                Notification.objects.create(
                     user=user,
                     type=type,
                     title=title,
@@ -79,7 +52,7 @@ class NotificationService:
             except Exception as e:
                 logger.error(f"In-app notification failed: {e}")
 
-        # ─── SMS Notification ───
+        # SMS Notification
         if 'sms' in channels and sms_template_type:
             try:
                 sms_result = cls.send_sms(
@@ -92,19 +65,7 @@ class NotificationService:
             except Exception as e:
                 logger.error(f"SMS notification failed: {e}")
 
-        # ─── Push Notification (stub) ───
-        if 'push' in channels:
-            try:
-                push_result = cls._send_push(user, title, body, data)
-                results['push'] = push_result
-            except Exception as e:
-                logger.error(f"Push notification failed: {e}")
-
         return results
-
-    # ══════════════════════════════════════════
-    #    ارسال پیامک
-    # ══════════════════════════════════════════
 
     @classmethod
     def send_sms(
@@ -114,21 +75,9 @@ class NotificationService:
         variables: dict = None,
         user=None,
     ) -> dict:
-        """
-        ارسال پیامک از طریق کاوه‌نگار
-
-        Args:
-            phone: شماره موبایل
-            template_type: نوع قالب (از SMSTemplate.Type)
-            variables: متغیرهای قالب
-            user: کاربر (برای لاگ)
-
-        Returns:
-            dict: {'success': bool, 'message_id': str, 'cost': int}
-        """
+        """ارسال پیامک از طریق کاوه‌نگار"""
         variables = variables or {}
 
-        # دریافت قالب
         try:
             template = SMSTemplate.objects.get(
                 type=template_type,
@@ -158,46 +107,34 @@ class NotificationService:
 
         # ارسال واقعی
         try:
-            api_key = getattr(settings, 'KAVENEGAR_API_KEY', '')
+            from shared.sms import get_sms_provider
+            provider = get_sms_provider()
 
-            if api_key:
-                from kavenegar import KavenegarAPI
-                api = KavenegarAPI(api_key)
+            result = provider.send_pattern(
+                phone=phone,
+                template_name=template.provider_template_id,
+                **variables,
+            )
 
-                params = {
-                    'receptor': phone,
-                    'template': template.provider_template_id,
-                    **variables,
-                }
-
-                response = api.VerifyLookup(params)
-                message_id = str(response['entries']['messageid'])
-                cost = response['entries'].get('cost', 0)
-
+            if result.success:
                 sms_log.status = SMSLog.Status.SENT
-                sms_log.provider_message_id = message_id
-                sms_log.cost = cost
+                sms_log.provider_message_id = result.message_id
+                sms_log.cost = result.cost
                 sms_log.save()
 
-                logger.info(f"SMS sent to {phone}: {message_id}")
                 return {
                     'success': True,
-                    'message_id': message_id,
-                    'cost': cost,
+                    'message_id': result.message_id,
+                    'cost': result.cost,
                 }
             else:
-                # حالت توسعه
-                print(f"\n📱 [SMS to {phone}]")
-                print(f"   Template: {template.name}")
-                print(f"   Message: {message}\n")
-
-                sms_log.status = SMSLog.Status.SENT
+                sms_log.status = SMSLog.Status.FAILED
+                sms_log.error_message = result.error_message
                 sms_log.save()
 
                 return {
-                    'success': True,
-                    'message_id': 'dev_mock',
-                    'cost': 0,
+                    'success': False,
+                    'error': result.error_message,
                 }
 
         except Exception as e:
@@ -207,41 +144,13 @@ class NotificationService:
             sms_log.save()
             return {'success': False, 'error': str(e)}
 
-    # ══════════════════════════════════════════
-    #    Push Notification (Stub)
-    # ══════════════════════════════════════════
-
-    @classmethod
-    def _send_push(cls, user, title: str, body: str, data: dict = None) -> bool:
-        """
-        ارسال Push Notification (فعلاً stub)
-        در آینده با FCM/APNs پیاده‌سازی می‌شود
-        """
-        devices = PushDevice.objects.filter(
-            user=user,
-            is_active=True,
-        )
-
-        if not devices.exists():
-            return False
-
-        for device in devices:
-            print(f"\n🔔 [Push to {device.device_name}]")
-            print(f"   Title: {title}")
-            print(f"   Body: {body}")
-            print(f"   Token: {device.token[:20]}...\n")
-
-        return True
-
-    # ══════════════════════════════════════════
-    #    اعلان‌های از پیش تعریف شده
-    # ══════════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    #   اعلان‌های از پیش تعریف شده
+    # ═══════════════════════════════════════════════
 
     @classmethod
     def send_booking_confirmed(cls, appointment):
         """اعلان تایید رزرو"""
-        from apps.core.utils import to_persian_digits
-
         return cls.send(
             user=appointment.customer,
             type=Notification.Type.BOOKING_CONFIRMED,
@@ -249,8 +158,8 @@ class NotificationService:
             body=(
                 f'رزرو {appointment.service.name} در '
                 f'{appointment.business.name} برای '
-                f'{to_persian_digits(str(appointment.date))} '
-                f'ساعت {to_persian_digits(str(appointment.time))} تایید شد.'
+                f'{appointment.date_key} '
+                f'ساعت {appointment.time_slot} تایید شد.'
             ),
             data={
                 'appointment_id': appointment.id,
@@ -261,23 +170,23 @@ class NotificationService:
             sms_variables={
                 'business_name': appointment.business.name,
                 'service_name': appointment.service.name,
-                'date': str(appointment.date),
-                'time': str(appointment.time),
+                'date': appointment.date_key,
+                'time': str(appointment.time_slot),
                 'code': appointment.verification_code,
             },
         )
 
     @classmethod
     def send_booking_reminder(cls, appointment):
-        """یادآوری نوبت (۲۴ ساعت قبل)"""
+        """یادآوری نوبت"""
         return cls.send(
             user=appointment.customer,
             type=Notification.Type.BOOKING_REMINDER,
-            title='یادآوری نوبت فردا ⏰',
+            title='یادآوری نوبت ⏰',
             body=(
-                f'فردا ساعت {appointment.time} نوبت '
-                f'{appointment.service.name} در '
-                f'{appointment.business.name} دارید.'
+                f'نوبت {appointment.service.name} '
+                f'در {appointment.business.name} '
+                f'برای {appointment.date_key} ساعت {appointment.time_slot} دارید.'
             ),
             data={
                 'appointment_id': appointment.id,
@@ -288,8 +197,8 @@ class NotificationService:
             sms_variables={
                 'business_name': appointment.business.name,
                 'service_name': appointment.service.name,
-                'date': str(appointment.date),
-                'time': str(appointment.time),
+                'date': appointment.date_key,
+                'time': str(appointment.time_slot),
             },
         )
 
@@ -301,8 +210,8 @@ class NotificationService:
             type=Notification.Type.BOOKING_CANCELLED,
             title='نوبت شما لغو شد ❌',
             body=(
-                f'نوبت {appointment.service.name} در '
-                f'{appointment.business.name} لغو شد. '
+                f'نوبت {appointment.service.name} '
+                f'در {appointment.business.name} لغو شد. '
                 f'{"دلیل: " + reason if reason else ""}'
             ),
             data={
@@ -314,7 +223,7 @@ class NotificationService:
             sms_variables={
                 'business_name': appointment.business.name,
                 'service_name': appointment.service.name,
-                'date': str(appointment.date),
+                'date': appointment.date_key,
             },
         )
 
@@ -341,9 +250,8 @@ class NotificationService:
     def send_payment_success(cls, transaction):
         """اعلان پرداخت موفق"""
         from apps.core.utils import format_price
-
         return cls.send(
-            user=transaction.user,
+            user=transaction.customer,
             type=Notification.Type.PAYMENT_SUCCESS,
             title='پرداخت موفق 💳',
             body=(
@@ -367,9 +275,8 @@ class NotificationService:
     def send_payment_refunded(cls, transaction, amount: int):
         """اعلان استرداد وجه"""
         from apps.core.utils import format_price
-
         return cls.send(
-            user=transaction.user,
+            user=transaction.customer,
             type=Notification.Type.PAYMENT_REFUNDED,
             title='استرداد وجه 💰',
             body=(
@@ -391,7 +298,6 @@ class NotificationService:
     def send_settlement_completed(cls, settlement):
         """اعلان تسویه حساب"""
         from apps.core.utils import format_price
-
         return cls.send(
             user=settlement.business.owner,
             type=Notification.Type.SETTLEMENT_COMPLETED,
@@ -415,7 +321,7 @@ class NotificationService:
             type=Notification.Type.NEW_REVIEW,
             title='نظر جدید دریافت شد ⭐',
             body=(
-                f'{review.customer.full_name or review.customer.phone} '
+                f'{review.customer.full_name} '
                 f'به کسب‌وکار شما {review.rating} ستاره داد.'
             ),
             data={
@@ -469,33 +375,14 @@ class NotificationService:
             },
         )
 
-    @classmethod
-    def send_verification_code(cls, user, code: str):
-        """ارسال کد تایید نوبت"""
-        return cls.send(
-            user=user,
-            type=Notification.Type.SYSTEM,
-            title='کد تایید نوبت',
-            body=f'کد تایید نوبت شما: {code}',
-            channels=['sms'],
-            sms_template_type=SMSTemplate.Type.VERIFICATION_CODE,
-            sms_variables={
-                'code': code,
-            },
-        )
-
-    # ══════════════════════════════════════════
-    #    مدیریت اعلان‌ها
-    # ══════════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    #   مدیریت اعلان‌ها
+    # ═══════════════════════════════════════════════
 
     @classmethod
     def mark_as_read(cls, user, notification_id: int = None) -> int:
-        """
-        علامت‌گذاری اعلان به عنوان خوانده شده
-        اگر notification_id=None باشد، همه اعلان‌ها خوانده می‌شوند
-        """
+        """علامت‌گذاری اعلان به عنوان خوانده شده"""
         qs = Notification.objects.filter(user=user, is_read=False)
-
         if notification_id:
             qs = qs.filter(id=notification_id)
 
@@ -503,7 +390,6 @@ class NotificationService:
             is_read=True,
             read_at=timezone.now(),
         )
-
         return count
 
     @classmethod

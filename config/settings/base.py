@@ -1,5 +1,6 @@
 """
 Django Base Settings - تنظیمات مشترک برای تمام محیط‌ها
+زیبانو - بک‌اند
 """
 import os
 import environ
@@ -13,7 +14,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
 )
-
 env_file = BASE_DIR / '.env'
 if env_file.exists():
     environ.Env.read_env(str(env_file))
@@ -24,24 +24,15 @@ if env_file.exists():
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = env('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
-
 SITE_NAME = env('SITE_NAME', default='زیبانو')
 SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 
 # ═══════════════════════════════════════════════
 #   Application Definition
 # ═══════════════════════════════════════════════
-# config/settings/base.py
-
-# ═══════════════════════════════════════════════
-#   Application Definition
-# ═══════════════════════════════════════════════
-
-# ✅ اصلاح مهم: Jazzmin باید قبل از django.contrib.admin باشد
 THIRD_PARTY_APPS = [
-    # ═══ Jazzmin باید اول از همه باشد (قبل از admin) ═══
+    # ═══ Jazzmin باید اول از همه باشد ═══
     'jazzmin',
-
     # REST API
     'rest_framework',
     'rest_framework_simplejwt',
@@ -49,7 +40,6 @@ THIRD_PARTY_APPS = [
     'drf_spectacular',
     'django_filters',
     'corsheaders',
-
     # Utils
     'django_cleanup.apps.CleanupConfig',
     'django_ckeditor_5',
@@ -58,29 +48,49 @@ THIRD_PARTY_APPS = [
 ]
 
 DJANGO_APPS = [
-    'django.contrib.admin',  # ✅ حالا admin بعد از jazzmin می‌آید
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # PostGIS
+    'django.contrib.gis',
 ]
 
 LOCAL_APPS = [
+    # Core
     'apps.core.apps.CoreConfig',
+    # Auth
     'apps.accounts.apps.AccountsConfig',
+    # Lookup Data
+    'apps.categories.apps.CategoriesConfig',
+    'apps.locations.apps.LocationsConfig',
+    # Business
     'apps.businesses.apps.BusinessesConfig',
-    'apps.bookings.apps.BookingsConfig',
+    'apps.services.apps.ServicesConfig',
+    'apps.schedules.apps.SchedulesConfig',
+    'apps.appointments.apps.AppointmentsConfig',
+    # Financial
     'apps.payments.apps.PaymentsConfig',
+    # Social
     'apps.reviews.apps.ReviewsConfig',
+    'apps.portfolios.apps.PortfoliosConfig',
+    'apps.explore.apps.ExploreConfig',
+    # Ads
+    'apps.ads.apps.AdsConfig',
+    'apps.ads_management.apps.AdsManagementConfig',
+    # Features
+    'apps.reminders.apps.RemindersConfig',
+    'apps.favorites.apps.FavoritesConfig',
+    'apps.search.apps.SearchConfig',
+    'apps.support.apps.SupportConfig',
+    # System
     'apps.notifications.apps.NotificationsConfig',
     'apps.landing.apps.LandingConfig',
     'apps.dashboard.apps.DashboardConfig',
-    'apps.api.apps.ApiConfig',
-    'apps.advanced.apps.AdvancedConfig',
 ]
 
-# ✅ ترتیب نهایی: THIRD_PARTY (شامل jazzmin) → DJANGO (شامل admin) → LOCAL
 INSTALLED_APPS = THIRD_PARTY_APPS + DJANGO_APPS + LOCAL_APPS
 
 # ═══════════════════════════════════════════════
@@ -104,11 +114,7 @@ ROOT_URLCONF = 'config.urls'
 # ═══════════════════════════════════════════════
 #   Templates (Jinja2 + Django)
 # ═══════════════════════════════════════════════
-# ═══════════════════════════════════════════════
-#   Templates (Jinja2 + Django)
-# ═══════════════════════════════════════════════
 TEMPLATES = [
-    # ─── Jinja2 Engine (Primary for Landing) ───
     {
         'BACKEND': 'django_jinja.jinja2.Jinja2',
         'DIRS': [BASE_DIR / 'templates'],
@@ -123,7 +129,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                # ─── Context Processors سفارشی landing ───
                 'apps.landing.context_processors.site_settings',
                 'apps.landing.context_processors.all_sections',
             ],
@@ -148,7 +153,6 @@ TEMPLATES = [
             'translation_engine': 'django.utils.translation',
         },
     },
-    # ─── Django Template Engine (Fallback for Admin + Emails) ───
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
@@ -159,7 +163,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                # ─── Context Processors سفارشی landing ───
                 'apps.landing.context_processors.site_settings',
                 'apps.landing.context_processors.all_sections',
             ],
@@ -167,23 +170,27 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # ═══════════════════════════════════════════════
-#   Database
+#   Database (PostgreSQL + PostGIS)
 # ═══════════════════════════════════════════════
 DATABASES = {
     'default': {
-        'ENGINE': env('DB_ENGINE', default='django.db.backends.sqlite3'),
-        'NAME': BASE_DIR / env('DB_NAME', default='db.sqlite3'),
-        'USER': env('DB_USER', default=''),
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': env('DB_NAME', default='zibano'),
+        'USER': env('DB_USER', default='zibano'),
         'PASSWORD': env('DB_PASSWORD', default=''),
-        'HOST': env('DB_HOST', default=''),
-        'PORT': env('DB_PORT', default=''),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
 }
+
+# GDAL Library Path (برای PostGIS)
+# در Docker یا سرور ایران ممکن است نیاز به تنظیم باشد
+# GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='')
+# GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='')
 
 # ═══════════════════════════════════════════════
 #   Custom User Model
@@ -214,7 +221,6 @@ USE_TZ = True
 STATIC_URL = env('STATIC_URL', default='/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-
 MEDIA_URL = env('MEDIA_URL', default='/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -230,10 +236,8 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ═══════════════════════════════════════════════
-#   اضافه کردن به base.py
+#   REST Framework
 # ═══════════════════════════════════════════════
-
-# ─── Custom Exception Handler ───
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'apps.api.authentication.CustomJWTAuthentication',
@@ -264,7 +268,9 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
 }
 
-# ─── JWT Settings ───
+# ═══════════════════════════════════════════════
+#   JWT Settings
+# ═══════════════════════════════════════════════
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
@@ -279,33 +285,40 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# ─── Kavenegar SMS ───
+# ═══════════════════════════════════════════════
+#   External Services
+# ═══════════════════════════════════════════════
+# SMS
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
 
-# ─── Shahkar API ───
+# National ID
 SHAHKAR_API_URL = env('SHAHKAR_API_URL', default='')
 SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='')
 
-# ─── Zibal Payment Gateway ───
+# Payment
 ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='zibal')
-ZIBAL_START_URL = 'https://gate.zibal.ir/start/'
-ZIBAL_VERIFY_URL = 'https://verify.zibal.ir/verify/'
-ZIBAL_CALLBACK_URL = env('ZIBAL_CALLBACK_URL', default='http://localhost:8000/api/v1/payments/callback/')
+ZIBAL_CALLBACK_URL = env(
+    'ZIBAL_CALLBACK_URL',
+    default='http://localhost:8000/api/v1/payments/callback/',
+)
 
-# ─── Arvan Cloud Storage (S3 Compatible) ───
+# Storage (Arvan Cloud S3)
 ARVAN_ACCESS_KEY = env('ARVAN_ACCESS_KEY', default='')
 ARVAN_SECRET_KEY = env('ARVAN_SECRET_KEY', default='')
 ARVAN_BUCKET_NAME = env('ARVAN_BUCKET_NAME', default='zibano')
-ARVAN_ENDPOINT = env('ARVAN_ENDPOINT', default='https://s3.ir-thr-at1.arvanstorage.ir')
+ARVAN_ENDPOINT = env(
+    'ARVAN_ENDPOINT',
+    default='https://s3.ir-thr-at1.arvanstorage.ir',
+)
 ARVAN_REGION = env('ARVAN_REGION', default='ir-thr-at1')
 ARVAN_CDN_URL = env('ARVAN_CDN_URL', default='')
 
-# ─── File Upload Settings ───
+# File Upload
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 
 # ═══════════════════════════════════════════════
-#   DRF Spectacular (OpenAPI / Swagger)
+#   DRF Spectacular
 # ═══════════════════════════════════════════════
 SPECTACULAR_SETTINGS = {
     'TITLE': f'{SITE_NAME} API',
@@ -331,7 +344,6 @@ CORS_ALLOW_CREDENTIALS = True
 #   Redis Cache
 # ═══════════════════════════════════════════════
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
-
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -349,11 +361,6 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-
-# ═══════════════════════════════════════════════
-#   SMS (Kavenegar)
-# ═══════════════════════════════════════════════
-KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
 
 # ═══════════════════════════════════════════════
 #   CKEditor 5
@@ -376,21 +383,15 @@ CKEDITOR_CONFIGS = {
 # ═══════════════════════════════════════════════
 #   Admin URLs
 # ═══════════════════════════════════════════════
-LANDING_ADMIN_URL = env('LANDING_ADMIN_URL', default='landing-admin/')
+LANDING_ADMIN_URL = env('LANDING_ADMIN_URL', default='admin/')
 APP_ADMIN_URL = env('APP_ADMIN_URL', default='app-admin/')
 DASHBOARD_ADMIN_URL = env('DASHBOARD_ADMIN_URL', default='dashboard-admin/')
 
-# ═══════════════════════════════════════════════
-#   Login
-# ═══════════════════════════════════════════════
 LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 
-# ═══════════════════════════════════════════════════════
-#   Jazzmin Settings (اعمال شده به admin.site پیش‌فرض)
-# ═══════════════════════════════════════════════════════
 # ═══════════════════════════════════════════════
-#   Jazzmin Settings (Single Admin Site)
+#   Jazzmin Settings
 # ═══════════════════════════════════════════════
 JAZZMIN_SETTINGS = {
     "site_title": "زیبانو | پنل مدیریت",
@@ -399,131 +400,76 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "به پنل مدیریت زیبانو خوش آمدید",
     "copyright": "Zibano Co. © 2024-2026",
     "user_avatar": "avatar",
-
     "topmenu_links": [
         {"name": "🏠 سایت معرفی", "url": "/", "new_window": True},
         {"name": "📚 مستندات API", "url": "/api/docs/", "new_window": True},
     ],
-
     "show_sidebar": True,
     "navigation_expanded": True,
-
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
         "accounts": "fas fa-user-shield",
         "accounts.CustomUser": "fas fa-users",
-        "accounts.OTP": "fas fa-key",
-        "accounts.ActiveDevice": "fas fa-mobile-alt",
-        "businesses": "fas fa-store",
-        "businesses.Category": "fas fa-layer-group",
-        "businesses.SubCategory": "fas fa-folder",
-        "businesses.Province": "fas fa-map-marked-alt",
-        "businesses.City": "fas fa-city",
+        "accounts.OtpCode": "fas fa-key",
+        "accounts.UserDevice": "fas fa-mobile-alt",
+        "categories": "fas fa-layer-group",
+        "categories.ServiceCategory": "fas fa-spa",
+        "categories.SubService": "fas fa-list",
+        "categories.BusinessCategory": "fas fa-store",
+        "locations": "fas fa-map-marked-alt",
+        "locations.Province": "fas fa-map",
+        "locations.City": "fas fa-city",
+        "businesses": "fas fa-building",
         "businesses.Business": "fas fa-building",
-        "businesses.Service": "fas fa-concierge-bell",
-        "businesses.Portfolio": "fas fa-images",
-        "businesses.PortfolioImage": "fas fa-image",
-        "businesses.WorkingHours": "fas fa-clock",
-        "businesses.LineRentalAd": "fas fa-handshake",
-        "businesses.ModelRequest": "fas fa-user-tie",
-        "businesses.SocialMedia": "fas fa-share-alt",
-        "bookings": "fas fa-calendar-check",
-        "bookings.Appointment": "fas fa-calendar-alt",
-        "bookings.TimeSlot": "fas fa-hourglass-half",
-        "bookings.Schedule": "fas fa-calendar-week",
-        "bookings.CancellationRequest": "fas fa-times-circle",
+        "businesses.BusinessGallery": "fas fa-images",
+        "businesses.BusinessTeamMember": "fas fa-users",
+        "services": "fas fa-concierge-bell",
+        "services.Service": "fas fa-concierge-bell",
+        "schedules": "fas fa-calendar-week",
+        "schedules.ServiceSchedule": "fas fa-calendar-day",
+        "appointments": "fas fa-calendar-check",
+        "appointments.Appointment": "fas fa-calendar-alt",
         "payments": "fas fa-credit-card",
         "payments.Transaction": "fas fa-receipt",
-        "payments.BankAccount": "fas fa-university",
         "payments.Settlement": "fas fa-money-check-alt",
-        "payments.RefundRequest": "fas fa-undo",
-        "payments.Wallet": "fas fa-wallet",
         "reviews": "fas fa-star",
         "reviews.Review": "fas fa-comment-alt",
-        "reviews.ReviewTag": "fas fa-tags",
+        "portfolios": "fas fa-images",
+        "portfolios.Portfolio": "fas fa-images",
+        "ads": "fas fa-bullhorn",
+        "ads.ModelRequest": "fas fa-user-tie",
+        "ads.LineRental": "fas fa-handshake",
+        "explore": "fas fa-compass",
+        "explore.ExplorePost": "fas fa-image",
+        "reminders": "fas fa-bell",
+        "reminders.RenewalReminder": "fas fa-bell",
+        "favorites": "fas fa-heart",
+        "search": "fas fa-search",
+        "support": "fas fa-headset",
         "notifications": "fas fa-bell",
-        "notifications.Notification": "fas fa-bell",
-        "notifications.SMSTemplate": "fas fa-sms",
-        "notifications.SMSLog": "fas fa-envelope-open-text",
         "landing": "fas fa-globe",
-        "landing.SiteSettings": "fas fa-cogs",
-        "landing.HeroSection": "fas fa-home",
-        "landing.FeaturesSection": "fas fa-star",
-        "landing.HowToSection": "fas fa-route",
-        "landing.ServicesSection": "fas fa-concierge-bell",
-        "landing.AboutSection": "fas fa-info-circle",
-        "landing.TeamSection": "fas fa-users",
-        "landing.StatsSection": "fas fa-chart-bar",
-        "landing.FAQSection": "fas fa-question-circle",
-        "landing.ContactSection": "fas fa-headset",
-        "landing.ContactMessage": "fas fa-envelope",
-        "landing.DownloadSection": "fas fa-download",
-        "landing.TrustBadge": "fas fa-shield-alt",
     },
-
     "show_ui_builder": False,
     "changeform_format": "collapsible",
-    "related_modal_active": True,
-
-    # ═══ لینک‌های سفارشی بر اساس دسترسی ═══
-    "custom_links": {
-        "landing": [
-            {
-                "name": "👁️ پیش‌نمایش سایت",
-                "url": "/",
-                "icon": "fas fa-eye",
-                "permissions": ["landing.view_sitesettings"],
-                "new_window": True,
-            },
-        ],
-        "accounts": [
-            {
-                "name": "👥 کاربران جدید امروز",
-                "url": "/accounts/customuser/?date_joined__gte=today",
-                "icon": "fas fa-user-plus",
-                "permissions": ["accounts.view_customuser"],
-            },
-            {
-                "name": "🏢 کسب‌وکارهای در انتظار",
-                "url": "/businesses/business/?status__exact=pending",
-                "icon": "fas fa-hourglass-half",
-                "permissions": ["businesses.view_business"],
-            },
-        ],
-        "bookings": [
-            {
-                "name": "📅 نوبت‌های امروز",
-                "url": "/bookings/appointment/",
-                "icon": "fas fa-calendar-day",
-                "permissions": ["bookings.view_appointment"],
-            },
-        ],
-        "payments": [
-            {
-                "name": "💰 تسویه‌های در انتظار",
-                "url": "/payments/settlement/",
-                "icon": "fas fa-money-bill-wave",
-                "permissions": ["payments.view_settlement"],
-            },
-        ],
-        "reviews": [
-            {
-                "name": "⭐ نظرات تایید نشده",
-                "url": "/reviews/review/?is_approved__exact=False",
-                "icon": "fas fa-star-half-alt",
-                "permissions": ["reviews.view_review"],
-            },
-        ],
-    },
-
     "order_with_respect_to": [
         "accounts",
+        "categories",
+        "locations",
         "businesses",
-        "bookings",
+        "services",
+        "schedules",
+        "appointments",
         "payments",
         "reviews",
+        "portfolios",
+        "ads",
+        "explore",
+        "reminders",
+        "favorites",
+        "search",
+        "support",
         "notifications",
         "landing",
         "auth",
@@ -540,15 +486,10 @@ JAZZMIN_UI_TWEAKS = {
     "sidebar_nav_compact_style": False,
     "sidebar_nav_legacy_style": False,
     "sidebar_nav_flat_style": False,
-    "theme": "flatly",
-    "dark_mode_theme": "darkly",
+    "theme": "cosmo",
+    "dark_mode_theme": None,
     "actions_sticky_top": True,
 }
-
-# ═══════════════════════════════════════════════
-#   Celery Beat Schedule
-# ═══════════════════════════════════════════════
-from celery.schedules import crontab
 
 # ═══════════════════════════════════════════════
 #   Celery Beat Schedule
@@ -559,44 +500,42 @@ CELERY_BEAT_SCHEDULE = {
     # ─── یادآوری نوبت‌ها ───
     'daily-booking-reminders': {
         'task': 'apps.notifications.tasks.send_booking_reminders',
-        'schedule': crontab(hour=9, minute=0),  # هر روز ۹ صبح
+        'schedule': crontab(hour=9, minute=0),
     },
     'same-day-booking-reminders': {
         'task': 'apps.notifications.tasks.send_same_day_reminders',
-        'schedule': crontab(minute=0),  # هر ساعت
+        'schedule': crontab(minute=0),
     },
-
+    # ─── یادآوری تمدید ───
+    'check-renewal-reminders': {
+        'task': 'apps.reminders.tasks.check_renewal_reminders',
+        'schedule': crontab(hour=8, minute=0),
+    },
     # ─── تسویه خودکار ───
     'auto-settle-appointments': {
-        'task': 'apps.notifications.tasks.auto_settle_completed_appointments',
-        'schedule': crontab(minute=0),  # هر ساعت
+        'task': 'apps.payments.tasks.auto_settle_completed_appointments',
+        'schedule': crontab(minute=0),
     },
     'process-pending-settlements': {
-        'task': 'apps.notifications.tasks.process_pending_settlements',
-        'schedule': crontab(minute=0, hour='*/6'),  # هر ۶ ساعت
+        'task': 'apps.payments.tasks.process_pending_settlements',
+        'schedule': crontab(minute=0, hour='*/6'),
     },
-
     # ─── بررسی تراکنش‌ها ───
     'check-expired-transactions': {
-        'task': 'apps.notifications.tasks.check_expired_pending_transactions',
-        'schedule': crontab(minute='*/10'),  # هر ۱۰ دقیقه
+        'task': 'apps.payments.tasks.check_expired_pending_transactions',
+        'schedule': crontab(minute='*/10'),
     },
     'verify-unconfirmed-payments': {
-        'task': 'apps.notifications.tasks.verify_unconfirmed_payments',
-        'schedule': crontab(minute='*/5'),  # هر ۵ دقیقه
+        'task': 'apps.payments.tasks.verify_unconfirmed_payments',
+        'schedule': crontab(minute='*/5'),
     },
-
     # ─── پاکسازی ───
     'cleanup-old-notifications': {
         'task': 'apps.notifications.tasks.cleanup_old_notifications',
-        'schedule': crontab(hour=3, minute=0),  # هر روز ۳ صبح
+        'schedule': crontab(hour=3, minute=0),
     },
     'cleanup-old-otp-codes': {
-        'task': 'apps.notifications.tasks.cleanup_old_otp_codes',
-        'schedule': crontab(hour=4, minute=0),  # هر روز ۴ صبح
-    },
-    'cleanup-expired-time-slots': {
-        'task': 'apps.notifications.tasks.cleanup_expired_time_slots',
-        'schedule': crontab(minute=0),  # هر ساعت
+        'task': 'apps.accounts.tasks.cleanup_old_otp_codes',
+        'schedule': crontab(hour=4, minute=0),
     },
 }

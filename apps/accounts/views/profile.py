@@ -2,16 +2,15 @@
 Views مربوط به پروفایل کاربر
 """
 import logging
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-
 from drf_spectacular.utils import extend_schema
 
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import mask_phone
 from apps.core.exceptions import OTPException
-from apps.accounts.models import OTP
+from apps.accounts.models import OtpCode
 from apps.accounts.services.otp_service import OTPService
 from apps.accounts.serializers.auth import (
     UserProfileSerializer,
@@ -37,10 +36,7 @@ class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
             return UpdateProfileSerializer
         return UserProfileSerializer
 
-    @extend_schema(
-        tags=['Profile'],
-        summary='مشاهده پروفایل',
-    )
+    @extend_schema(tags=['Profile'], summary='مشاهده پروفایل')
     def retrieve(self, request, *args, **kwargs):
         user = self.get_object()
         serializer = UserProfileSerializer(user)
@@ -56,7 +52,6 @@ class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
         serializer = UpdateProfileSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
         return self.success_response(
             data=UserProfileSerializer(user).data,
             message='پروفایل با موفقیت بروزرسانی شد',
@@ -75,19 +70,17 @@ class ChangePhoneRequestView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = ChangePhoneRequestSerializer(
             data=request.data,
-            context={'request': request}
+            context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
-
         new_phone = serializer.validated_data['new_phone']
 
         try:
             OTPService.send_otp(
                 new_phone,
-                purpose=OTP.Purpose.CHANGE_PHONE,
+                purpose=OtpCode.Purpose.CHANGE_PHONE,
                 user=request.user,
             )
-
             return self.success_response(
                 data={
                     'new_phone': new_phone,
@@ -96,7 +89,6 @@ class ChangePhoneRequestView(APIView, StandardResponseMixin):
                 },
                 message=f'کد تایید به شماره {mask_phone(new_phone)} ارسال شد',
             )
-
         except OTPException as e:
             return e.as_response()
 
@@ -121,10 +113,9 @@ class ChangePhoneConfirmView(APIView, StandardResponseMixin):
             OTPService.verify_otp(
                 new_phone,
                 code,
-                purpose=OTP.Purpose.CHANGE_PHONE,
+                purpose=OtpCode.Purpose.CHANGE_PHONE,
             )
 
-            # تغییر شماره کاربر
             user = request.user
             old_phone = user.phone
             user.phone = new_phone
@@ -136,6 +127,5 @@ class ChangePhoneConfirmView(APIView, StandardResponseMixin):
                 data=UserProfileSerializer(user).data,
                 message='شماره موبایل با موفقیت تغییر یافت',
             )
-
         except OTPException as e:
             return e.as_response()

@@ -1,7 +1,10 @@
 """
-Pytest fixtures مشترک
+Pytest fixtures مشترک — نسخه جدید بدون role
+هر کاربر می‌تواند یک کسب‌وکار داشته باشد
 """
 import pytest
+from datetime import time
+import jdatetime
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -20,8 +23,8 @@ def customer_user(db):
     """کاربر عادی (مشتری)"""
     return User.objects.create_user(
         phone='09123456789',
-        role='customer',
-        full_name='کاربر تست',
+        first_name='کاربر',
+        last_name='تست',
         is_verified=True,
     )
 
@@ -31,11 +34,11 @@ def business_owner_user(db):
     """صاحب کسب‌وکار"""
     return User.objects.create_user(
         phone='09129876543',
-        role='business_owner',
-        full_name='صاحب کسب و کار',
+        first_name='صاحب',
+        last_name='کسب و کار',
         is_verified=True,
         national_id='0012345679',
-        national_id_verified=True,
+        is_national_id_verified=True,
         verified_name='صاحب کسب و کار',
     )
 
@@ -46,15 +49,15 @@ def admin_user(db):
     return User.objects.create_superuser(
         phone='09120000000',
         password='admin123',
-        role='super_admin',
-        full_name='مدیر ارشد',
+        first_name='مدیر',
+        last_name='ارشد',
         is_verified=True,
     )
 
 
 @pytest.fixture
 def authenticated_customer_client(api_client, customer_user):
-    """API Client با کاربر مشتری احراز هویت شده"""
+    """API Client با کاربر مشتری"""
     refresh = RefreshToken.for_user(customer_user)
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
     api_client.user = customer_user
@@ -85,22 +88,20 @@ def mock_otp(monkeypatch):
     class MockOTPService:
         @classmethod
         def send_otp(cls, phone, purpose=None, user=None):
-            from apps.accounts.models import OTP
+            from apps.accounts.models import OtpCode
             from django.utils import timezone
             from datetime import timedelta
-
-            return OTP.objects.create(
+            return OtpCode.objects.create(
                 phone=phone,
-                user=user,
                 code='12345',
-                purpose=purpose or OTP.Purpose.LOGIN,
+                purpose=purpose or OtpCode.Purpose.LOGIN,
                 expires_at=timezone.now() + timedelta(minutes=5),
             )
 
         @classmethod
         def verify_otp(cls, phone, code, purpose=None):
-            from apps.accounts.models import OTP
-            otp = OTP.objects.filter(phone=phone).first()
+            from apps.accounts.models import OtpCode
+            otp = OtpCode.objects.filter(phone=phone).first()
             if otp:
                 otp.is_used = True
                 otp.save()
@@ -126,3 +127,121 @@ def mock_shahkar(monkeypatch):
     from apps.accounts.services import shahkar_service
     monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
     return MockShahkar
+
+
+# ═══════════════════════════════════════════════
+#   Fixtures برای ساختار جدید
+# ═══════════════════════════════════════════════
+
+@pytest.fixture
+def service_category(db):
+    """دسته‌بندی خدمات"""
+    from apps.categories.models import ServiceCategory
+    return ServiceCategory.objects.create(
+        name='پوست و فیشیال',
+        icon_name='spa',
+        color='#4CAF50',
+        gradient_start='#4CAF50',
+        gradient_end='#388E3C',
+        sort_order=1,
+    )
+
+
+@pytest.fixture
+def sub_service(service_category):
+    """زیرخدمت"""
+    from apps.categories.models import SubService
+    return SubService.objects.create(
+        category=service_category,
+        name='فیشیال VIP',
+        type_id='facial_vip',
+    )
+
+
+@pytest.fixture
+def business_category(db):
+    """نوع کسب‌وکار"""
+    from apps.categories.models import BusinessCategory
+    return BusinessCategory.objects.create(name='سالن زیبایی')
+
+
+@pytest.fixture
+def province(db):
+    """استان"""
+    from apps.locations.models import Province
+    return Province.objects.create(name='تهران')
+
+
+@pytest.fixture
+def city(province):
+    """شهر"""
+    from apps.locations.models import City
+    return City.objects.create(name='تهران', province=province)
+
+
+@pytest.fixture
+def approved_business(business_owner_user, business_category, province, city):
+    """کسب‌وکار تایید شده"""
+    from apps.businesses.models import Business
+    return Business.objects.create(
+        owner=business_owner_user,
+        name='سالن تست',
+        category=business_category,
+        province=province,
+        city=city,
+        address='آدرس تست',
+        status='approved',
+    )
+
+
+@pytest.fixture
+def test_service(approved_business, service_category, sub_service):
+    """خدمت تست"""
+    from apps.services.models import Service
+    return Service.objects.create(
+        business=approved_business,
+        name='فیشیال تخصصی',
+        category=service_category,
+        sub_service=sub_service,
+        original_price=500000,
+        discount_percent=10,
+        has_deposit=True,
+        deposit_amount=100000,
+        duration=60,
+        renewal_days=30,
+    )
+
+
+@pytest.fixture
+def test_schedule(approved_business, test_service):
+    """زمان‌بندی تست"""
+    from apps.schedules.models import ServiceSchedule
+    return ServiceSchedule.objects.create(
+        business=approved_business,
+        service=test_service,
+        jy=1405,
+        jm=4,
+        jd=22,
+        work_start=time(9, 0),
+        work_end=time(18, 0),
+        slot_duration=30,
+        breaks=[{'start': '13:00', 'end': '14:00'}],
+    )
+
+
+@pytest.fixture
+def test_appointment(customer_user, approved_business, test_service):
+    """نوبت تست"""
+    from apps.appointments.models import Appointment
+    return Appointment.objects.create(
+        business=approved_business,
+        service=test_service,
+        customer=customer_user,
+        jy=1405,
+        jm=4,
+        jd=22,
+        time_slot=time(10, 0),
+        status=Appointment.Status.RESERVED,
+        total_price=450000,
+        deposit_amount=100000,
+    )

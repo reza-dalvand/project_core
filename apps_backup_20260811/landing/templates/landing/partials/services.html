@@ -1,0 +1,26 @@
+{% if services_section %}
+<!-- ═══════════ Services ═══════════ -->
+<section class="section services reveal" id="services">
+    <div class="container">
+        <div class="section-head">
+            <span class="badge">
+                <span class="material-icons" style="font-size:14px">{{ services_section.badge_icon }}</span>
+                {{ services_section.badge_text }}
+            </span>
+            <h2>{{ services_section.title }}</h2>
+            <p>{{ services_section.subtitle }}</p>
+        </div>
+        <div class="services-grid">
+            {% for cat in service_categories %}
+            <div class="service reveal">
+                <div class="service-icon">
+                    <span class="material-icons" style="font-size:36px">{{ cat.icon }}</span>
+                </div>
+                <h4>{{ cat.name }}</h4>
+                <p class="count">{{ cat.count }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}

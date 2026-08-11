@@ -5,7 +5,7 @@ from .base import *  # noqa
 
 DEBUG = True
 
-# Database: SQLite
+# ─── Database: SQLite برای توسعه (بدون PostGIS) ───
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -13,7 +13,7 @@ DATABASES = {
     }
 }
 
-# Cache: حافظه محلی
+# ─── Cache: حافظه محلی ───
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -21,28 +21,29 @@ CACHES = {
     }
 }
 
-# Email Console
+# ─── Email Console ───
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# Static files
-STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
+# ─── Static files ───
+STORAGES["staticfiles"]["BACKEND"] = (
+    "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
 
-# CORS: همه مجاز
+# ─── CORS: همه مجاز ───
 CORS_ALLOW_ALL_ORIGINS = True
 
-# Celery: اجرای همزمان
+# ─── Celery: اجرای همزمان ───
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
-# ✅ اصلاح شده: Jazzmin UI Builder برای توسعه
+# ─── Jazzmin UI Builder ───
 JAZZMIN_SETTINGS['show_ui_builder'] = True
 
+# ─── غیرفعال کردن Throttle در توسعه ───
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
-# ═══════════════════════════════════════════════
-#   Storage: در محیط توسعه از فایل سیستم محلی استفاده کن
-# ═══════════════════════════════════════════════
+# ─── Storage: فایل سیستم محلی ───
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -55,7 +56,15 @@ STORAGES = {
     },
 }
 
-# Override کردن storage های سفارشی برای تست
-# تا از S3 استفاده نکنند
+# ─── غیرفعال کردن S3 در توسعه ───
 ARVAN_ACCESS_KEY = ''
 ARVAN_SECRET_KEY = ''
+
+# ─── Debug Toolbar ───
+try:
+    import debug_toolbar
+    INSTALLED_APPS += ['debug_toolbar']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    INTERNAL_IPS = ['127.0.0.1']
+except ImportError:
+    pass
