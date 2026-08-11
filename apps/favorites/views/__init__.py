@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from apps.core.mixins import StandardResponseMixin
-from .models import FavoriteBusiness, FavoritePost
-from .serializers import (
+from apps.favorites.models import FavoriteBusiness, FavoritePost
+from apps.favorites.serializers import (
     FavoriteBusinessSerializer,
     FavoritePostSerializer,
     FavoriteToggleSerializer,

@@ -10,15 +10,15 @@ from django.shortcuts import get_object_or_404
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
-from .models import Appointment
-from .serializers import (
+from apps.appointments.models import Appointment
+from apps.appointments.serializers import (
     AppointmentCreateSerializer,
     AppointmentListSerializer,
     AppointmentDetailSerializer,
     CancelAppointmentSerializer,
     VerifyServiceCodeSerializer,
 )
-from .services.booking_service import BookingService, BookingException
+from apps.appointments.services.booking_service import BookingService, BookingException
 
 logger = logging.getLogger(__name__)
 

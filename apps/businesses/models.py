@@ -6,7 +6,6 @@ from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
-from django.contrib.gis.db import models as gis_models
 
 from apps.core.models import BaseModel
 
@@ -85,12 +84,20 @@ class Business(BaseModel):
         null=True,
         blank=True,
     )
-    location = gis_models.PointField(
-        'موقعیت PostGIS',
+
+    location_lat = models.DecimalField(        
+        'موقعیت PostGIS عرض',
         null=True,
         blank=True,
-        geography=True,
-    )
+        geography=True
+    )  
+    location_lng = models.DecimalField(        
+        'موقعیت PostGIS طول',
+        null=True,
+        blank=True,
+        geography=True
+    ) 
+
 
     # ═══════════ وضعیت تایید ═══════════
     status = models.CharField(

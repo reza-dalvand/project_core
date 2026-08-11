@@ -6,8 +6,8 @@ from rest_framework import permissions
 from drf_spectacular.utils import extend_schema
 
 from apps.core.mixins import StandardResponseMixin
-from .models import ServiceCategory, BusinessCategory
-from .serializers import ServiceCategorySerializer, BusinessCategorySerializer
+from apps.categories.models import ServiceCategory, BusinessCategory
+from apps.categories.serializers import ServiceCategorySerializer, BusinessCategorySerializer
 
 
 class ServiceCategoryListView(APIView, StandardResponseMixin):

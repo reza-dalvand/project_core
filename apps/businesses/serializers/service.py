@@ -2,7 +2,8 @@
 Serializers برای مدیریت خدمات کسب‌وکار
 """
 from rest_framework import serializers
-from apps.businesses.models import Service, SubCategory
+from apps.services.models import Service
+from apps.categories.models import SubService
 
 
 class SubCategoryBriefSerializer(serializers.ModelSerializer):
@@ -10,7 +11,7 @@ class SubCategoryBriefSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
-        model = SubCategory
+        model = SubService
         fields = ['id', 'name', 'slug', 'category_name']
 
 

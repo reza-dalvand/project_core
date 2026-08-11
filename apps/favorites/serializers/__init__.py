@@ -2,8 +2,7 @@
 Serializers برای علاقه‌مندی‌ها
 """
 from rest_framework import serializers
-from .models import FavoriteBusiness, FavoritePost
-
+from apps.favorites.models import FavoriteBusiness, FavoritePost
 
 class FavoriteBusinessSerializer(serializers.ModelSerializer):
     """Serializer برای علاقه‌مندی به کسب‌وکار"""

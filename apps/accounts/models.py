@@ -74,6 +74,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         default=False,
     )
 
+    is_active = models.BooleanField(
+    'فعال',
+    default=True,
+    )
+
     # ═══════════ تاریخ‌ها ═══════════
     date_joined = models.DateTimeField(
         'تاریخ عضویت',
@@ -95,7 +100,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_table = 'users'
         verbose_name = '👤 کاربر'
         verbose_name_plural = '👤 کاربران'
-        ordering = ['-created_at']
+        ordering = ['-date_joined']
         indexes = [
             models.Index(fields=['phone']),
         ]

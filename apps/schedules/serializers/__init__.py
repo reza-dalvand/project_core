@@ -2,7 +2,7 @@
 Serializers برای زمان‌بندی — با تاریخ جلالی
 """
 from rest_framework import serializers
-from .models import ServiceSchedule
+from apps.schedules.models import ServiceSchedule
 
 
 class ScheduleBreakSerializer(serializers.Serializer):

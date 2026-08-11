@@ -2,8 +2,7 @@
 Serializers برای نظرات — ساده‌سازی شده
 """
 from rest_framework import serializers
-from .models import Review
-
+from apps.reviews.models import Review
 
 class ReviewListSerializer(serializers.ModelSerializer):
     """Serializer برای لیست نظرات"""

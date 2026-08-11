@@ -2,7 +2,7 @@
 Serializers برای تراکنش‌های پرداخت
 """
 from rest_framework import serializers
-from .models import Transaction, Settlement
+from apps.payments.models import Transaction, Settlement
 
 
 class TransactionListSerializer(serializers.ModelSerializer):

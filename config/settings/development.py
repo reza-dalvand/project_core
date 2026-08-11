@@ -5,7 +5,11 @@ from .base import *  # noqa
 
 DEBUG = True
 
-# ─── Database: SQLite برای توسعه (بدون PostGIS) ───
+# ─── حذف gis در توسعه ───
+if 'django.contrib.gis' in INSTALLED_APPS:
+    INSTALLED_APPS.remove('django.contrib.gis')
+
+# ─── Database: SQLite برای توسعه ───
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

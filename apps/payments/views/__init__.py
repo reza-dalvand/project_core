@@ -10,8 +10,8 @@ from drf_spectacular.utils import extend_schema
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
-from .models import Transaction, Settlement
-from .serializers import (
+from apps.payments.models import Transaction, Settlement
+from apps.payments.serializers import (
     TransactionListSerializer,
     TransactionDetailSerializer,
     InitiatePaymentSerializer,
@@ -19,7 +19,7 @@ from .serializers import (
     SettlementRequestSerializer,
     BusinessFinancialStatsSerializer,
 )
-from .services.payment_service import PaymentService
+from apps.payments.services.payment_service import PaymentService
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ Serializers برای تراکنش‌های پرداخت
 """
 from rest_framework import serializers
 from apps.payments.models import Transaction
-
+from apps.appointments.models import Appointment
 
 class TransactionListSerializer(serializers.ModelSerializer):
     """Serializer لیست تراکنش‌ها"""

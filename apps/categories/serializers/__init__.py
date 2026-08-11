@@ -2,8 +2,7 @@
 Serializers برای دسته‌بندی‌ها
 """
 from rest_framework import serializers
-from .models import ServiceCategory, SubService, BusinessCategory
-
+from apps.categories.models import ServiceCategory, SubService, BusinessCategory
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
     """Serializer برای دسته‌بندی خدمات"""

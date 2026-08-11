@@ -78,8 +78,10 @@
 Custom Storage Backends for Arvan Cloud S3
 """
 from django.conf import settings
-from storages.backends.s3boto3 import S3Boto3Storage
-
+try:
+    from storages.backends.s3boto3 import S3Boto3Storage
+except ImportError:
+    from django.core.files.storage import FileSystemStorage as S3Boto3Storage
 
 class ArvanCloudStorage(S3Boto3Storage):
     # ... (کدهای قبلی بدون تغییر)

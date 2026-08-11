@@ -54,8 +54,6 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # PostGIS
-    'django.contrib.gis',
 ]
 
 LOCAL_APPS = [
@@ -98,7 +96,6 @@ INSTALLED_APPS = THIRD_PARTY_APPS + DJANGO_APPS + LOCAL_APPS
 # ═══════════════════════════════════════════════
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
@@ -195,8 +192,7 @@ DATABASES = {
 # ═══════════════════════════════════════════════
 #   Custom User Model
 # ═══════════════════════════════════════════════
-AUTH_USER_MODEL = 'accounts.CustomUser'
-
+AUTH_USER_MODEL = 'accounts.User'
 # ═══════════════════════════════════════════════
 #   Password Validation
 # ═══════════════════════════════════════════════
@@ -240,7 +236,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ═══════════════════════════════════════════════
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'apps.api.authentication.CustomJWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (

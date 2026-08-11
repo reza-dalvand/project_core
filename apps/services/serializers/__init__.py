@@ -2,8 +2,7 @@
 Serializers برای خدمات
 """
 from rest_framework import serializers
-from .models import Service
-
+from apps.services.models import Service
 
 class ServiceListSerializer(serializers.ModelSerializer):
     """Serializer برای لیست خدمات"""

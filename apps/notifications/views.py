@@ -2,7 +2,7 @@
 Views برای نوتیفیکیشن‌ها - نسخه اصلاح شده
 ✅ import ها به ابتدای فایل منتقل شدند
 """
-from django.db import models
+from django.db.models import Count
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
@@ -79,7 +79,7 @@ class NotificationCountView(APIView, StandardResponseMixin):
         type_counts = (
             Notification.objects.filter(user=user, is_read=False)
             .values('type')
-            .annotate(count=models.Count('id'))
+            .annotate(count=Count('id'))
         )
 
         for item in type_counts:

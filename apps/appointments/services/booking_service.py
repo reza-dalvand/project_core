@@ -6,6 +6,7 @@ import logging
 import random
 from datetime import datetime, timedelta
 
+from django.db.models import F
 import jdatetime
 from django.db import transaction
 from django.utils import timezone
@@ -210,7 +211,7 @@ class BookingService:
 
         # افزایش شمارنده رزروهای لینک رزرو
         Business.objects.filter(id=business.id).update(
-            booking_link_bookings=models.F('booking_link_bookings') + 1,
+            booking_link_bookings=F('booking_link_bookings') + 1,
         )
 
         logger.info(

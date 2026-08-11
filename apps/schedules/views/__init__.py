@@ -9,8 +9,8 @@ from django.shortcuts import get_object_or_404
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
-from .models import ServiceSchedule
-from .serializers import (
+from apps.schedules.models import ServiceSchedule
+from apps.schedules.serializers import (
     ServiceScheduleSerializer,
     ServiceScheduleCreateSerializer,
     ServiceScheduleUpdateSerializer,

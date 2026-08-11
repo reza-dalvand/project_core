@@ -18,6 +18,8 @@ from apps.payments.serializers.settlement import (
     TransactionFilterSerializer,
     CustomerPaymentFilterSerializer,
 )
+from django.db.models import Q
+
 
 logger = logging.getLogger(__name__)
 

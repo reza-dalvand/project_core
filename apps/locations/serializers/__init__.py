@@ -2,8 +2,7 @@
 Serializers برای استان و شهر
 """
 from rest_framework import serializers
-from .models import Province, City
-
+from apps.locations.models import Province, City
 
 class ProvinceSerializer(serializers.ModelSerializer):
     """Serializer برای استان‌ها"""

@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.core.models import BaseModel
 
 
+
 class Appointment(BaseModel):
     """نوبت رزرو شده"""
 

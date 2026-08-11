@@ -2,8 +2,7 @@
 Serializers برای نوبت‌ها — با تاریخ جلالی
 """
 from rest_framework import serializers
-from .models import Appointment
-
+from apps.appointments.models import Appointment
 
 class AppointmentCreateSerializer(serializers.Serializer):
     """Serializer برای ایجاد نوبت"""

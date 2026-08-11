@@ -7,8 +7,8 @@ from rest_framework import permissions, status
 from drf_spectacular.utils import extend_schema
 
 from apps.core.mixins import StandardResponseMixin
-from .models import Province, City
-from .serializers import ProvinceSerializer, CitySerializer
+from apps.locations.models import Province, City
+from apps.locations.serializers import ProvinceSerializer, CitySerializer
 
 
 class ProvinceListView(APIView, StandardResponseMixin):

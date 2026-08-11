@@ -2,8 +2,15 @@
 
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django_ckeditor_5.fields import CKEditor5Field
-
+try:
+    from django_ckeditor_5.fields import CKEditor5Field
+except ImportError:
+    from django.db import models
+    class CKEditor5Field(models.TextField):
+        def __init__(self, *args, **kwargs):
+            kwargs.pop('config_name', None)
+            super().__init__(*args, **kwargs)
+        pass
 
 # ═══════════════════════════════════════════════════════════════
 #                    تنظیمات کلی سایت

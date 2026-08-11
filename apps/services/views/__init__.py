@@ -11,8 +11,8 @@ from django.shortcuts import get_object_or_404
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
-from .models import Service
-from .serializers import (
+from apps.services.models import Service
+from apps.services.serializers import (
     ServiceListSerializer,
     ServiceDetailSerializer,
     ServiceCreateSerializer,
