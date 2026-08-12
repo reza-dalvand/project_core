@@ -49,7 +49,7 @@ class Appointment(BaseModel):
     # ═══════════ وضعیت ═══════════
     status = models.CharField(
         'وضعیت',
-        max_length=20,
+        max_length=30,
         choices=Status.choices,
         default=Status.RESERVED,
         db_index=True,

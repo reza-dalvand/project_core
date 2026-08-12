@@ -282,7 +282,7 @@ class PublicBusinessDetailView(APIView, StandardResponseMixin):
         try:
             business = Business.objects.select_related(
                 'category', 'province', 'city', 'owner'
-            ).prefetch_related('gallery', 'team_members').get(
+            ).prefetch_related('gallery').get(
                 booking_slug=booking_slug,
                 status='approved',
                 is_active=True,

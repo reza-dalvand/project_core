@@ -91,7 +91,7 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
         qs = Appointment.objects.filter(
             customer=self.request.user,
-        ).select_related('service', 'business', 'team_member').order_by('-jy', '-jm', '-jd', 'time_slot')
+        ).select_related('service', 'business').order_by('-jy', '-jm', '-jd', 'time_slot')
 
         status_filter = self.request.query_params.get('status', 'all')
         today_key = today_jalali_key()
@@ -133,7 +133,7 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
         qs = Appointment.objects.filter(
             business=business,
-        ).select_related('service', 'customer', 'team_member').order_by('-jy', '-jm', '-jd', 'time_slot')
+        ).select_related('service', 'customer').order_by('-jy', '-jm', '-jd', 'time_slot')
 
         status_filter = self.request.query_params.get('status', 'all')
         if status_filter == 'reserved':
@@ -170,7 +170,7 @@ class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     def get_queryset(self):
         user = self.request.user
         qs = Appointment.objects.select_related(
-            'service', 'business', 'customer', 'team_member'
+            'service', 'business', 'customer'
         )
 
         if user.is_authenticated:

@@ -31,7 +31,7 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
         return ServiceSchedule.objects.filter(
             business__owner=self.request.user,
             business__is_active=True,
-        ).select_related('service', 'business', 'team_member').order_by('jy', 'jm', 'jd')
+        ).select_related('service', 'business').order_by('jy', 'jm', 'jd')
 
     @extend_schema(
         summary='لیست زمان‌بندی‌ها',
@@ -79,7 +79,7 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView, StandardResponse
         return ServiceSchedule.objects.filter(
             business__owner=self.request.user,
             business__is_active=True,
-        ).select_related('service', 'business', 'team_member')
+        ).select_related('service', 'business')
 
     @extend_schema(
         summary='جزئیات زمان‌بندی',
@@ -136,7 +136,7 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
             jy=jy, jm=jm, jd=jd,
             business__is_active=True,
             business__status='approved',
-        ).select_related('service', 'business', 'team_member')
+        ).select_related('service', 'business')
 
         # فیلتر بر اساس service_id
         service_id = request.query_params.get('service_id')

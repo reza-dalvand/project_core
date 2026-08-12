@@ -296,6 +296,9 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
+GDAL_LIBRARY_PATH = '/usr/lib64/libgdal.so'
+GEOS_LIBRARY_PATH = '/usr/lib64/libgeos_c.so'
+
 # ═══════════════════════════════════════════════
 #   External Services
 # ═══════════════════════════════════════════════

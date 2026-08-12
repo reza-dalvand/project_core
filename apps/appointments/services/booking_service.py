@@ -12,7 +12,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from apps.appointments.models import Appointment
-from apps.businesses.models import Business, BusinessTeamMember
+from apps.businesses.models import Business
 from apps.services.models import Service
 from apps.core.utils import jalali_to_key
 # ✅ import از core به جای تعریف محلی
@@ -126,7 +126,6 @@ class BookingService:
             business=business,
             service=service,
             customer=customer,
-            team_member=team_member,
             jy=jy, jm=jm, jd=jd,
             date_key=date_key,
             time_slot=time_slot,

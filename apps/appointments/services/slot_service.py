@@ -12,7 +12,7 @@ from django.db.models import Q
 
 from apps.appointments.models import Appointment
 from apps.schedules.models import ServiceSchedule
-from apps.businesses.models import Business, BusinessTeamMember
+from apps.businesses.models import Business
 from apps.services.models import Service
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,6 @@ class SlotService:
         jy: int,
         jm: int,
         jd: int,
-        team_member_id: Optional[int] = None,
     ) -> List[Dict]:
         """
         دریافت تمام اسلات‌های آزاد برای یک تاریخ جلالی خاص
@@ -48,7 +47,7 @@ class SlotService:
         """
         cache_key = (
             f'slots_{business_id}_{service_id}'
-            f'_{jy}_{jm}_{jd}_{team_member_id}'
+            f'_{jy}_{jm}_{jd}'
         )
         cached = cache.get(cache_key)
         if cached:
@@ -113,11 +112,6 @@ class SlotService:
                 Appointment.Status.RESERVED,
             ],
         )
-        if team_member_id:
-            booked_qs = booked_qs.filter(
-                Q(team_member_id=team_member_id) |
-                Q(team_member__isnull=True)
-            )
 
         booked_times = set(
             booked_qs.values_list('time_slot', flat=True)
