@@ -1,12 +1,12 @@
 """
 Serializers برای زمان‌بندی — با تاریخ جلالی
+بدون تیم
 """
 from rest_framework import serializers
 from apps.schedules.models import ServiceSchedule
 
 
 class ScheduleBreakSerializer(serializers.Serializer):
-    """Serializer برای استراحت‌ها"""
     start = serializers.TimeField()
     end = serializers.TimeField()
 
@@ -19,50 +19,40 @@ class ScheduleBreakSerializer(serializers.Serializer):
 
 
 class ServiceScheduleSerializer(serializers.ModelSerializer):
-    """Serializer برای زمان‌بندی خدمت"""
     breaks = ScheduleBreakSerializer(many=True, required=False, default=list)
     service_name = serializers.CharField(source='service.name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
-    team_member_name = serializers.CharField(
-        source='team_member.name', read_only=True, default=None
-    )
+    # ❌ team_member_name حذف شد
 
     class Meta:
         model = ServiceSchedule
         fields = [
-            'id', 'business', 'service', 'team_member',
+            'id', 'business', 'service',
+            # ❌ team_member حذف شد
             'jy', 'jm', 'jd', 'date_key',
             'work_start', 'work_end', 'slot_duration',
             'breaks', 'slot_count',
-            'service_name', 'business_name', 'team_member_name',
+            'service_name', 'business_name',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['date_key', 'slot_count', 'created_at', 'updated_at']
 
     def validate(self, data):
-        # بررسی تاریخ جلالی
         jy = data.get('jy')
         jm = data.get('jm')
         jd = data.get('jd')
-
         if not all([jy, jm, jd]):
             raise serializers.ValidationError('تاریخ جلالی الزامی است')
-
         if not (1 <= jm <= 12):
             raise serializers.ValidationError('ماه جلالی باید بین ۱ تا ۱۲ باشد')
-
         if not (1 <= jd <= 31):
             raise serializers.ValidationError('روز جلالی باید بین ۱ تا ۳۱ باشد')
-
-        # بررسی ساعت‌ها
         work_start = data.get('work_start')
         work_end = data.get('work_end')
-
         if work_start and work_end and work_end <= work_start:
             raise serializers.ValidationError(
                 'ساعت پایان باید بعد از ساعت شروع باشد'
             )
-
         return data
 
     def validate_slot_duration(self, value):
@@ -74,21 +64,16 @@ class ServiceScheduleSerializer(serializers.ModelSerializer):
 
 
 class ServiceScheduleCreateSerializer(ServiceScheduleSerializer):
-    """Serializer برای ایجاد زمان‌بندی"""
-
     def create(self, validated_data):
         request = self.context.get('request')
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
-
         validated_data['business'] = business
         return super().create(validated_data)
 
 
 class ServiceScheduleUpdateSerializer(ServiceScheduleSerializer):
-    """Serializer برای بروزرسانی زمان‌بندی"""
-
     def update(self, instance, validated_data):
         request = self.context.get('request')
         if instance.business.owner != request.user:
@@ -97,6 +82,5 @@ class ServiceScheduleUpdateSerializer(ServiceScheduleSerializer):
 
 
 class WeeklyScheduleQuerySerializer(serializers.Serializer):
-    """Serializer برای کوئری زمان‌بندی هفتگی"""
     service_id = serializers.IntegerField(required=True)
     days_ahead = serializers.IntegerField(required=False, default=30, min_value=1, max_value=60)

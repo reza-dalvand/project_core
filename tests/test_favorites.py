@@ -9,6 +9,7 @@ from apps.favorites.models import FavoriteBusiness, FavoritePost
 
 @pytest.mark.django_db
 class TestFavoriteToggle:
+
     def test_toggle_favorite_business(
         self, authenticated_customer_client, approved_business
     ):
@@ -19,6 +20,22 @@ class TestFavoriteToggle:
         }, format='json')
         assert response.status_code == 200
         assert response.json()['data']['is_favorited'] is True
+
+    def test_toggle_remove(
+        self, authenticated_customer_client, approved_business
+    ):
+        url = reverse('favorites:favorite-toggle')
+        # بار اول: اضافه
+        authenticated_customer_client.post(url, {
+            'favorite_type': 'business',
+            'object_id': approved_business.id,
+        }, format='json')
+        # بار دوم: حذف
+        response = authenticated_customer_client.post(url, {
+            'favorite_type': 'business',
+            'object_id': approved_business.id,
+        }, format='json')
+        assert response.json()['data']['is_favorited'] is False
 
     def test_toggle_favorite_post(
         self, authenticated_customer_client, approved_business
@@ -38,8 +55,12 @@ class TestFavoriteToggle:
 
 @pytest.mark.django_db
 class TestFavoriteList:
+
     def test_favorite_list(
-        self, authenticated_customer_client, customer_user, approved_business
+        self,
+        authenticated_customer_client,
+        customer_user,
+        approved_business,
     ):
         FavoriteBusiness.objects.create(
             user=customer_user,
@@ -50,7 +71,10 @@ class TestFavoriteList:
         assert response.status_code == 200
 
     def test_favorite_count(
-        self, authenticated_customer_client, customer_user, approved_business
+        self,
+        authenticated_customer_client,
+        customer_user,
+        approved_business,
     ):
         FavoriteBusiness.objects.create(
             user=customer_user,

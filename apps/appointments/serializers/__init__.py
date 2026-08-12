@@ -1,17 +1,18 @@
 """
 Serializers برای نوبت‌ها — با تاریخ جلالی
+بدون تیم
 """
 from rest_framework import serializers
 from apps.appointments.models import Appointment
 
+
 class AppointmentCreateSerializer(serializers.Serializer):
-    """Serializer برای ایجاد نوبت"""
     service_id = serializers.IntegerField()
     jy = serializers.IntegerField()
     jm = serializers.IntegerField()
     jd = serializers.IntegerField()
-    time_slot = serializers.CharField(max_length=5)  # HH:MM
-    team_member_id = serializers.IntegerField(required=False, allow_null=True)
+    time_slot = serializers.CharField(max_length=5)
+    # ❌ team_member_id حذف شد
 
     def validate_time_slot(self, value):
         import re
@@ -25,27 +26,21 @@ class AppointmentCreateSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        # بررسی تاریخ جلالی
         jy = data.get('jy')
         jm = data.get('jm')
         jd = data.get('jd')
-
         if not (1 <= jm <= 12):
             raise serializers.ValidationError('ماه جلالی باید بین ۱ تا ۱۲ باشد')
         if not (1 <= jd <= 31):
             raise serializers.ValidationError('روز جلالی باید بین ۱ تا ۳۱ باشد')
-
         return data
 
 
 class AppointmentListSerializer(serializers.ModelSerializer):
-    """Serializer برای لیست نوبت‌ها"""
     service_name = serializers.CharField(source='service.name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
     business_logo = serializers.ImageField(source='business.logo', read_only=True)
-    team_member_name = serializers.CharField(
-        source='team_member.name', read_only=True, default=None
-    )
+    # ❌ team_member_name حذف شد
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     can_cancel = serializers.SerializerMethodField()
 
@@ -55,7 +50,7 @@ class AppointmentListSerializer(serializers.ModelSerializer):
             'id', 'jy', 'jm', 'jd', 'date_key', 'time_slot',
             'status', 'status_display',
             'service_name', 'business_name', 'business_logo',
-            'team_member_name',
+            # ❌ team_member_name حذف شد
             'total_price', 'deposit_amount', 'remaining_amount',
             'verification_code', 'is_trust_based', 'is_verified',
             'has_review',
@@ -69,7 +64,6 @@ class AppointmentListSerializer(serializers.ModelSerializer):
 
 
 class AppointmentDetailSerializer(AppointmentListSerializer):
-    """Serializer برای جزئیات کامل نوبت"""
     customer_phone = serializers.CharField(source='customer.phone', read_only=True)
     customer_name = serializers.SerializerMethodField()
 
@@ -84,7 +78,6 @@ class AppointmentDetailSerializer(AppointmentListSerializer):
 
 
 class CancelAppointmentSerializer(serializers.Serializer):
-    """Serializer برای لغو نوبت"""
     reason_text = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -94,7 +87,6 @@ class CancelAppointmentSerializer(serializers.Serializer):
 
 
 class VerifyServiceCodeSerializer(serializers.Serializer):
-    """Serializer برای تایید کد خدمت"""
     code = serializers.CharField(max_length=4, min_length=4)
 
     def validate_code(self, value):

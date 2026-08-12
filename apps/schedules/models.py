@@ -1,8 +1,8 @@
 """
 زمان‌بندی و ساعات کاری — با تاریخ جلالی
+هر کسب‌وکار = ۱ نفر (بدون تیم)
 """
 from django.db import models
-
 from apps.core.models import BaseModel
 
 
@@ -21,20 +21,12 @@ class ServiceSchedule(BaseModel):
         related_name='schedules',
         verbose_name='خدمت',
     )
-    team_member = models.ForeignKey(
-        'businesses.BusinessTeamMember',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='schedules',
-        verbose_name='عضو تیم',
-    )
-
+    
     # ═══════════ تاریخ جلالی ═══════════
     jy = models.IntegerField('سال جلالی')
     jm = models.IntegerField('ماه جلالی (1-12)')
     jd = models.IntegerField('روز جلالی')
-    date_key = models.CharField('کلید تاریخ', max_length=10)  # jy/jm/jd
+    date_key = models.CharField('کلید تاریخ', max_length=10)
 
     # ═══════════ ساعات کاری ═══════════
     work_start = models.TimeField('ساعت شروع')
@@ -55,6 +47,7 @@ class ServiceSchedule(BaseModel):
         db_table = 'service_schedules'
         verbose_name = '🕐 زمان‌بندی خدمت'
         verbose_name_plural = '🕐 زمان‌بندی‌های خدمات'
+        # ✅ صحیح: فقط یک schedule برای هر خدمت در هر روز
         unique_together = ['service', 'date_key']
         ordering = ['jy', 'jm', 'jd']
 
@@ -62,20 +55,23 @@ class ServiceSchedule(BaseModel):
         return f'{self.business.name} - {self.service.name} - {self.date_key}'
 
     def save(self, *args, **kwargs):
-        # محاسبه date_key
         self.date_key = f'{self.jy}/{self.jm:02d}/{self.jd:02d}'
 
-        # محاسبه تعداد اسلات‌ها
         if self.work_start and self.work_end and self.slot_duration > 0:
             start_minutes = self.work_start.hour * 60 + self.work_start.minute
             end_minutes = self.work_end.hour * 60 + self.work_end.minute
             total_minutes = end_minutes - start_minutes
 
-            # کسر استراحت‌ها
             for break_time in self.breaks:
                 try:
-                    break_start = int(break_time['start'].split(':')[0]) * 60 + int(break_time['start'].split(':')[1])
-                    break_end = int(break_time['end'].split(':')[0]) * 60 + int(break_time['end'].split(':')[1])
+                    break_start = (
+                        int(break_time['start'].split(':')[0]) * 60
+                        + int(break_time['start'].split(':')[1])
+                    )
+                    break_end = (
+                        int(break_time['end'].split(':')[0]) * 60
+                        + int(break_time['end'].split(':')[1])
+                    )
                     total_minutes -= (break_end - break_start)
                 except (KeyError, ValueError, IndexError):
                     pass

@@ -1,5 +1,5 @@
 """
-کسب‌وکارها — با PostGIS
+کسب‌وکارها — بدون تیم (هر کسب‌وکار = ۱ نفر)
 """
 import secrets
 from django.db import models, transaction
@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D
 from apps.core.models import BaseModel
 
 
@@ -91,7 +90,6 @@ class Business(BaseModel):
         null=True,
         blank=True,
         geography=True,
-        help_text='موقعیت جغرافیایی به فرمت PostGIS',
     )
 
     # ═══════════ وضعیت تایید ═══════════
@@ -148,21 +146,18 @@ class Business(BaseModel):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        """ذخیره با تولید slug و booking_slug و به‌روزرسانی location"""
-
-        # ═══ به‌روزرسانی location از lat/lng ═══
+        # به‌روزرسانی location از lat/lng
         if self.latitude is not None and self.longitude is not None:
             self.location = Point(
-                float(self.longitude),  # longitude اول
-                float(self.latitude),   # latitude دوم
+                float(self.longitude),
+                float(self.latitude),
                 srid=4326,
             )
         elif self.location is not None:
-            # اگر location هست ولی lat/lng نیست، از location بخوان
             self.latitude = self.location.y
             self.longitude = self.location.x
 
-        # ═══ تولید booking_slug ═══
+        # تولید booking_slug
         if not self.booking_slug:
             base_slug = slugify(self.name, allow_unicode=True)[:50]
             slug = base_slug
@@ -187,12 +182,12 @@ class Business(BaseModel):
         if self.location is None:
             return None
         user_point = Point(float(user_lng), float(user_lat), srid=4326)
-        # distance با geography=True به متر برمی‌گردد
         return self.location.distance(user_point)
 
     @classmethod
     def nearby(cls, lat, lng, radius_km=10):
-        """دریافت کسب‌وکارهای نزدیک — با PostGIS"""
+        """دریافت کسب‌وکارهای نزدیک"""
+        from django.contrib.gis.measure import D
         point = Point(float(lng), float(lat), srid=4326)
         return cls.objects.filter(
             location__distance_lte=(point, D(km=radius_km)),
@@ -229,28 +224,3 @@ class BusinessGallery(BaseModel):
             raise ValidationError('حداکثر ۳ تصویر مجاز است')
 
 
-class BusinessTeamMember(BaseModel):
-    """اعضای تیم کسب‌وکار"""
-    business = models.ForeignKey(
-        Business,
-        on_delete=models.CASCADE,
-        related_name='team_members',
-        verbose_name='کسب‌وکار',
-    )
-    name = models.CharField('نام', max_length=100)
-    phone = models.CharField('شماره تماس', max_length=11)
-    services = models.ManyToManyField(
-        'services.Service',
-        blank=True,
-        related_name='team_members',
-        verbose_name='خدمات',
-    )
-
-    class Meta:
-        db_table = 'business_team_members'
-        verbose_name = '👤 عضو تیم'
-        verbose_name_plural = '👤 اعضای تیم'
-        unique_together = ['business', 'phone']
-
-    def __str__(self):
-        return f'{self.business.name} - {self.name}'

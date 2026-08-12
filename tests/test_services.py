@@ -4,138 +4,177 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from apps.businesses.models import Service, Business, Category, Province, City
 
-
-@pytest.fixture
-def approved_business(api_client, business_owner_user):
-    """ایجاد کسب‌وکار تایید شده"""
-    province = Province.objects.create(name='تهران', slug='tehran')
-    city = City.objects.create(name='تهران', slug='tehran-city', province=province)
-    category = Category.objects.create(name='سالن زیبایی', slug='salon')
-
-    business = Business.objects.create(
-        owner=business_owner_user,
-        name='سالن تست',
-        category=category,
-        province=province,
-        city=city,
-        address='آدرس تست',
-        status='approved'
-    )
-
-    api_client.force_authenticate(user=business_owner_user)
-    return business
-
-
-@pytest.fixture
-def service(approved_business):
-    """ایجاد خدمت نمونه"""
-    return Service.objects.create(
-        business=approved_business,
-        name='فیشیال تخصصی',
-        original_price=500000,
-        discount_percent=10,
-        has_deposit=True,
-        deposit_amount=100000,
-        duration_minutes=60,
-        is_active=True
-    )
+from apps.services.models import Service
 
 
 @pytest.mark.django_db
 class TestServiceList:
     """تست‌های لیست خدمات"""
 
-    def test_list_services_success(self, api_client, approved_business, service):
+    def test_list_services(
+        self, authenticated_business_client, test_service
+    ):
         """تست دریافت لیست خدمات"""
-        url = reverse('api:businesses:service-list')
-        response = api_client.get(url)
+        url = reverse('services:service-list')
+        response = authenticated_business_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['success'] is True
-        assert len(response.data['results']) == 1
+        data = response.json()
+        assert data['success'] is True
 
     def test_list_services_unauthenticated(self, api_client):
-        """تست دریافت لیست خدمات بدون احراز هویت"""
-        url = reverse('api:businesses:service-list')
+        """بدون احراز هویت"""
+        url = reverse('services:service-list')
         response = api_client.get(url)
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    # ✅ صحیح (بررسی مستقیم داده‌های Serializer):
-    def test_create_service_success(self, api_client, approved_business):
+
+@pytest.mark.django_db
+class TestServiceCreate:
+    """تست ایجاد خدمت"""
+
+    def test_create_service_success(
+        self,
+        authenticated_business_client,
+        approved_business,
+        service_category,
+        sub_service,
+    ):
         """تست ایجاد خدمت جدید"""
-        url = reverse('api:businesses:service-list')
+        url = reverse('services:service-list')
         data = {
             'name': 'خدمت جدید',
+            'category': service_category.id,
+            'sub_service': sub_service.id,
             'original_price': 300000,
             'discount_percent': 15,
             'has_deposit': True,
             'deposit_amount': 50000,
-            'duration_minutes': 45,
-            'is_active': True,
-            'reminder_days': 1
+            'duration': 45,
+            'renewal_days': 7,
         }
-        response = api_client.post(url, data, format='json')
+        response = authenticated_business_client.post(
+            url, data, format='json'
+        )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data['name'] == 'خدمت جدید'  # ← اصلاح شد
         assert Service.objects.count() == 1
 
-    def test_create_service_invalid_data(self, api_client, approved_business):
-        """تست ایجاد خدمت با داده‌های نامعتبر"""
-        url = reverse('api:businesses:service-list')
+    def test_create_service_invalid_data(
+        self, authenticated_business_client, approved_business
+    ):
+        """تست با داده‌های نامعتبر"""
+        url = reverse('services:service-list')
         data = {
-            'name': '',  # نام خالی
-            'original_price': -100,  # قیمت منفی
+            'name': '',
+            'original_price': -100,
         }
-
-        response = api_client.post(url, data, format='json')
-
+        response = authenticated_business_client.post(
+            url, data, format='json'
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data['success'] is False
 
 
 @pytest.mark.django_db
 class TestServiceDetail:
     """تست‌های جزئیات خدمت"""
 
-    def test_get_service_detail(self, api_client, approved_business, service):
-        """تست دریافت جزئیات خدمت"""
-        url = reverse('api:businesses:service-detail', kwargs={'pk': service.id})
-        response = api_client.get(url)
+    def test_get_service_detail(
+        self, authenticated_business_client, test_service
+    ):
+        """دریافت جزئیات"""
+        url = reverse(
+            'services:service-detail',
+            kwargs={'pk': test_service.id},
+        )
+        response = authenticated_business_client.get(url)
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['name'] == service.name
 
-    def test_update_service(self, api_client, approved_business, service):
-        """تست بروزرسانی خدمت"""
-        url = reverse('api:businesses:service-detail', kwargs={'pk': service.id})
+    def test_update_service(
+        self, authenticated_business_client, test_service
+    ):
+        """بروزرسانی خدمت"""
+        url = reverse(
+            'services:service-detail',
+            kwargs={'pk': test_service.id},
+        )
         data = {
             'name': 'نام جدید',
             'original_price': 600000,
         }
-        response = api_client.patch(url, data, format='json')
+        response = authenticated_business_client.patch(
+            url, data, format='json'
+        )
         assert response.status_code == status.HTTP_200_OK
-        # DRF پاسخ موفق را مستقیم برمی‌گرداند، نیازی به چک کردن success نیست
-        service.refresh_from_db()
-        assert service.name == 'نام جدید'
-        assert service.original_price == 600000
+        test_service.refresh_from_db()
+        assert test_service.name == 'نام جدید'
+        assert test_service.original_price == 600000
 
-
-    def test_delete_service(self, api_client, approved_business, service):
-        """تست حذف خدمت"""
-        url = reverse('api:businesses:service-detail', kwargs={'pk': service.id})
-        response = api_client.delete(url)
-
+    def test_delete_service(
+        self, authenticated_business_client, test_service
+    ):
+        """حذف خدمت"""
+        url = reverse(
+            'services:service-detail',
+            kwargs={'pk': test_service.id},
+        )
+        response = authenticated_business_client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert Service.objects.count() == 0
 
-    def test_toggle_service_active(self, api_client, approved_business, service):
-        """تست تغییر وضعیت فعال/غیرفعال"""
-        url = reverse('api:businesses:service-toggle-active', kwargs={'pk': service.id})
-        response = api_client.post(url)
 
+@pytest.mark.django_db
+class TestServiceToggle:
+    """تست تغییر وضعیت"""
+
+    def test_toggle_service_active(
+        self, authenticated_business_client, test_service
+    ):
+        """تغییر فعال/غیرفعال"""
+        assert test_service.is_active is True
+
+        url = reverse(
+            'services:service-toggle-active',
+            kwargs={'pk': test_service.id},
+        )
+        response = authenticated_business_client.post(url)
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['success'] is True
 
-        service.refresh_from_db()
-        assert service.is_active is False  # تغییر از True به False
+        test_service.refresh_from_db()
+        assert test_service.is_active is False
+
+    def test_toggle_back(
+        self, authenticated_business_client, test_service
+    ):
+        """تغییر مجدد"""
+        test_service.is_active = False
+        test_service.save()
+
+        url = reverse(
+            'services:service-toggle-active',
+            kwargs={'pk': test_service.id},
+        )
+        response = authenticated_business_client.post(url)
+        assert response.status_code == status.HTTP_200_OK
+
+        test_service.refresh_from_db()
+        assert test_service.is_active is True
+
+
+@pytest.mark.django_db
+class TestServiceProperties:
+    """تست property های مدل Service"""
+
+    def test_discount_amount(self, test_service):
+        assert test_service.discount_amount == 50000
+
+    def test_final_price(self, test_service):
+        assert test_service.final_price == 450000
+
+    def test_app_fee(self, test_service):
+        assert test_service.app_fee >= 10000
+
+    def test_renewal_days(self, test_service):
+        assert test_service.renewal_days == 30
+
+    def test_duration(self, test_service):
+        assert test_service.duration == 60

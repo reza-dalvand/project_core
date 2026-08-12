@@ -97,28 +97,23 @@ class VerifyOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         phone = serializer.validated_data['phone']
         code = serializer.validated_data['code']
 
         try:
             OTPService.verify_otp(phone, code)
 
-            # پیدا کردن یا ساخت کاربر — بدون role
             user, is_new_user = User.objects.get_or_create(
                 phone=phone,
                 defaults={'is_verified': True},
             )
-
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
 
-            # بروزرسانی last_login
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
-            # ایجاد UserDevice
             device_info = get_device_info(request)
             device, _ = UserDevice.objects.update_or_create(
                 user=user,
@@ -131,19 +126,21 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 },
             )
 
-            # تولید JWT Token
+            # ✅ تولید JWT Token — اصلاح‌شده
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
-            refresh.access_token['user_id'] = user.id
-            refresh.access_token['is_verified'] = user.is_verified
+
+            access_token = refresh.access_token
+            access_token['user_id'] = user.id
+            access_token['is_verified'] = user.is_verified
 
             access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 
             return self.success_response(
                 data={
                     'is_new_user': is_new_user,
-                    'access_token': str(refresh.access_token),
+                    'access_token': str(access_token),
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
                     'expires_in': int(access_lifetime.total_seconds()),

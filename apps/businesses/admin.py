@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Business, BusinessGallery, BusinessTeamMember
+from .models import Business, BusinessGallery
+# ❌ BusinessTeamMember حذف شد
 
 
 class BusinessGalleryInline(admin.TabularInline):
@@ -8,9 +9,7 @@ class BusinessGalleryInline(admin.TabularInline):
     max_num = 3
 
 
-class BusinessTeamMemberInline(admin.TabularInline):
-    model = BusinessTeamMember
-    extra = 2
+# ❌ BusinessTeamMemberInline حذف شد
 
 
 @admin.register(Business)
@@ -22,8 +21,7 @@ class BusinessAdmin(admin.ModelAdmin):
     list_filter = ['status', 'is_vip', 'category', 'province']
     search_fields = ['name', 'owner__phone', 'owner__first_name', 'owner__last_name']
     readonly_fields = ['booking_slug', 'rating', 'reviews_count', 'booking_link_clicks', 'booking_link_bookings']
-    inlines = [BusinessGalleryInline, BusinessTeamMemberInline]
-
+    inlines = [BusinessGalleryInline]  # ❌ فقط gallery
     fieldsets = (
         ('🏪 اطلاعات پایه', {
             'fields': ('owner', 'name', 'category', 'province', 'city', 'address', 'phone', 'working_hours', 'about'),
@@ -66,8 +64,4 @@ class BusinessGalleryAdmin(admin.ModelAdmin):
     list_filter = ['business']
 
 
-@admin.register(BusinessTeamMember)
-class BusinessTeamMemberAdmin(admin.ModelAdmin):
-    list_display = ['name', 'business', 'phone']
-    list_filter = ['business']
-    search_fields = ['name', 'phone']
+# ❌ BusinessTeamMemberAdmin حذف شد

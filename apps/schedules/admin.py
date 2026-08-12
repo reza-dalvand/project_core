@@ -5,7 +5,7 @@ from .models import ServiceSchedule
 @admin.register(ServiceSchedule)
 class ServiceScheduleAdmin(admin.ModelAdmin):
     list_display = [
-        'business', 'service', 'team_member',
+        'business', 'service',
         'date_key', 'work_start', 'work_end',
         'slot_duration', 'slot_count',
     ]

@@ -1,13 +1,12 @@
 """
 نوبت‌ها و رزرو — با تاریخ جلالی
+بدون تیم
 """
 import random
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-
 from apps.core.models import BaseModel
-
 
 
 class Appointment(BaseModel):
@@ -38,20 +37,14 @@ class Appointment(BaseModel):
         related_name='appointments',
         verbose_name='مشتری',
     )
-    team_member = models.ForeignKey(
-        'businesses.BusinessTeamMember',
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        verbose_name='عضو تیم',
-    )
+    # ❌ team_member حذف شد
 
     # ═══════════ تاریخ و ساعت (جلالی) ═══════════
     jy = models.IntegerField('سال جلالی')
     jm = models.IntegerField('ماه جلالی')
     jd = models.IntegerField('روز جلالی')
     date_key = models.CharField('کلید تاریخ', max_length=10)
-    time_slot = models.TimeField('ساعت نوبت')  # HH:MM
+    time_slot = models.TimeField('ساعت نوبت')
 
     # ═══════════ وضعیت ═══════════
     status = models.CharField(
@@ -98,24 +91,16 @@ class Appointment(BaseModel):
         return f'{self.customer.phone} - {self.service.name} ({self.date_key})'
 
     def save(self, *args, **kwargs):
-        # محاسبه date_key
         self.date_key = f'{self.jy}/{self.jm:02d}/{self.jd:02d}'
-
-        # تولید کد تایید
         if not self.verification_code and self.status == self.Status.RESERVED:
             self.verification_code = self.generate_verification_code()
-
-        # محاسبه مبلغ باقی‌مانده
         self.remaining_amount = self.total_price - self.deposit_amount
-
         super().save(*args, **kwargs)
 
     def generate_verification_code(self):
-        """تولید کد تایید ۴ رقمی"""
         return ''.join([str(random.randint(0, 9)) for _ in range(4)])
 
     def cancel_by_customer(self, reason=''):
-        """لغو توسط مشتری — با استرداد خودکار"""
         from apps.payments.services import process_refund
         self.status = self.Status.CANCELLED_BY_CUSTOMER
         self.cancellation_reason = reason
@@ -125,7 +110,6 @@ class Appointment(BaseModel):
             process_refund(self)
 
     def cancel_by_salon(self, reason=''):
-        """لغو توسط سالن — استرداد کامل"""
         from apps.payments.services import process_refund
         self.status = self.Status.CANCELLED_BY_SALON
         self.cancellation_reason = reason

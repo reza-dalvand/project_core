@@ -10,43 +10,13 @@ from django.utils import timezone
 from apps.reviews.models import Review
 from apps.appointments.models import Appointment
 
+from apps.core.exceptions import (
+    ReviewException,
+    ReviewAlreadyExistsException,
+    AppointmentNotCompletedException,
+)
+
 logger = logging.getLogger(__name__)
-
-
-class ReviewException(Exception):
-    """Base exception for review errors"""
-    default_message = 'خطا در ثبت نظر'
-    default_code = 'REVIEW_ERROR'
-
-    def __init__(self, message=None, code=None, details=None):
-        self.message = message or self.default_message
-        self.code = code or self.default_code
-        self.details = details or {}
-        super().__init__(self.message)
-
-    def as_response(self):
-        from rest_framework.response import Response
-        return Response(
-            {
-                'success': False,
-                'error': {
-                    'code': self.code,
-                    'message': self.message,
-                    'details': self.details,
-                }
-            },
-            status=400,
-        )
-
-
-class ReviewAlreadyExistsException(ReviewException):
-    default_message = 'شما قبلاً برای این نوبت نظر ثبت کرده‌اید'
-    default_code = 'REVIEW_ALREADY_EXISTS'
-
-
-class AppointmentNotCompletedException(ReviewException):
-    default_message = 'فقط برای نوبت‌های انجام‌شده می‌توانید نظر ثبت کنید'
-    default_code = 'APPOINTMENT_NOT_COMPLETED'
 
 
 class ReviewService:

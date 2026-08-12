@@ -1,5 +1,5 @@
 """
-Pytest fixtures مشترک — نسخه جدید بدون role
+Pytest fixtures مشترک — بدون role
 هر کاربر می‌تواند یک کسب‌وکار داشته باشد
 """
 import pytest
@@ -11,6 +11,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
+
+# ═══════════════════════════════════════════════
+#   Clients
+# ═══════════════════════════════════════════════
 
 @pytest.fixture
 def api_client():
@@ -59,7 +63,9 @@ def admin_user(db):
 def authenticated_customer_client(api_client, customer_user):
     """API Client با کاربر مشتری"""
     refresh = RefreshToken.for_user(customer_user)
-    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    api_client.credentials(
+        HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}'
+    )
     api_client.user = customer_user
     return api_client
 
@@ -68,7 +74,9 @@ def authenticated_customer_client(api_client, customer_user):
 def authenticated_business_client(api_client, business_owner_user):
     """API Client با صاحب کسب‌وکار"""
     refresh = RefreshToken.for_user(business_owner_user)
-    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    api_client.credentials(
+        HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}'
+    )
     api_client.user = business_owner_user
     return api_client
 
@@ -77,18 +85,26 @@ def authenticated_business_client(api_client, business_owner_user):
 def authenticated_admin_client(api_client, admin_user):
     """API Client با ادمین"""
     refresh = RefreshToken.for_user(admin_user)
-    api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    api_client.credentials(
+        HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}'
+    )
     api_client.user = admin_user
     return api_client
 
 
+# ═══════════════════════════════════════════════
+#   Mock Services
+# ═══════════════════════════════════════════════
+
 @pytest.fixture
 def mock_otp(monkeypatch):
     """Mock کردن OTP Service"""
+
     class MockOTPService:
         @classmethod
         def send_otp(cls, phone, purpose=None, user=None):
             ...
+
         @classmethod
         def verify_otp(cls, phone, code, purpose=None):
             ...
@@ -106,6 +122,7 @@ def mock_otp(monkeypatch):
 @pytest.fixture
 def mock_shahkar(monkeypatch):
     """Mock کردن Shahkar Service"""
+
     class MockShahkar:
         @classmethod
         def verify(cls, national_id, phone, full_name=None):
@@ -116,12 +133,14 @@ def mock_shahkar(monkeypatch):
             }
 
     from apps.accounts.services import shahkar_service
-    monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
+    monkeypatch.setattr(
+        shahkar_service, 'ShahkarService', MockShahkar
+    )
     return MockShahkar
 
 
 # ═══════════════════════════════════════════════
-#   Fixtures برای ساختار جدید
+#   Lookup Data
 # ═══════════════════════════════════════════════
 
 @pytest.fixture
@@ -170,8 +189,14 @@ def city(province):
     return City.objects.create(name='تهران', province=province)
 
 
+# ═══════════════════════════════════════════════
+#   Business & Service
+# ═══════════════════════════════════════════════
+
 @pytest.fixture
-def approved_business(business_owner_user, business_category, province, city):
+def approved_business(
+    business_owner_user, business_category, province, city
+):
     """کسب‌وکار تایید شده"""
     from apps.businesses.models import Business
     return Business.objects.create(
@@ -202,6 +227,10 @@ def test_service(approved_business, service_category, sub_service):
         renewal_days=30,
     )
 
+
+# ═══════════════════════════════════════════════
+#   Schedule & Appointment
+# ═══════════════════════════════════════════════
 
 @pytest.fixture
 def test_schedule(approved_business, test_service):

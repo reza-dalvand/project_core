@@ -133,12 +133,20 @@ class SlotService:
         # ۵. حذف اسلات‌های گذشته (اگر امروز است)
         today = jdatetime.date.today()
         if jy == today.jyear and jm == today.jmonth and jd == today.jday:
-            now = datetime.now().time()
-            min_time = (
-                datetime.combine(date.today(), now) + timedelta(minutes=30)
-            ).time()
-            slots = [s for s in slots if s['start_time'] >= min_time]
+            # ✅ استفاده از timezone-aware
+            from django.utils import timezone as dj_timezone
+            now_tehran = dj_timezone.now().astimezone()
+            current_time = now_tehran.time()
 
+            # حداقل ۳۰ دقیقه از الان
+            min_datetime = (
+                datetime.combine(date.today(), current_time)
+                + timedelta(minutes=30)
+            )
+            min_time = min_datetime.time()
+
+            slots = [s for s in slots if s['start_time'] >= min_time]
+            
         # فرمت‌دهی خروجی
         result = []
         for slot in slots:

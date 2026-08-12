@@ -13,11 +13,11 @@ class AppointmentAdmin(admin.ModelAdmin):
     search_fields = ['customer__phone', 'business__name', 'service__name']
     readonly_fields = ['verification_code', 'date_key', 'remaining_amount']
     date_hierarchy = 'created_at'
-
     fieldsets = (
         ('📅 اطلاعات نوبت', {
-            'fields': ('business', 'service', 'customer', 'team_member', 'jy', 'jm', 'jd', 'date_key', 'time_slot', 'status'),
+            'fields': ('business', 'service', 'customer', 'jy', 'jm', 'jd', 'date_key', 'time_slot', 'status'),
         }),
+        # ❌ team_member حذف شد
         ('✅ تایید', {
             'fields': ('verification_code', 'is_trust_based', 'is_verified', 'verified_at'),
         }),

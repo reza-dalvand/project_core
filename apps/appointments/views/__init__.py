@@ -48,7 +48,6 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 jm=serializer.validated_data['jm'],
                 jd=serializer.validated_data['jd'],
                 time_slot_str=serializer.validated_data['time_slot'],
-                team_member_id=serializer.validated_data.get('team_member_id'),
             )
 
             return self.success_response(

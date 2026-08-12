@@ -1,40 +1,27 @@
 """
 Serializers مربوط به ثبت و مدیریت کسب‌وکار
-هر کاربر فقط یک کسب‌وکار می‌تواند داشته باشد
+هر کاربر فقط یک کسب‌وکار — بدون تیم
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-
-from apps.businesses.models import Business, BusinessGallery, BusinessTeamMember
+from apps.businesses.models import Business, BusinessGallery
+# ❌ BusinessTeamMember حذف شد
 from apps.categories.serializers import BusinessCategorySerializer
 from apps.locations.serializers import ProvinceSerializer, CitySerializer
-from apps.core.validators import validate_national_id
 
 User = get_user_model()
 
 
 class BusinessGallerySerializer(serializers.ModelSerializer):
-    """Serializer برای گالری تصاویر"""
-
     class Meta:
         model = BusinessGallery
         fields = ['id', 'image', 'sort_order']
 
 
-class BusinessTeamMemberSerializer(serializers.ModelSerializer):
-    """Serializer برای اعضای تیم"""
-    services_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = BusinessTeamMember
-        fields = ['id', 'name', 'phone', 'services_count']
-
-    def get_services_count(self, obj):
-        return obj.services.filter(is_active=True).count()
+# ❌ BusinessTeamMemberSerializer حذف شد
 
 
 class BusinessCreateSerializer(serializers.ModelSerializer):
-    """Serializer برای ایجاد کسب‌وکار"""
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
     owner_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)
     logo = serializers.ImageField(required=False, allow_null=True, write_only=True)
@@ -48,9 +35,7 @@ class BusinessCreateSerializer(serializers.ModelSerializer):
             'cover_image', 'owner_photo', 'logo',
             'booking_slug', 'status', 'created_at',
         ]
-        read_only_fields = [
-            'id', 'booking_slug', 'status', 'created_at',
-        ]
+        read_only_fields = ['id', 'booking_slug', 'status', 'created_at']
 
     def validate_category(self, value):
         if not value.is_active:
@@ -64,32 +49,24 @@ class BusinessCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         user = self.context['request'].user
-
-        # بررسی اینکه کاربر قبلاً کسب‌وکار نداشته باشد
         if user.businesses.filter(is_active=True).exists():
             raise serializers.ValidationError({
                 'non_field_errors': ['شما قبلاً یک کسب‌وکار ثبت کرده‌اید']
             })
-
-        # بررسی تایید کد ملی کاربر
         if not user.is_national_id_verified:
             raise serializers.ValidationError({
                 'non_field_errors': ['ابتدا باید کد ملی خود را تایید کنید']
             })
-
         return data
 
     def create(self, validated_data):
         cover_image = validated_data.pop('cover_image', None)
         owner_photo = validated_data.pop('owner_photo', None)
         logo = validated_data.pop('logo', None)
-
         user = self.context['request'].user
         validated_data['owner'] = user
         validated_data['status'] = Business.Status.PENDING
-
         business = Business.objects.create(**validated_data)
-
         if cover_image:
             business.cover_image = cover_image
         if owner_photo:
@@ -98,18 +75,16 @@ class BusinessCreateSerializer(serializers.ModelSerializer):
             business.logo = logo
         if any([cover_image, owner_photo, logo]):
             business.save()
-
         return business
 
 
 class BusinessDetailSerializer(serializers.ModelSerializer):
-    """Serializer برای نمایش جزئیات کسب‌وکار"""
     category = BusinessCategorySerializer(read_only=True)
     province = ProvinceSerializer(read_only=True)
     city = CitySerializer(read_only=True)
     owner_name = serializers.SerializerMethodField()
     gallery = BusinessGallerySerializer(many=True, read_only=True)
-    team_members = BusinessTeamMemberSerializer(many=True, read_only=True)
+    # ❌ team_members حذف شد
 
     class Meta:
         model = Business
@@ -121,7 +96,8 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'status', 'is_vip', 'vip_expires_at',
             'rating', 'reviews_count',
             'booking_slug', 'booking_link_clicks',
-            'gallery', 'team_members',
+            'gallery',
+            # ❌ team_members حذف شد
             'owner_name', 'created_at',
         ]
 
@@ -130,7 +106,6 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
 
 
 class BusinessUpdateSerializer(serializers.ModelSerializer):
-    """Serializer برای بروزرسانی کسب‌وکار"""
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
     owner_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)
     logo = serializers.ImageField(required=False, allow_null=True, write_only=True)
@@ -148,24 +123,19 @@ class BusinessUpdateSerializer(serializers.ModelSerializer):
         cover_image = validated_data.pop('cover_image', None)
         owner_photo = validated_data.pop('owner_photo', None)
         logo = validated_data.pop('logo', None)
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         if cover_image:
             instance.cover_image = cover_image
         if owner_photo:
             instance.owner_photo = owner_photo
         if logo:
             instance.logo = logo
-
         instance.save()
         return instance
 
 
 class BusinessBankInfoSerializer(serializers.ModelSerializer):
-    """Serializer برای اطلاعات بانکی کسب‌وکار"""
-
     class Meta:
         model = Business
         fields = [
@@ -195,7 +165,6 @@ class BusinessBankInfoSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        # بررسی تطابق نام صاحب حساب با نام تایید شده
         user = self.context['request'].user
         if user.verified_name and data.get('bank_owner_name'):
             if data['bank_owner_name'].strip() != user.verified_name.strip():
@@ -213,7 +182,6 @@ class BusinessBankInfoSerializer(serializers.ModelSerializer):
 
 
 class BusinessStatusSerializer(serializers.Serializer):
-    """Serializer برای وضعیت کسب‌وکار"""
     has_business = serializers.BooleanField()
     business_id = serializers.IntegerField(allow_null=True)
     status = serializers.CharField(allow_null=True)
@@ -223,7 +191,6 @@ class BusinessStatusSerializer(serializers.Serializer):
 
 
 class BusinessListSerializer(serializers.ModelSerializer):
-    """Serializer برای لیست کسب‌وکارها"""
     category_name = serializers.CharField(source='category.name', read_only=True)
     city_name = serializers.CharField(source='city.name', read_only=True)
 

@@ -48,9 +48,13 @@ class TestNotificationService:
         assert notification.body == 'متن تست'
         assert notification.is_read is False
 
-    def test_send_sms_notification(self, customer_user, sms_templates, settings):
+        # فقط این متد را اصلاح کنید:
+
+    def test_send_sms_notification(
+        self, customer_user, sms_templates, settings
+    ):
         """تست ارسال پیامک"""
-        # ✅ اضافه شد: غیرفعال کردن API Key واقعی برای استفاده از Mock داخلی
+        # ✅ غیرفعال کردن API Key برای استفاده از Mock
         settings.KAVENEGAR_API_KEY = ''
 
         result = NotificationService.send_sms(
@@ -60,7 +64,9 @@ class TestNotificationService:
             user=customer_user,
         )
         assert result['success'] is True
-        assert SMSLog.objects.filter(phone=customer_user.phone).count() == 1
+        assert SMSLog.objects.filter(
+            phone=customer_user.phone
+        ).count() == 1
 
 
     def test_mark_as_read(self, customer_user):

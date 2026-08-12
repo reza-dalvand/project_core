@@ -9,34 +9,10 @@ from django.utils import timezone
 
 from apps.payments.models import Transaction, Settlement
 from apps.core.utils import generate_tracking_code, generate_ref_number
+from apps.core.exceptions import PaymentException
 
 logger = logging.getLogger(__name__)
 
-
-class PaymentException(Exception):
-    """Base exception for payment errors"""
-    default_message = 'خطا در پرداخت'
-    default_code = 'PAYMENT_ERROR'
-
-    def __init__(self, message=None, code=None, details=None):
-        self.message = message or self.default_message
-        self.code = code or self.default_code
-        self.details = details or {}
-        super().__init__(self.message)
-
-    def as_response(self):
-        from rest_framework.response import Response
-        return Response(
-            {
-                'success': False,
-                'error': {
-                    'code': self.code,
-                    'message': self.message,
-                    'details': self.details,
-                }
-            },
-            status=400,
-        )
 
 
 class PaymentService:
