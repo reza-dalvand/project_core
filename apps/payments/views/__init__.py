@@ -7,6 +7,13 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
+
+from django.shortcuts import redirect
+from django.conf import settings
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+from apps.payments.services.payment_service import PaymentService, PaymentException
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
@@ -201,3 +208,63 @@ class SettlementListView(generics.ListAPIView, StandardResponseMixin):
         return Settlement.objects.filter(
             business=business
         ).order_by('-created_at')
+
+
+class PaymentCallbackView(APIView, StandardResponseMixin):
+    """Callback درگاه پرداخت"""
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='trackId', type=str, required=True),
+            OpenApiParameter(name='success', type=str, required=True),
+            OpenApiParameter(name='orderId', type=str, required=False),
+        ],
+        tags=['Payment'],
+        summary='Callback پرداخت',
+    )
+    def get(self, request):
+        track_id = request.query_params.get('trackId')
+        success = request.query_params.get('success')
+        order_id = request.query_params.get('orderId')
+
+        if not track_id or not order_id:
+            return self.error_response(
+                message='پارامترهای callback نامعتبر هستند',
+                code='INVALID_CALLBACK',
+            )
+
+        try:
+            tx = Transaction.objects.get(
+                id=order_id,
+                gateway_transaction_id=track_id,
+            )
+        except Transaction.DoesNotExist:
+            return self.error_response(
+                message='تراکنش یافت نشد',
+                code='TRANSACTION_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if success == '1':
+            try:
+                PaymentService.verify_payment(
+                    track_id=track_id,
+                    expected_amount=tx.amount,
+                )
+                return redirect(
+                    f'{settings.FRONTEND_URL}/payment/success'
+                    f'?tracking_code={tx.tracking_code}'
+                )
+            except Exception as e:
+                return redirect(
+                    f'{settings.FRONTEND_URL}/payment/failed'
+                    f'?tracking_code={tx.tracking_code}&reason={e.code if hasattr(e, "code") else "ERROR"}'
+                )
+
+        tx.status = Transaction.Status.FAILED
+        tx.save(update_fields=['status'])
+        return redirect(
+            f'{settings.FRONTEND_URL}/payment/failed'
+            f'?tracking_code={tx.tracking_code}&reason=cancelled'
+        )

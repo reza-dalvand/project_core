@@ -152,7 +152,7 @@ class PaymentService:
                 code='TRANSACTION_NOT_FOUND',
             )
 
-        if tx.status == Transaction.Status.BLOCKED:
+        if tx.ref_number:
             raise PaymentException(
                 message='این تراکنش قبلاً تایید شده است',
                 code='ALREADY_VERIFIED',

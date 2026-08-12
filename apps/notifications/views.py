@@ -1,6 +1,5 @@
 """
 Views برای نوتیفیکیشن‌ها - نسخه اصلاح شده
-✅ import ها به ابتدای فایل منتقل شدند
 """
 from django.db.models import Count
 from django.utils import timezone
@@ -27,6 +26,7 @@ class NotificationListView(ListAPIView, StandardResponseMixin):
     serializer_class = NotificationSerializer
     pagination_class = StandardResultsSetPagination
 
+    # ✅ extend_schema روی متد list قرار می‌گیرد نه get_queryset
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -45,6 +45,9 @@ class NotificationListView(ListAPIView, StandardResponseMixin):
         tags=['Notifications'],
         summary='لیست اعلان‌ها',
     )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         qs = Notification.objects.filter(
             user=self.request.user,
@@ -81,7 +84,6 @@ class NotificationCountView(APIView, StandardResponseMixin):
             .values('type')
             .annotate(count=Count('id'))
         )
-
         for item in type_counts:
             by_type[item['type']] = item['count']
 
@@ -106,7 +108,6 @@ class MarkAsReadView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = MarkAsReadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         notification_ids = serializer.validated_data.get('notification_ids')
 
         if notification_ids:

@@ -33,6 +33,7 @@ SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 THIRD_PARTY_APPS = [
     # ═══ Jazzmin باید اول از همه باشد ═══
     'jazzmin',
+
     # REST API
     'rest_framework',
     'rest_framework_simplejwt',
@@ -40,6 +41,7 @@ THIRD_PARTY_APPS = [
     'drf_spectacular',
     'django_filters',
     'corsheaders',
+
     # Utils
     'django_cleanup.apps.CleanupConfig',
     'django_ckeditor_5',
@@ -54,35 +56,46 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # ✅ GIS - PostGIS
+    'django.contrib.gis',
 ]
 
 LOCAL_APPS = [
     # Core
     'apps.core.apps.CoreConfig',
+
     # Auth
     'apps.accounts.apps.AccountsConfig',
+
     # Lookup Data
     'apps.categories.apps.CategoriesConfig',
     'apps.locations.apps.LocationsConfig',
+
     # Business
     'apps.businesses.apps.BusinessesConfig',
     'apps.services.apps.ServicesConfig',
     'apps.schedules.apps.SchedulesConfig',
     'apps.appointments.apps.AppointmentsConfig',
+
     # Financial
     'apps.payments.apps.PaymentsConfig',
+
     # Social
     'apps.reviews.apps.ReviewsConfig',
     'apps.portfolios.apps.PortfoliosConfig',
     'apps.explore.apps.ExploreConfig',
+
     # Ads
     'apps.ads.apps.AdsConfig',
     'apps.ads_management.apps.AdsManagementConfig',
+
     # Features
     'apps.reminders.apps.RemindersConfig',
     'apps.favorites.apps.FavoritesConfig',
     'apps.search.apps.SearchConfig',
     'apps.support.apps.SupportConfig',
+
     # System
     'apps.notifications.apps.NotificationsConfig',
     'apps.landing.apps.LandingConfig',
@@ -96,6 +109,7 @@ INSTALLED_APPS = THIRD_PARTY_APPS + DJANGO_APPS + LOCAL_APPS
 # ═══════════════════════════════════════════════
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ اضافه شد
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
@@ -184,8 +198,7 @@ DATABASES = {
     }
 }
 
-# GDAL Library Path (برای PostGIS)
-# در Docker یا سرور ایران ممکن است نیاز به تنظیم باشد
+# GDAL/GEOS Library Paths (اختیاری - اگر در مسیر پیش‌فرض نباشند)
 # GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='')
 # GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='')
 
@@ -193,6 +206,7 @@ DATABASES = {
 #   Custom User Model
 # ═══════════════════════════════════════════════
 AUTH_USER_MODEL = 'accounts.User'
+
 # ═══════════════════════════════════════════════
 #   Password Validation
 # ═══════════════════════════════════════════════
@@ -217,6 +231,7 @@ USE_TZ = True
 STATIC_URL = env('STATIC_URL', default='/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
 MEDIA_URL = env('MEDIA_URL', default='/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -297,6 +312,9 @@ ZIBAL_CALLBACK_URL = env(
     'ZIBAL_CALLBACK_URL',
     default='http://localhost:8000/api/v1/payments/callback/',
 )
+
+# ─── Frontend (PWA) ───
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 
 # Storage (Arvan Cloud S3)
 ARVAN_ACCESS_KEY = env('ARVAN_ACCESS_KEY', default='')
@@ -382,7 +400,6 @@ CKEDITOR_CONFIGS = {
 LANDING_ADMIN_URL = env('LANDING_ADMIN_URL', default='admin/')
 APP_ADMIN_URL = env('APP_ADMIN_URL', default='app-admin/')
 DASHBOARD_ADMIN_URL = env('DASHBOARD_ADMIN_URL', default='dashboard-admin/')
-
 LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 
@@ -493,7 +510,6 @@ JAZZMIN_UI_TWEAKS = {
 from celery.schedules import crontab
 
 CELERY_BEAT_SCHEDULE = {
-    # ─── یادآوری نوبت‌ها ───
     'daily-booking-reminders': {
         'task': 'apps.notifications.tasks.send_booking_reminders',
         'schedule': crontab(hour=9, minute=0),
@@ -502,12 +518,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.notifications.tasks.send_same_day_reminders',
         'schedule': crontab(minute=0),
     },
-    # ─── یادآوری تمدید ───
     'check-renewal-reminders': {
         'task': 'apps.reminders.tasks.check_renewal_reminders',
         'schedule': crontab(hour=8, minute=0),
     },
-    # ─── تسویه خودکار ───
     'auto-settle-appointments': {
         'task': 'apps.payments.tasks.auto_settle_completed_appointments',
         'schedule': crontab(minute=0),
@@ -516,22 +530,16 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.payments.tasks.process_pending_settlements',
         'schedule': crontab(minute=0, hour='*/6'),
     },
-    # ─── بررسی تراکنش‌ها ───
-    'check-expired-transactions': {
-        'task': 'apps.payments.tasks.check_expired_pending_transactions',
-        'schedule': crontab(minute='*/10'),
-    },
     'verify-unconfirmed-payments': {
-        'task': 'apps.payments.tasks.verify_unconfirmed_payments',
+        'task': 'apps.notifications.tasks.verify_unconfirmed_payments',
         'schedule': crontab(minute='*/5'),
     },
-    # ─── پاکسازی ───
     'cleanup-old-notifications': {
         'task': 'apps.notifications.tasks.cleanup_old_notifications',
         'schedule': crontab(hour=3, minute=0),
     },
     'cleanup-old-otp-codes': {
-        'task': 'apps.accounts.tasks.cleanup_old_otp_codes',
+        'task': 'apps.notifications.tasks.cleanup_old_otp_codes',
         'schedule': crontab(hour=4, minute=0),
     },
 }

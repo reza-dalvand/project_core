@@ -6,7 +6,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.shortcuts import get_object_or_404
-
+from django.db.models import Q
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
@@ -47,7 +47,7 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 jy=serializer.validated_data['jy'],
                 jm=serializer.validated_data['jm'],
                 jd=serializer.validated_data['jd'],
-                time_slot=serializer.validated_data['time_slot'],
+                time_slot_str=serializer.validated_data['time_slot'],
                 team_member_id=serializer.validated_data.get('team_member_id'),
             )
 

@@ -1,12 +1,14 @@
 """
-کسب‌وکارها
+کسب‌وکارها — با PostGIS
 """
 import secrets
 from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
-
+from django.contrib.gis.db import models as gis_models
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
 from apps.core.models import BaseModel
 
 
@@ -69,7 +71,7 @@ class Business(BaseModel):
         blank=True,
     )
 
-    # ═══════════ موقعیت جغرافیایی ═══════════
+    # ═══════════ موقعیت جغرافیایی (PostGIS) ═══════════
     latitude = models.DecimalField(
         'عرض جغرافیایی',
         max_digits=10,
@@ -84,20 +86,13 @@ class Business(BaseModel):
         null=True,
         blank=True,
     )
-
-    location_lat = models.DecimalField(        
-        'موقعیت PostGIS عرض',
+    location = gis_models.PointField(
+        'موقعیت جغرافیایی',
         null=True,
         blank=True,
-        geography=True
-    )  
-    location_lng = models.DecimalField(        
-        'موقعیت PostGIS طول',
-        null=True,
-        blank=True,
-        geography=True
-    ) 
-
+        geography=True,
+        help_text='موقعیت جغرافیایی به فرمت PostGIS',
+    )
 
     # ═══════════ وضعیت تایید ═══════════
     status = models.CharField(
@@ -153,7 +148,21 @@ class Business(BaseModel):
 
     @transaction.atomic
     def save(self, *args, **kwargs):
-        """ذخیره با تولید slug و booking_slug"""
+        """ذخیره با تولید slug و booking_slug و به‌روزرسانی location"""
+
+        # ═══ به‌روزرسانی location از lat/lng ═══
+        if self.latitude is not None and self.longitude is not None:
+            self.location = Point(
+                float(self.longitude),  # longitude اول
+                float(self.latitude),   # latitude دوم
+                srid=4326,
+            )
+        elif self.location is not None:
+            # اگر location هست ولی lat/lng نیست، از location بخوان
+            self.latitude = self.location.y
+            self.longitude = self.location.x
+
+        # ═══ تولید booking_slug ═══
         if not self.booking_slug:
             base_slug = slugify(self.name, allow_unicode=True)[:50]
             slug = base_slug
@@ -174,17 +183,26 @@ class Business(BaseModel):
         super().save(*args, **kwargs)
 
     def calculate_distance(self, user_lat, user_lng):
-        """محاسبه فاصله تا کاربر"""
-        from django.contrib.gis.geos import Point
-        user_point = Point(user_lng, user_lat, srid=4326)
-        if self.location:
-            return self.location.distance(user_point) * 1000  # متر
-        return None
+        """محاسبه فاصله تا کاربر (متر) — با PostGIS"""
+        if self.location is None:
+            return None
+        user_point = Point(float(user_lng), float(user_lat), srid=4326)
+        # distance با geography=True به متر برمی‌گردد
+        return self.location.distance(user_point)
+
+    @classmethod
+    def nearby(cls, lat, lng, radius_km=10):
+        """دریافت کسب‌وکارهای نزدیک — با PostGIS"""
+        point = Point(float(lng), float(lat), srid=4326)
+        return cls.objects.filter(
+            location__distance_lte=(point, D(km=radius_km)),
+            status=cls.Status.APPROVED,
+            is_active=True,
+        ).distance(point).order_by('distance')
 
 
 class BusinessGallery(BaseModel):
     """گالری تصاویر کسب‌وکار (حداکثر ۳ تصویر)"""
-
     business = models.ForeignKey(
         Business,
         on_delete=models.CASCADE,
@@ -207,13 +225,12 @@ class BusinessGallery(BaseModel):
         return f'{self.business.name} - تصویر {self.sort_order}'
 
     def clean(self):
-        if self.business.gallery.count() >= 3:
+        if self.pk is None and self.business.gallery.count() >= 3:
             raise ValidationError('حداکثر ۳ تصویر مجاز است')
 
 
 class BusinessTeamMember(BaseModel):
     """اعضای تیم کسب‌وکار"""
-
     business = models.ForeignKey(
         Business,
         on_delete=models.CASCADE,

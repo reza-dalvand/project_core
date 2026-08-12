@@ -5,15 +5,16 @@ from .base import *  # noqa
 
 DEBUG = True
 
-# ─── حذف gis در توسعه ───
-if 'django.contrib.gis' in INSTALLED_APPS:
-    INSTALLED_APPS.remove('django.contrib.gis')
-
-# ─── Database: SQLite برای توسعه ───
+# ─── Database: PostgreSQL + PostGIS ───
+# در توسعه هم از PostGIS استفاده می‌کنیم
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': env('DB_NAME', default='zibano'),
+        'USER': env('DB_USER', default='zibano'),
+        'PASSWORD': env('DB_PASSWORD', default=''),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
 }
 

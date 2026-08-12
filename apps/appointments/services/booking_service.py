@@ -225,22 +225,17 @@ class BookingService:
     @classmethod
     def regenerate_verification_code(cls, appointment: Appointment) -> str:
         """تولید مجدد کد تایید (هر ۵ دقیقه مجاز است)"""
-        if appointment.code_generated_at:
-            elapsed = timezone.now() - appointment.code_generated_at
+        if appointment.updated_at:
+            elapsed = timezone.now() - appointment.updated_at
             if elapsed.total_seconds() < 300:
                 remaining = int(300 - elapsed.total_seconds())
                 raise BookingException(
                     message=f'لطفاً {remaining} ثانیه صبر کنید',
                     code='CODE_REGENERATE_COOLDOWN',
                 )
-
         new_code = cls._generate_verification_code()
         appointment.verification_code = new_code
-        appointment.code_generated_at = timezone.now()
-        appointment.save(
-            update_fields=['verification_code', 'code_generated_at', 'updated_at']
-        )
-
+        appointment.save(update_fields=['verification_code', 'updated_at'])
         return new_code
 
     @classmethod
@@ -293,14 +288,14 @@ class BookingService:
         refund_amount = appointment.deposit_amount
 
         # اگر کمتر از ۲ ساعت مانده، جریمه کامل
+        # ✅ تبدیل date_key جلالی به میلادی برای محاسبه جریمه
         try:
-            apt_datetime = datetime.combine(
-                appointment.date_key_to_gregorian(),
-                appointment.time_slot,
-            )
+            parts = appointment.date_key.split('/')
+            jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
+            gregorian_date = jdatetime.date(jy, jm, jd).togregorian()
+            apt_datetime = datetime.combine(gregorian_date, appointment.time_slot)
             apt_datetime = timezone.make_aware(apt_datetime)
             hours_until = (apt_datetime - timezone.now()).total_seconds() / 3600
-
             if hours_until > 2:
                 penalty_amount = int(appointment.deposit_amount * 0.3)
                 refund_amount = appointment.deposit_amount - penalty_amount
@@ -310,27 +305,27 @@ class BookingService:
         except Exception:
             pass
 
-        # تغییر وضعیت نوبت
-        appointment.status = Appointment.Status.CANCELLED_BY_CUSTOMER
-        appointment.cancellation_reason = reason_text
-        appointment.cancelled_at = timezone.now()
-        appointment.save(update_fields=[
-            'status', 'cancellation_reason', 'cancelled_at', 'updated_at',
-        ])
+            # تغییر وضعیت نوبت
+            appointment.status = Appointment.Status.CANCELLED_BY_CUSTOMER
+            appointment.cancellation_reason = reason_text
+            appointment.cancelled_at = timezone.now()
+            appointment.save(update_fields=[
+                'status', 'cancellation_reason', 'cancelled_at', 'updated_at',
+            ])
 
-        # استرداد وجه
-        if refund_amount > 0 and appointment.deposit_amount > 0:
-            from apps.payments.services.payment_service import PaymentService
-            PaymentService.process_refund(
-                appointment=appointment,
-                refund_amount=refund_amount,
-                reason=f'لغو توسط مشتری (جریمه: {penalty_amount:,} تومان)',
+            # استرداد وجه
+            if refund_amount > 0 and appointment.deposit_amount > 0:
+                from apps.payments.services.payment_service import PaymentService
+                PaymentService.process_refund(
+                    appointment=appointment,
+                    refund_amount=refund_amount,
+                    reason=f'لغو توسط مشتری (جریمه: {penalty_amount:,} تومان)',
+                )
+
+            logger.info(
+                f"Appointment cancelled by customer: id={appointment.id}, "
+                f"refund={refund_amount}, penalty={penalty_amount}"
             )
-
-        logger.info(
-            f"Appointment cancelled by customer: id={appointment.id}, "
-            f"refund={refund_amount}, penalty={penalty_amount}"
-        )
 
     @classmethod
     @transaction.atomic

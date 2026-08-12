@@ -1,5 +1,6 @@
 """
 Mixin های کنترل دسترسی به Admin بر اساس نقش کاربر
+نسخه بدون role — هر کاربر می‌تواند یک کسب‌وکار داشته باشد
 """
 from functools import wraps
 
@@ -7,52 +8,22 @@ from functools import wraps
 class RoleBasedAdminMixin:
     """
     Mixin پایه برای کنترل دسترسی به ModelAdmin بر اساس نقش کاربر
-
-    استفاده:
-        class MyModelAdmin(RoleBasedAdminMixin, admin.ModelAdmin):
-            allowed_roles = ['super_admin', 'app_admin']
+    در سیستم بدون role، همه staff ها دسترسی دارند
     """
-
-    # نقش‌هایی که به این مدل دسترسی دارند
-    # خالی = همه نقش‌های staff دسترسی دارند
     allowed_roles = []
-
-    # آیا فقط مشاهده (view) مجاز است؟ (بدون تغییر)
     view_only_roles = []
 
     def _has_role_access(self, request, require_change=False):
-        """بررسی دسترسی کاربر بر اساس نقش"""
+        """بررسی دسترسی کاربر — بدون نقش (role)"""
         user = request.user
-
         if not user.is_authenticated:
             return False
-
-        # Superuser همیشه دسترسی کامل دارد
         if user.is_superuser:
             return True
-
-        # Staff نباشد دسترسی ندارد
         if not user.is_staff:
             return False
-
-        # اگر allowed_roles خالی باشد، همه staff دسترسی دارند
-        if not self.allowed_roles:
-            return True if not require_change else user.has_module_perms(self.model._meta.app_label)
-
-        # بررسی نقش کاربر
-        user_role = getattr(user, 'role', None)
-
-        if user_role in self.allowed_roles:
-            return True
-
-        # برای عملیات تغییر، view_only_roles اجازه نمی‌دهند
-        if require_change and user_role in self.view_only_roles:
-            return False
-
-        if not require_change and user_role in self.view_only_roles:
-            return True
-
-        return False
+        # در سیستم بدون role، همه staff ها دسترسی دارند
+        return True
 
     def has_module_permission(self, request):
         """آیا این ماژول در منوی admin نمایش داده شود؟"""
@@ -106,13 +77,15 @@ class BusinessOwnerMixin(RoleBasedAdminMixin):
         qs = super().get_queryset(request)
         user = request.user
 
-        if user.is_superuser or user.role in ['super_admin', 'app_admin']:
+        # سوپر یوزر و ادمین‌ها به همه چیز دسترسی دارند
+        if user.is_superuser or user.is_staff:
             return qs
 
-        # برای business_owner فقط داده‌های خودشان
-        if user.role == 'business_owner' and hasattr(user, 'business'):
+        # برای صاحب کسب‌وکار: فقط داده‌های کسب‌وکار خودش
+        user_business = user.businesses.filter(is_active=True).first()
+        if user_business:
             if hasattr(self.model, 'business'):
-                return qs.filter(business=user.business)
+                return qs.filter(business=user_business)
             elif hasattr(self.model, 'owner'):
                 return qs.filter(owner=user)
 

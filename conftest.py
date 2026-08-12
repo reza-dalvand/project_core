@@ -88,27 +88,18 @@ def mock_otp(monkeypatch):
     class MockOTPService:
         @classmethod
         def send_otp(cls, phone, purpose=None, user=None):
-            from apps.accounts.models import OtpCode
-            from django.utils import timezone
-            from datetime import timedelta
-            return OtpCode.objects.create(
-                phone=phone,
-                code='12345',
-                purpose=purpose or OtpCode.Purpose.LOGIN,
-                expires_at=timezone.now() + timedelta(minutes=5),
-            )
-
+            ...
         @classmethod
         def verify_otp(cls, phone, code, purpose=None):
-            from apps.accounts.models import OtpCode
-            otp = OtpCode.objects.filter(phone=phone).first()
-            if otp:
-                otp.is_used = True
-                otp.save()
-            return otp
+            ...
 
     from apps.accounts.services import otp_service
+    from apps.accounts.views import auth as auth_views
+    from apps.accounts.views import profile as profile_views
+
     monkeypatch.setattr(otp_service, 'OTPService', MockOTPService)
+    monkeypatch.setattr(auth_views, 'OTPService', MockOTPService)
+    monkeypatch.setattr(profile_views, 'OTPService', MockOTPService)
     return MockOTPService
 
 

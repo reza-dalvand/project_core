@@ -63,6 +63,7 @@ if SENTRY_DSN:
 # ─── Arvan Cloud Storage ───
 from shared.storage.arvan import get_storage_config
 _storage_config = get_storage_config()
+
 STORAGES = {
     "default": {
         "BACKEND": _storage_config['backend'],

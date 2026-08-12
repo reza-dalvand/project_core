@@ -71,3 +71,20 @@ class AllowAnyVerified(permissions.BasePermission):
             and request.user.is_authenticated
             and request.user.is_verified
         )
+
+class IsAdmin(permissions.BasePermission):
+    """فقط ادمین‌ها"""
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_staff
+        )
+
+class IsCustomer(permissions.BasePermission):
+    """فقط مشتریان (کاربران عادی)"""
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+        )
