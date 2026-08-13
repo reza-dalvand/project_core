@@ -72,10 +72,17 @@ class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView, StandardResponseM
         return ServiceDetailSerializer
 
     def get_queryset(self):
-        return Service.objects.filter(
+        qs = Service.objects.filter(
             business__owner=self.request.user,
             business__is_active=True,
-        ).select_related('category', 'sub_service', 'business')
+        ).select_related('category', 'sub_service', 'business').order_by('-created_at')
+
+        # ✅ فیلتر پیش‌فرض: فقط فعال‌ها
+        show_inactive = self.request.query_params.get('show_inactive', '').lower()
+        if show_inactive != 'true':
+            qs = qs.filter(is_active=True)
+
+        return qs
 
     @extend_schema(
         summary='جزئیات خدمت',

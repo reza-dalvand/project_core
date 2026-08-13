@@ -1,6 +1,7 @@
 from django.urls import path
 from .views.business import (
     BusinessCreateView,
+    BusinessListView,
     BusinessStatusView,
     BusinessDetailView,
     BusinessBankInfoView,
@@ -13,6 +14,7 @@ app_name = 'businesses'
 urlpatterns = [
     # ═══════════ Business Registration ═══════════
     path('create/', BusinessCreateView.as_view(), name='business-create'),
+    path('list/', BusinessListView.as_view(), name='business-list'), 
     path('status/', BusinessStatusView.as_view(), name='business-status'),
 
     # ═══════════ Business Management ═══════════

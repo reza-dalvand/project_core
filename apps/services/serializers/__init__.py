@@ -2,6 +2,7 @@
 Serializers برای خدمات
 """
 from rest_framework import serializers
+from apps.categories.serializers import SubServiceSerializer
 from apps.services.models import Service
 
 class ServiceListSerializer(serializers.ModelSerializer):
@@ -10,6 +11,9 @@ class ServiceListSerializer(serializers.ModelSerializer):
     discount_amount = serializers.ReadOnlyField()
     app_fee = serializers.ReadOnlyField()
     category_name = serializers.CharField(source='category.name', read_only=True)
+    category_id = serializers.IntegerField(source='category.id', read_only=True)  # ✅ جدید
+    sub_service = SubServiceSerializer(read_only=True)  # ✅ جدید: nested کامل
+    sub_service_id = serializers.IntegerField(source='sub_service.id', read_only=True)
     sub_service_name = serializers.CharField(source='sub_service.name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
 
@@ -22,7 +26,8 @@ class ServiceListSerializer(serializers.ModelSerializer):
             'has_deposit', 'deposit_amount',
             'duration', 'renewal_days',
             'is_active',
-            'category_name', 'sub_service_name',
+            'category_id', 'category_name',
+            'sub_service', 'sub_service_id',
             'business_name',
             'created_at', 'updated_at',
         ]

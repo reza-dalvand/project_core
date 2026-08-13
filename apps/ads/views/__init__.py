@@ -45,6 +45,20 @@ class ModelRequestListView(APIView, StandardResponseMixin):
         summary='لیست درخواست‌های مدل',
     )
     def get(self, request):
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        if lat and lng:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                lat, lng = float(lat), float(lng)
+                radius = float(request.query_params.get('radius', 10))
+                point = Point(lng, lat, srid=4326)
+                queryset = queryset.filter(
+                    business__location__distance_lte=(point, D(km=radius))
+                ).order_by('business__location__distance')
+            except (ValueError, TypeError):
+                pass
         queryset = ModelRequest.objects.filter(
             business__status='approved',
             business__is_active=True,
@@ -198,6 +212,20 @@ class LineRentalListView(APIView, StandardResponseMixin):
         summary='لیست آگهی‌های اجاره لاین',
     )
     def get(self, request):
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        if lat and lng:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                lat, lng = float(lat), float(lng)
+                radius = float(request.query_params.get('radius', 10))
+                point = Point(lng, lat, srid=4326)
+                queryset = queryset.filter(
+                    business__location__distance_lte=(point, D(km=radius))
+                ).order_by('business__location__distance')
+            except (ValueError, TypeError):
+                pass
         queryset = LineRental.objects.filter(
             business__status='approved',
             business__is_active=True,

@@ -84,7 +84,6 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
     city = CitySerializer(read_only=True)
     owner_name = serializers.SerializerMethodField()
     gallery = BusinessGallerySerializer(many=True, read_only=True)
-    # ❌ team_members حذف شد
 
     class Meta:
         model = Business
@@ -97,7 +96,9 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'rating', 'reviews_count',
             'booking_slug', 'booking_link_clicks',
             'gallery',
-            # ❌ team_members حذف شد
+            'owner_name', 'created_at',
+            'bank_info_registered', 'bank_info_verified',
+            'verified_name',
             'owner_name', 'created_at',
         ]
 

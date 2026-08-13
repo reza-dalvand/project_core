@@ -6,9 +6,11 @@ import logging
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from drf_spectacular.utils import extend_schema
-
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from django.contrib.gis.measure import D
+from django.contrib.gis.geos import Point
 from apps.core.mixins import StandardResponseMixin
+from apps.core.pagination import StandardResultsSetPagination
 from apps.core.permissions import AllowAnyVerified, IsApprovedBusinessOwner
 from apps.core.utils import mask_phone
 from apps.businesses.models import Business
@@ -60,6 +62,91 @@ class BusinessCreateView(APIView, StandardResponseMixin):
             )
 
 
+class BusinessListView(APIView, StandardResponseMixin):
+    """لیست عمومی کسب‌وکارها با فیلترهای مختلف + nearby"""
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name='province_id', type=int, required=False),
+            OpenApiParameter(name='city_id', type=int, required=False),
+            OpenApiParameter(name='category_id', type=int, required=False),
+            OpenApiParameter(name='search', type=str, required=False),
+            OpenApiParameter(name='lat', type=float, required=False,
+                           description='عرض جغرافیایی کاربر'),
+            OpenApiParameter(name='lng', type=float, required=False,
+                           description='طول جغرافیایی کاربر'),
+            OpenApiParameter(name='radius', type=float, required=False,
+                           description='شعاع جستجو (کیلومتر، پیش‌فرض ۱۰)'),
+            OpenApiParameter(name='page', type=int, required=False),
+            OpenApiParameter(name='page_size', type=int, required=False),
+        ],
+        responses={200: BusinessListSerializer(many=True)},
+        tags=['Businesses'],
+        summary='لیست کسب‌وکارها',
+    )
+    def get(self, request):
+        qs = Business.objects.filter(
+            status=Business.Status.APPROVED,
+            is_active=True,
+        ).select_related('category', 'city', 'province')
+
+        # ─── فیلترهای ساده ───
+        province_id = request.query_params.get('province_id')
+        if province_id:
+            qs = qs.filter(province_id=province_id)
+
+        city_id = request.query_params.get('city_id')
+        if city_id:
+            qs = qs.filter(city_id=city_id)
+
+        category_id = request.query_params.get('category_id')
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(about__icontains=search) |
+                Q(address__icontains=search)
+            )
+
+        # ─── Nearby Search ───
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        if lat and lng:
+            try:
+                lat, lng = float(lat), float(lng)
+                radius = float(request.query_params.get('radius', 10))
+                point = Point(lng, lat, srid=4326)
+                qs = qs.filter(
+                    location__distance_lte=(point, D(km=radius))
+                ).distance(point).order_by('distance')
+            except (ValueError, TypeError):
+                pass
+        else:
+            qs = qs.order_by('-rating', '-created_at')
+
+        # ─── Pagination ───
+        pagination = StandardResultsSetPagination()
+        page = pagination.paginate_queryset(qs, request)
+        if page is not None:
+            serializer = BusinessListSerializer(
+                page, many=True, context={'request': request}
+            )
+            return pagination.get_paginated_response(serializer.data)
+
+        serializer = BusinessListSerializer(
+            qs, many=True, context={'request': request}
+        )
+        return self.success_response(
+            data=serializer.data,
+            meta={'count': qs.count()},
+        )
+
+
+    
 class BusinessStatusView(APIView, StandardResponseMixin):
     """وضعیت کسب‌وکار کاربر"""
     permission_classes = [permissions.IsAuthenticated]
@@ -97,7 +184,6 @@ class BusinessStatusView(APIView, StandardResponseMixin):
 
 
 class BusinessDetailView(APIView, StandardResponseMixin):
-    """جزئیات و بروزرسانی کسب‌وکار"""
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
@@ -108,17 +194,16 @@ class BusinessDetailView(APIView, StandardResponseMixin):
     )
     def get(self, request):
         business = request.user.businesses.filter(is_active=True).first()
-
         if not business:
             return self.error_response(
                 message='شما کسب‌وکاری ثبت نکرده‌اید',
                 code='NO_BUSINESS',
                 status=status.HTTP_404_NOT_FOUND,
             )
-
         serializer = BusinessDetailSerializer(business)
         return self.success_response(data=serializer.data)
 
+    # ✅ متد PUT اضافه شد
     @extend_schema(
         request=BusinessUpdateSerializer,
         responses=BusinessDetailSerializer,
@@ -127,19 +212,11 @@ class BusinessDetailView(APIView, StandardResponseMixin):
     )
     def put(self, request):
         business = request.user.businesses.filter(is_active=True).first()
-
         if not business:
             return self.error_response(
                 message='شما کسب‌وکاری ثبت نکرده‌اید',
                 code='NO_BUSINESS',
                 status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if business.status == Business.Status.PENDING:
-            return self.error_response(
-                message='کسب‌وکار شما در حال بررسی است و قابل ویرایش نیست',
-                code='PENDING_REVIEW',
-                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = BusinessUpdateSerializer(
@@ -148,16 +225,16 @@ class BusinessDetailView(APIView, StandardResponseMixin):
         serializer.is_valid(raise_exception=True)
         updated_business = serializer.save()
 
+        # ✅ اگر rejected بوده، دوباره به pending برگردد
         if business.status == Business.Status.REJECTED:
             updated_business.status = Business.Status.PENDING
             updated_business.rejection_reason = ''
-            updated_business.save()
+            updated_business.save(update_fields=['status', 'rejection_reason'])
 
         return self.success_response(
             data=BusinessDetailSerializer(updated_business).data,
             message='کسب‌وکار با موفقیت بروزرسانی شد',
         )
-
 
 class BusinessBankInfoView(APIView, StandardResponseMixin):
     """مدیریت اطلاعات بانکی کسب‌وکار"""
