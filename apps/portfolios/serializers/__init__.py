@@ -119,3 +119,60 @@ class PortfolioCreateSerializer(serializers.ModelSerializer):
             )
 
         return portfolio
+
+
+class PortfolioUpdateSerializer(serializers.ModelSerializer):
+    """Serializer ویرایش نمونه‌کار"""
+    images = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False,
+        max_length=3,
+    )
+    
+    class Meta:
+        model = Portfolio
+        fields = [
+            'title', 'description',
+            'category', 'sub_service',
+            'cover_image', 'images',
+        ]
+    
+    def validate_title(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError('عنوان الزامی است')
+        return value.strip()
+    
+    def validate_description(self, value):
+        if value and len(value) > 300:
+            raise serializers.ValidationError(
+                'توضیحات نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد'
+            )
+        return value
+    
+    def validate_images(self, value):
+        if value and len(value) > 3:
+            raise serializers.ValidationError('حداکثر ۳ تصویر مجاز است')
+        return value
+    
+    def update(self, instance, validated_data):
+        images = validated_data.pop('images', None)
+        
+        # بروزرسانی فیلدهای ساده
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # بروزرسانی تصاویر (اگر ارسال شده باشند)
+        if images is not None:
+            # حذف تصاویر قبلی
+            instance.images.all().delete()
+            # افزودن تصاویر جدید
+            for i, image in enumerate(images):
+                PortfolioImage.objects.create(
+                    portfolio=instance,
+                    image=image,
+                    sort_order=i,
+                )
+        
+        return instance

@@ -108,7 +108,7 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
 
 class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
-    """لیست نوبت‌های کسب‌وکار"""
+    """لیست نوبت‌های کسب‌وکار با فیلترهای پیشرفته"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
     serializer_class = AppointmentDetailSerializer
     pagination_class = StandardResultsSetPagination
@@ -120,21 +120,52 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
                 type=str,
                 required=False,
                 enum=['all', 'reserved', 'cancelled', 'done'],
+                description='فیلتر وضعیت',
             ),
-            OpenApiParameter(name='search', type=str, required=False),
+            OpenApiParameter(
+                name='search',
+                type=str,
+                required=False,
+                description='جستجو در نام مشتری، شماره تلفن یا خدمت',
+            ),
+            # 🆕 فاز ۴: فیلتر تاریخ
+            OpenApiParameter(
+                name='date_filter',
+                type=str,
+                required=False,
+                enum=['today', 'week', 'month', 'all'],
+                description='فیلتر بازه زمانی',
+            ),
+            OpenApiParameter(
+                name='date_from',
+                type=str,
+                required=False,
+                description='تاریخ شروع (فرمت: 1405/04/01)',
+            ),
+            OpenApiParameter(
+                name='date_to',
+                type=str,
+                required=False,
+                description='تاریخ پایان (فرمت: 1405/04/31)',
+            ),
         ],
         tags=['Appointments - Business'],
         summary='نوبت‌های کسب‌وکار من',
     )
     def get_queryset(self):
+        import jdatetime
+
         business = self.request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
 
         qs = Appointment.objects.filter(
             business=business,
-        ).select_related('service', 'customer').order_by('-jy', '-jm', '-jd', 'time_slot')
+        ).select_related('service', 'customer').order_by(
+            '-jy', '-jm', '-jd', 'time_slot'
+        )
 
+        # ─── فیلتر وضعیت ───
         status_filter = self.request.query_params.get('status', 'all')
         if status_filter == 'reserved':
             qs = qs.filter(status=Appointment.Status.RESERVED)
@@ -148,9 +179,51 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         elif status_filter == 'done':
             qs = qs.filter(status=Appointment.Status.DONE)
 
+        # ─── 🆕 فاز ۴: فیلتر بازه زمانی ───
+        date_filter = self.request.query_params.get('date_filter')
+
+        if date_filter:
+            today = jdatetime.date.today()
+            today_key = f'{today.jyear}/{today.jmonth:02d}/{today.jday:02d}'
+
+            if date_filter == 'today':
+                qs = qs.filter(date_key=today_key)
+
+            elif date_filter == 'week':
+                # ۷ روز آینده
+                week_end = today + jdatetime.timedelta(days=7)
+                week_end_key = f'{week_end.jyear}/{week_end.jmonth:02d}/{week_end.jday:02d}'
+                qs = qs.filter(date_key__gte=today_key, date_key__lte=week_end_key)
+
+            elif date_filter == 'month':
+                # ماه جاری
+                month_start = jdatetime.date(today.jyear, today.jmonth, 1)
+                month_start_key = f'{month_start.jyear}/{month_start.jmonth:02d}/01'
+
+                # محاسبه پایان ماه
+                if today.jmonth == 12:
+                    next_month = jdatetime.date(today.jyear + 1, 1, 1)
+                else:
+                    next_month = jdatetime.date(today.jyear, today.jmonth + 1, 1)
+                month_end = next_month - jdatetime.timedelta(days=1)
+                month_end_key = f'{month_end.jyear}/{month_end.jmonth:02d}/{month_end.jday:02d}'
+
+                qs = qs.filter(date_key__gte=month_start_key, date_key__lte=month_end_key)
+
+            # 'all' → هیچ فیلتری اعمال نمی‌شود
+
+        # ─── 🆕 فاز ۴: فیلتر بازه دلخواه ───
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+
+        if date_from:
+            qs = qs.filter(date_key__gte=date_from)
+        if date_to:
+            qs = qs.filter(date_key__lte=date_to)
+
+        # ─── جستجو ───
         search = self.request.query_params.get('search', '')
         if search:
-            from django.db.models import Q
             qs = qs.filter(
                 Q(customer__first_name__icontains=search) |
                 Q(customer__last_name__icontains=search) |
@@ -160,7 +233,7 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
         return qs
 
-
+    
 class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات نوبت"""
     permission_classes = [permissions.IsAuthenticated]
@@ -220,17 +293,17 @@ class CancelAppointmentView(APIView, StandardResponseMixin):
         serializer.is_valid(raise_exception=True)
 
         try:
-            appointment.cancel_by_customer(
-                reason=serializer.validated_data.get('reason_text', ''),
+            BookingService.cancel_by_customer(
+                appointment=appointment,
+                reason_text=serializer.validated_data.get('reason_text', ''),
             )
-
             return self.success_response(
-                message='نوبت با موفقیت لغو شد',
+                message='نوبت با موفقیت لغو شد. بیعانه ظرف ۴۸ ساعت به حساب شما واریز می‌شود.',
             )
         except BookingException as e:
             return e.as_response()
 
-
+        
 class CancelByBusinessView(APIView, StandardResponseMixin):
     """لغو نوبت توسط کسب‌وکار"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]

@@ -191,31 +191,51 @@ class BookingService:
         appointment: Appointment,
         reason_text: str = '',
     ):
+        """
+        لغو نوبت توسط مشتری
+
+        قوانین نهایی (هماهنگ با فرانت):
+        - زیر ۱۲ ساعت تا نوبت: لغو مجاز نیست
+        - ۱۲ ساعت به بالا: لغو با استرداد کامل بیعانه (بدون جریمه)
+        """
         if appointment.status != Appointment.Status.RESERVED:
             raise BookingException(
                 message='این نوبت قابل لغو نیست',
                 code='CANNOT_CANCEL',
             )
 
-        penalty_amount = 0
-        refund_amount = appointment.deposit_amount
+        # ─── بررسی آستانه ۱۲ ساعت ───
+        CANCELLATION_THRESHOLD_HOURS = 12
 
         try:
+            import jdatetime
+            from datetime import datetime
+
             parts = appointment.date_key.split('/')
             jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
             gregorian_date = jdatetime.date(jy, jm, jd).togregorian()
             apt_datetime = datetime.combine(gregorian_date, appointment.time_slot)
             apt_datetime = timezone.make_aware(apt_datetime)
+
             hours_until = (apt_datetime - timezone.now()).total_seconds() / 3600
 
-            if hours_until > 2:
-                penalty_amount = int(appointment.deposit_amount * 0.3)
-                refund_amount = appointment.deposit_amount - penalty_amount
-            else:
-                penalty_amount = appointment.deposit_amount
-                refund_amount = 0
+            if hours_until < CANCELLATION_THRESHOLD_HOURS:
+                raise BookingException(
+                    message=(
+                        f'امکان لغو نوبت وجود ندارد. '
+                        f'لغو فقط تا {CANCELLATION_THRESHOLD_HOURS} ساعت قبل از نوبت مجاز است.'
+                    ),
+                    code='CANCELLATION_TOO_LATE',
+                )
+
+        except BookingException:
+            raise
         except Exception:
+            # اگر محاسبه تاریخ خطا داد، اجازه لغو بده
             pass
+
+        # ─── لغو و استرداد کامل (بدون جریمه) ───
+        refund_amount = appointment.deposit_amount
 
         appointment.status = Appointment.Status.CANCELLED_BY_CUSTOMER
         appointment.cancellation_reason = reason_text
@@ -224,14 +244,15 @@ class BookingService:
             'status', 'cancellation_reason', 'cancelled_at', 'updated_at',
         ])
 
-        if refund_amount > 0 and appointment.deposit_amount > 0:
+        if refund_amount > 0:
             from apps.payments.services.payment_service import PaymentService
             PaymentService.process_refund(
                 appointment=appointment,
                 refund_amount=refund_amount,
-                reason=f'لغو توسط مشتری (جریمه: {penalty_amount:,} تومان)',
+                reason='لغو توسط مشتری — استرداد کامل',
             )
 
+            
     @classmethod
     @transaction.atomic
     def cancel_by_business(

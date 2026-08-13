@@ -7,10 +7,11 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 
+from apps.accounts.serializers.profile import UserBankInfoSerializer, UserBankInfoUpdateSerializer
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import mask_phone
 from apps.core.exceptions import OTPException
-from apps.accounts.models import OtpCode
+from apps.accounts.models import OtpCode, UserBankInfo
 from apps.accounts.services.otp_service import OTPService
 from apps.accounts.serializers.auth import (
     UserProfileSerializer,
@@ -129,3 +130,46 @@ class ChangePhoneConfirmView(APIView, StandardResponseMixin):
             )
         except OTPException as e:
             return e.as_response()
+
+class UserBankInfoView(APIView, StandardResponseMixin):
+    """
+    دریافت و ثبت اطلاعات بانکی کاربر
+    🆕 فاز ۳
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        responses={200: UserBankInfoSerializer},
+        tags=['Profile'],
+        summary='دریافت اطلاعات بانکی',
+    )
+    def get(self, request):
+        bank_info, _ = UserBankInfo.objects.get_or_create(user=request.user)
+        serializer = UserBankInfoSerializer(bank_info)
+        return self.success_response(data=serializer.data)
+
+    @extend_schema(
+        request=UserBankInfoUpdateSerializer,
+        responses={200: UserBankInfoSerializer},
+        tags=['Profile'],
+        summary='ثبت/بروزرسانی اطلاعات بانکی',
+    )
+    def put(self, request):
+        serializer = UserBankInfoUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        bank_info, _ = UserBankInfo.objects.get_or_create(user=request.user)
+
+        bank_info.bank_name = serializer.validated_data['bank_name']
+        bank_info.bank_id = serializer.validated_data.get('bank_id', '')
+        bank_info.sheba = serializer.validated_data['sheba']
+        bank_info.card_number = serializer.validated_data['card_number']
+        bank_info.owner_name = serializer.validated_data.get(
+            'owner_name', request.user.full_name
+        )
+        bank_info.save()
+
+        return self.success_response(
+            data=UserBankInfoSerializer(bank_info).data,
+            message='اطلاعات بانکی با موفقیت ثبت شد',
+        )

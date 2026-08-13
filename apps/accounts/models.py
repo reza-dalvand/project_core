@@ -292,3 +292,76 @@ class UserReferral(models.Model):
 
     def __str__(self):
         return f'{self.user.phone} - {self.referral_code}'
+
+
+class UserBankInfo(models.Model):
+    """
+    اطلاعات بانکی کاربر برای استرداد وجه
+    🆕 فاز ۳
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='bank_info',
+        verbose_name='کاربر',
+    )
+    bank_name = models.CharField(
+        'نام بانک',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    bank_id = models.CharField(
+        'شناسه بانک',
+        max_length=20,
+        blank=True,
+        default='',
+    )
+    sheba = models.CharField(
+        'شماره شبا',
+        max_length=26,
+        blank=True,
+        default='',
+    )
+    card_number = models.CharField(
+        'شماره کارت',
+        max_length=16,
+        blank=True,
+        default='',
+    )
+    owner_name = models.CharField(
+        'نام صاحب حساب',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    is_complete = models.BooleanField(
+        'اطلاعات کامل است',
+        default=False,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_bank_info'
+        verbose_name = '🏦 اطلاعات بانکی کاربر'
+        verbose_name_plural = '🏦 اطلاعات بانکی کاربران'
+
+    def __str__(self):
+        return f'{self.user.phone} - {self.bank_name}'
+
+    def check_completeness(self):
+        """بررسی کامل بودن اطلاعات"""
+        self.is_complete = bool(
+            self.bank_name and
+            self.sheba and
+            len(self.sheba) == 26 and
+            self.card_number and
+            len(self.card_number) == 16 and
+            self.owner_name
+        )
+        return self.is_complete
+
+    def save(self, *args, **kwargs):
+        self.check_completeness()
+        super().save(*args, **kwargs)

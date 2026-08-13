@@ -16,6 +16,7 @@ from apps.portfolios.serializers import (
     PortfolioListSerializer,
     PortfolioDetailSerializer,
     PortfolioCreateSerializer,
+    PortfolioUpdateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -195,3 +196,55 @@ class BusinessPortfolioDeleteView(APIView, StandardResponseMixin):
                 code='PORTFOLIO_NOT_FOUND',
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+
+class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
+    """ویرایش نمونه‌کار"""
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    @extend_schema(
+        request=PortfolioUpdateSerializer,
+        responses={200: PortfolioDetailSerializer},
+        tags=['Portfolios'],
+        summary='ویرایش نمونه‌کار',
+    )
+    def put(self, request, pk):
+        business = request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        
+        try:
+            portfolio = Portfolio.objects.prefetch_related('images').get(
+                id=pk, business=business
+            )
+        except Portfolio.DoesNotExist:
+            return self.error_response(
+                message='نمونه‌کار یافت نشد',
+                code='PORTFOLIO_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        serializer = PortfolioUpdateSerializer(
+            portfolio,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            updated = serializer.save()
+            return self.success_response(
+                data=PortfolioDetailSerializer(
+                    updated, context={'request': request}
+                ).data,
+                message='نمونه‌کار با موفقیت ویرایش شد',
+            )
+        except Exception as e:
+            logger.error(f"Update portfolio error: {e}")
+            return self.error_response(
+                message='خطا در ویرایش نمونه‌کار',
+                code='UPDATE_ERROR',
+            )
+        

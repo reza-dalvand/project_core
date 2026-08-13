@@ -185,3 +185,48 @@ class SearchService:
     def clear_user_history(cls, user):
         """پاک کردن کل تاریخچه"""
         return SearchHistory.objects.filter(user=user).delete()
+
+
+    @classmethod
+    def search_nearby(cls, lat, lng, radius_km=10, category_id=None):
+        """
+        🆕 فاز ۴: جستجوی ترکیبی نزدیک‌ترین‌ها
+        کسب‌وکارها + مدلینگ + لاین را همزمان برمی‌گرداند
+        """
+        from django.contrib.gis.geos import Point
+        from django.contrib.gis.measure import D
+        from apps.businesses.models import Business
+        from apps.ads.models import ModelRequest, LineRental
+
+        point = Point(lng, lat, srid=4326)
+        distance_filter = D(km=radius_km)
+
+        # کسب‌وکارها
+        businesses = Business.objects.filter(
+            status=Business.Status.APPROVED,
+            is_active=True,
+            location__distance_lte=(point, distance_filter),
+        ).distance(point).order_by('distance')[:20]
+
+        if category_id:
+            businesses = businesses.filter(category_id=category_id)
+
+        # مدلینگ‌ها
+        model_requests = ModelRequest.objects.filter(
+            business__status='approved',
+            business__is_active=True,
+            location__distance_lte=(point, distance_filter),
+        ).distance(point).order_by('distance')[:10]
+
+        # لاین‌ها
+        line_rentals = LineRental.objects.filter(
+            business__status='approved',
+            business__is_active=True,
+            location__distance_lte=(point, distance_filter),
+        ).distance(point).order_by('distance')[:10]
+
+        return {
+            'businesses': list(businesses),
+            'model_requests': list(model_requests),
+            'line_rentals': list(line_rentals),
+        }

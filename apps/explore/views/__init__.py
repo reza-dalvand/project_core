@@ -16,6 +16,7 @@ from apps.explore.serializers import (
     ExplorePostListSerializer,
     ExplorePostDetailSerializer,
     ExplorePostCreateSerializer,
+    ExplorePostUpdateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -203,4 +204,55 @@ class BusinessPostDeleteView(APIView, StandardResponseMixin):
                 message='پست یافت نشد',
                 code='POST_NOT_FOUND',
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class BusinessPostUpdateView(APIView, StandardResponseMixin):
+    """ویرایش پست ویترین"""
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    @extend_schema(
+        request=ExplorePostUpdateSerializer,
+        responses={200: ExplorePostDetailSerializer},
+        tags=['Explore'],
+        summary='ویرایش پست ویترین',
+    )
+    def put(self, request, pk):
+        business = request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        
+        try:
+            post = ExplorePost.objects.prefetch_related('images').get(
+                id=pk, business=business
+            )
+        except ExplorePost.DoesNotExist:
+            return self.error_response(
+                message='پست ویترین یافت نشد',
+                code='POST_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        serializer = ExplorePostUpdateSerializer(
+            post,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            updated = serializer.save()
+            return self.success_response(
+                data=ExplorePostDetailSerializer(
+                    updated, context={'request': request}
+                ).data,
+                message='پست ویترین با موفقیت ویرایش شد',
+            )
+        except Exception as e:
+            logger.error(f"Update explore post error: {e}")
+            return self.error_response(
+                message='خطا در ویرایش پست',
+                code='UPDATE_ERROR',
             )

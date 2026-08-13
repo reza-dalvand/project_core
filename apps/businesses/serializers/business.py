@@ -204,3 +204,30 @@ class BusinessListSerializer(serializers.ModelSerializer):
             'booking_slug', 'is_vip',
             'created_at',
         ]
+
+
+class BusinessGallerySerializer(serializers.ModelSerializer):
+    """Serializer تصاویر گالری"""
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = BusinessGallery
+        fields = ['id', 'image', 'image_url', 'sort_order']
+        read_only_fields = ['image_url']
+    
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
+
+
+class BusinessGalleryUploadSerializer(serializers.Serializer):
+    """Serializer آپلود تصویر گالری"""
+    image = serializers.ImageField()
+    sort_order = serializers.IntegerField(required=False, default=0)
+    
+    def validate_image(self, value):
+        if value.size > 5 * 1024 * 1024:  # 5MB
+            raise serializers.ValidationError('حجم تصویر نباید بیشتر از ۵ مگابایت باشد')
+        return value

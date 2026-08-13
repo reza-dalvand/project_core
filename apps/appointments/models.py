@@ -101,11 +101,14 @@ class Appointment(BaseModel):
         return ''.join([str(random.randint(0, 9)) for _ in range(4)])
 
     def cancel_by_customer(self, reason=''):
+        """لغو توسط مشتری — استرداد کامل (هماهنگ با فرانت)"""
         from apps.payments.services import process_refund
+
         self.status = self.Status.CANCELLED_BY_CUSTOMER
         self.cancellation_reason = reason
         self.cancelled_at = timezone.now()
         self.save()
+
         if self.deposit_amount > 0:
             process_refund(self)
 

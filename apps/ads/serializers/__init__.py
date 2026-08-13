@@ -6,13 +6,15 @@ from apps.ads.models import ModelRequest, LineRental
 
 
 class ModelRequestListSerializer(serializers.ModelSerializer):
-    """Serializer لیست درخواست‌های مدل"""
+    """Serializer لیست درخواست‌های مدل + فاصله"""
     business_name = serializers.CharField(source='business.name', read_only=True)
     business_logo = serializers.SerializerMethodField()
     service_name = serializers.CharField(source='service.name', read_only=True)
     cost_type_display = serializers.CharField(
         source='get_cost_type_display', read_only=True
     )
+    # ═══ 🆕 فاز ۳: فاصله ═══
+    distance = serializers.SerializerMethodField()
 
     class Meta:
         model = ModelRequest
@@ -25,6 +27,8 @@ class ModelRequestListSerializer(serializers.ModelSerializer):
             'service', 'service_name',
             'created_jalali', 'expires_jalali',
             'created_at',
+            # ═══ 🆕 فاز ۳ ═══
+            'distance',
         ]
         read_only_fields = fields
 
@@ -34,6 +38,14 @@ class ModelRequestListSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.business.logo.url)
         return None
 
+    def get_distance(self, obj):
+        """
+        فاصله به کیلومتر (اگر در queryset با .distance() محاسبه شده باشد)
+        """
+        if hasattr(obj, 'distance') and obj.distance is not None:
+            # فاصله به متر است، تبدیل به کیلومتر
+            return round(obj.distance.m / 1000, 2)
+        return None
 
 class ModelRequestDetailSerializer(ModelRequestListSerializer):
     """Serializer جزئیات درخواست مدل"""
@@ -95,8 +107,9 @@ class ModelRequestCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+
 class LineRentalListSerializer(serializers.ModelSerializer):
-    """Serializer لیست آگهی‌های اجاره لاین"""
+    """Serializer لیست آگهی‌های اجاره لاین + فاصله"""
     business_name = serializers.CharField(source='business.name', read_only=True)
     collab_type_display = serializers.CharField(
         source='get_collab_type_display', read_only=True
@@ -107,6 +120,8 @@ class LineRentalListSerializer(serializers.ModelSerializer):
     sub_service_name = serializers.CharField(
         source='sub_service.name', read_only=True
     )
+    # ═══ 🆕 فاز ۳: فاصله ═══
+    distance = serializers.SerializerMethodField()
 
     class Meta:
         model = LineRental
@@ -121,9 +136,16 @@ class LineRentalListSerializer(serializers.ModelSerializer):
             'sub_service', 'sub_service_name',
             'created_jalali', 'expires_jalali',
             'created_at',
+            # ═══ 🆕 فاز ۳ ═══
+            'distance',
         ]
         read_only_fields = fields
 
+    def get_distance(self, obj):
+        """فاصله به کیلومتر"""
+        if hasattr(obj, 'distance') and obj.distance is not None:
+            return round(obj.distance.m / 1000, 2)
+        return None
 
 class LineRentalDetailSerializer(LineRentalListSerializer):
     """Serializer جزئیات آگهی اجاره لاین"""
@@ -200,3 +222,65 @@ class LineRentalCreateSerializer(serializers.ModelSerializer):
         validated_data['expires_jalali'] = f'{expires.jyear}/{expires.jmonth:02d}/{expires.jday:02d}'
 
         return super().create(validated_data)
+
+
+class ModelRequestUpdateSerializer(serializers.ModelSerializer):
+    """Serializer ویرایش درخواست مدل"""
+    
+    class Meta:
+        model = ModelRequest
+        fields = [
+            'title', 'description', 'service_image',
+            'cost_type', 'discount', 'is_urgent',
+            'contact_phone',
+        ]
+    
+    def validate_title(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError('عنوان الزامی است')
+        return value.strip()
+    
+    def validate_contact_phone(self, value):
+        if not value or len(value) != 11:
+            raise serializers.ValidationError('شماره تماس باید ۱۱ رقم باشد')
+        return value
+
+
+class LineRentalUpdateSerializer(serializers.ModelSerializer):
+    """Serializer ویرایش آگهی اجاره لاین"""
+    
+    class Meta:
+        model = LineRental
+        fields = [
+            'title', 'description', 'line_image',
+            'service_category', 'sub_service',
+            'collab_type',
+            'percent_salon', 'percent_partner',
+            'fixed_amount', 'fixed_deposit', 'hourly_rate',
+            'contact_phone',
+        ]
+    
+    def validate(self, data):
+        collab_type = data.get('collab_type')
+        
+        if collab_type == LineRental.CollabType.PERCENT:
+            if not data.get('percent_salon') or not data.get('percent_partner'):
+                raise serializers.ValidationError(
+                    'در نوع همکاری درصدی، درصدها الزامی هستند'
+                )
+            if data['percent_salon'] + data['percent_partner'] != 100:
+                raise serializers.ValidationError(
+                    'مجموع درصدها باید ۱۰۰٪ باشد'
+                )
+        elif collab_type == LineRental.CollabType.FIXED:
+            if not data.get('fixed_amount'):
+                raise serializers.ValidationError(
+                    'در اجاره ثابت، مبلغ الزامی است'
+                )
+        elif collab_type == LineRental.CollabType.HOURLY:
+            if not data.get('hourly_rate'):
+                raise serializers.ValidationError(
+                    'در اجاره ساعتی، نرخ ساعتی الزامی است'
+                )
+        
+        return data

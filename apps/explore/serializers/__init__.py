@@ -132,3 +132,54 @@ class ExplorePostCreateSerializer(serializers.ModelSerializer):
             )
 
         return post
+
+
+class ExplorePostUpdateSerializer(serializers.ModelSerializer):
+    """Serializer ویرایش پست ویترین"""
+    images = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False,
+        max_length=5,
+    )
+    
+    class Meta:
+        model = ExplorePost
+        fields = [
+            'caption', 'main_category', 'sub_category',
+            'images',
+        ]
+    
+    def validate_caption(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError('کپشن الزامی است')
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError('کپشن باید حداقل ۱۰ کاراکتر باشد')
+        return value.strip()
+    
+    def validate_images(self, value):
+        if value and len(value) > 5:
+            raise serializers.ValidationError('حداکثر ۵ تصویر مجاز است')
+        return value
+    
+    def update(self, instance, validated_data):
+        images = validated_data.pop('images', None)
+        
+        # بروزرسانی فیلدهای ساده
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # بروزرسانی تصاویر (اگر ارسال شده باشند)
+        if images is not None:
+            # حذف تصاویر قبلی
+            instance.images.all().delete()
+            # افزودن تصاویر جدید
+            for i, image in enumerate(images):
+                PostImage.objects.create(
+                    post=instance,
+                    image=image,
+                    sort_order=i,
+                )
+        
+        return instance

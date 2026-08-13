@@ -18,6 +18,7 @@ from .views.profile import (
     ProfileView,
     ChangePhoneRequestView,
     ChangePhoneConfirmView,
+    UserBankInfoView,
 )
 
 app_name = 'accounts'
@@ -44,4 +45,7 @@ urlpatterns = [
 
     # ═══════════ Account ═══════════
     path('account/delete/', DeleteAccountView.as_view(), name='delete-account'),
+
+    path('bank-info/', UserBankInfoView.as_view(), name='user-bank-info'),
+
 ]

@@ -1,11 +1,12 @@
-# apps/services/views/price_list.py
 """
-View لیست قیمت
+View لیست قیمت — نسخه نهایی
 """
 import logging
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema
+
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.services.models import PriceList
@@ -18,9 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 class PriceListView(APIView, StandardResponseMixin):
-    """لیست قیمت کسب‌وکار"""
+    """
+    لیست قیمت کسب‌وکار
+    GET  → دریافت لیست قیمت
+    PUT  → بروزرسانی لیست قیمت (تم، انتشار، notes)
+    """
     permission_classes = [IsAuthenticated, IsApprovedBusinessOwner]
 
+    @extend_schema(
+        responses={200: PriceListSerializer},
+        tags=['Services'],
+        summary='دریافت لیست قیمت',
+    )
     def get(self, request):
         """دریافت لیست قیمت"""
         business = request.user.businesses.filter(
@@ -36,9 +46,17 @@ class PriceListView(APIView, StandardResponseMixin):
 
         price_list, _ = PriceList.objects.get_or_create(business=business)
         serializer = PriceListSerializer(price_list)
+
         return self.success_response(data=serializer.data)
 
+    @extend_schema(
+        request=PriceListUpdateSerializer,
+        responses={200: PriceListSerializer},
+        tags=['Services'],
+        summary='بروزرسانی لیست قیمت',
+    )
     def put(self, request):
+        """بروزرسانی لیست قیمت"""
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
@@ -55,7 +73,6 @@ class PriceListView(APIView, StandardResponseMixin):
         serializer = PriceListUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
-        # ✅ دستی update کنید چون Serializer ساده است
         updated = serializer.update(price_list, serializer.validated_data)
 
         return self.success_response(

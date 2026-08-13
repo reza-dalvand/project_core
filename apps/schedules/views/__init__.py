@@ -1,5 +1,6 @@
 """
 Views برای زمان‌بندی — با تاریخ جلالی
++ Available Slots / Available Dates (فاز ۱)
 """
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -48,11 +49,9 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
     )
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-
         service_id = request.query_params.get('service_id')
         if service_id:
             queryset = queryset.filter(service_id=service_id)
-
         return super().get(request, *args, **kwargs)
 
     @extend_schema(
@@ -115,9 +114,10 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
         summary='زمان‌بندی بر اساس تاریخ جلالی',
         tags=['Schedules'],
         parameters=[
-            OpenApiParameter(name='jy', type=int, required=True, description='سال جلالی'),
-            OpenApiParameter(name='jm', type=int, required=True, description='ماه جلالی'),
-            OpenApiParameter(name='jd', type=int, required=True, description='روز جلالی'),
+            OpenApiParameter(name='jy', type=int, required=True),
+            OpenApiParameter(name='jm', type=int, required=True),
+            OpenApiParameter(name='jd', type=int, required=True),
+            OpenApiParameter(name='service_id', type=int, required=False),
         ],
         responses={200: ServiceScheduleSerializer(many=True)},
     )
@@ -138,7 +138,6 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
             business__status='approved',
         ).select_related('service', 'business')
 
-        # فیلتر بر اساس service_id
         service_id = request.query_params.get('service_id')
         if service_id:
             schedules = schedules.filter(service_id=service_id)
@@ -147,4 +146,170 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
         return self.success_response(
             data=serializer.data,
             meta={'count': schedules.count()},
+        )
+
+
+# ═══════════════════════════════════════════════════════
+#   🆕 فاز ۱: اسلات‌های آزاد
+# ═══════════════════════════════════════════════════════
+
+class AvailableSlotsView(APIView, StandardResponseMixin):
+    """
+    دریافت اسلات‌های آزاد برای یک تاریخ جلالی خاص
+
+    GET /schedules/available-slots/?business_id=&service_id=&jy=&jm=&jd=
+
+    Response:
+    {
+        "success": true,
+        "data": [
+            {
+                "id": "14050422_1030",
+                "jy": 1405, "jm": 4, "jd": 22,
+                "date_key": "1405/04/22",
+                "start_time": "10:30",
+                "end_time": "11:30",
+                "is_available": true,
+                "display_time": "10:30"
+            },
+            ...
+        ],
+        "meta": { "count": 8 }
+    }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary='اسلات‌های آزاد برای رزرو',
+        tags=['Schedules'],
+        parameters=[
+            OpenApiParameter(name='business_id', type=int, required=True),
+            OpenApiParameter(name='service_id', type=int, required=True),
+            OpenApiParameter(name='jy', type=int, required=True, description='سال جلالی'),
+            OpenApiParameter(name='jm', type=int, required=True, description='ماه جلالی'),
+            OpenApiParameter(name='jd', type=int, required=True, description='روز جلالی'),
+        ],
+    )
+    def get(self, request):
+        # ─── اعتبارسنجی پارامترها ───
+        business_id = request.query_params.get('business_id')
+        service_id = request.query_params.get('service_id')
+        jy = request.query_params.get('jy')
+        jm = request.query_params.get('jm')
+        jd = request.query_params.get('jd')
+
+        if not all([business_id, service_id, jy, jm, jd]):
+            return self.error_response(
+                message='پارامترهای business_id, service_id, jy, jm, jd الزامی هستند',
+                code='MISSING_PARAMS',
+            )
+
+        try:
+            business_id = int(business_id)
+            service_id = int(service_id)
+            jy = int(jy)
+            jm = int(jm)
+            jd = int(jd)
+        except (ValueError, TypeError):
+            return self.error_response(
+                message='پارامترها باید عددی باشند',
+                code='INVALID_PARAMS',
+            )
+
+        if not (1 <= jm <= 12) or not (1 <= jd <= 31):
+            return self.error_response(
+                message='تاریخ جلالی نامعتبر است',
+                code='INVALID_DATE',
+            )
+
+        # ─── فراخوانی SlotService ───
+        from apps.appointments.services.slot_service import SlotService
+
+        slots = SlotService.get_available_slots(
+            business_id=business_id,
+            service_id=service_id,
+            jy=jy,
+            jm=jm,
+            jd=jd,
+        )
+
+        return self.success_response(
+            data=slots,
+            meta={'count': len(slots)},
+        )
+
+
+class AvailableDatesView(APIView, StandardResponseMixin):
+    """
+    دریافت روزهای دارای اسلات آزاد برای N روز آینده
+
+    GET /schedules/available-dates/?business_id=&service_id=&days_ahead=30
+
+    Response:
+    {
+        "success": true,
+        "data": [
+            {
+                "jy": 1405, "jm": 4, "jd": 22,
+                "date_key": "1405/04/22",
+                "day_of_week": 2,
+                "weekday_name": "دوشنبه",
+                "available_slots_count": 8,
+                "is_today": true,
+                "is_friday": false
+            },
+            ...
+        ],
+        "meta": { "count": 12 }
+    }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        summary='روزهای دارای اسلات آزاد',
+        tags=['Schedules'],
+        parameters=[
+            OpenApiParameter(name='business_id', type=int, required=True),
+            OpenApiParameter(name='service_id', type=int, required=True),
+            OpenApiParameter(
+                name='days_ahead',
+                type=int,
+                required=False,
+                description='تعداد روزهای آینده (پیش‌فرض: ۳۰، حداکثر: ۶۰)',
+            ),
+        ],
+    )
+    def get(self, request):
+        business_id = request.query_params.get('business_id')
+        service_id = request.query_params.get('service_id')
+        days_ahead = request.query_params.get('days_ahead', '30')
+
+        if not all([business_id, service_id]):
+            return self.error_response(
+                message='پارامترهای business_id و service_id الزامی هستند',
+                code='MISSING_PARAMS',
+            )
+
+        try:
+            business_id = int(business_id)
+            service_id = int(service_id)
+            days_ahead = min(int(days_ahead), 60)  # حداکثر ۶۰ روز
+            days_ahead = max(days_ahead, 1)
+        except (ValueError, TypeError):
+            return self.error_response(
+                message='پارامترها باید عددی باشند',
+                code='INVALID_PARAMS',
+            )
+
+        from apps.appointments.services.slot_service import SlotService
+
+        dates = SlotService.get_available_dates(
+            business_id=business_id,
+            service_id=service_id,
+            days_ahead=days_ahead,
+        )
+
+        return self.success_response(
+            data=dates,
+            meta={'count': len(dates)},
         )

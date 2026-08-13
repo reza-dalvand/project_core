@@ -16,10 +16,14 @@ from apps.ads.serializers import (
     ModelRequestListSerializer,
     ModelRequestDetailSerializer,
     ModelRequestCreateSerializer,
+    ModelRequestUpdateSerializer,
     LineRentalListSerializer,
     LineRentalDetailSerializer,
     LineRentalCreateSerializer,
+    LineRentalUpdateSerializer,
 )
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +33,24 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════
 
 class ModelRequestListView(APIView, StandardResponseMixin):
-    """لیست درخواست‌های مدل (عمومی)"""
+    """لیست درخواست‌های مدل (عمومی) + فیلتر فاصله"""
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
         parameters=[
+            OpenApiParameter(name='page', type=int, required=False),
+            # ═══ 🆕 فاز ۳: پارامترهای فاصله ═══
             OpenApiParameter(
-                name='page',
-                type=int,
-                required=False,
+                name='lat', type=float, required=False,
+                description='عرض جغرافیایی کاربر'
+            ),
+            OpenApiParameter(
+                name='lng', type=float, required=False,
+                description='طول جغرافیایی کاربر'
+            ),
+            OpenApiParameter(
+                name='radius', type=float, required=False,
+                description='شعاع جستجو (کیلومتر، پیش‌فرض ۱۰)'
             ),
         ],
         responses={200: ModelRequestListSerializer(many=True)},
@@ -45,6 +58,14 @@ class ModelRequestListView(APIView, StandardResponseMixin):
         summary='لیست درخواست‌های مدل',
     )
     def get(self, request):
+        queryset = ModelRequest.objects.filter(
+            business__status='approved',
+            business__is_active=True,
+        ).select_related(
+            'business', 'service',
+        ).order_by('-is_urgent', '-created_at')
+
+        # ═══ 🆕 فاز ۳: فیلتر فاصله ═══
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
         if lat and lng:
@@ -55,16 +76,10 @@ class ModelRequestListView(APIView, StandardResponseMixin):
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
                 queryset = queryset.filter(
-                    business__location__distance_lte=(point, D(km=radius))
-                ).order_by('business__location__distance')
+                    location__distance_lte=(point, D(km=radius))
+                ).distance(point).order_by('distance')
             except (ValueError, TypeError):
                 pass
-        queryset = ModelRequest.objects.filter(
-            business__status='approved',
-            business__is_active=True,
-        ).select_related(
-            'business', 'service',
-        ).order_by('-is_urgent', '-created_at')
 
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
@@ -196,15 +211,24 @@ class BusinessModelRequestDeleteView(APIView, StandardResponseMixin):
 # ═══════════════════════════════════════════════
 
 class LineRentalListView(APIView, StandardResponseMixin):
-    """لیست آگهی‌های اجاره لاین (عمومی)"""
+    """لیست آگهی‌های اجاره لاین (عمومی) + فیلتر فاصله"""
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
         parameters=[
+            OpenApiParameter(name='page', type=int, required=False),
+            # ═══ 🆕 فاز ۳: پارامترهای فاصله ═══
             OpenApiParameter(
-                name='page',
-                type=int,
-                required=False,
+                name='lat', type=float, required=False,
+                description='عرض جغرافیایی کاربر'
+            ),
+            OpenApiParameter(
+                name='lng', type=float, required=False,
+                description='طول جغرافیایی کاربر'
+            ),
+            OpenApiParameter(
+                name='radius', type=float, required=False,
+                description='شعاع جستجو (کیلومتر، پیش‌فرض ۱۰)'
             ),
         ],
         responses={200: LineRentalListSerializer(many=True)},
@@ -212,6 +236,14 @@ class LineRentalListView(APIView, StandardResponseMixin):
         summary='لیست آگهی‌های اجاره لاین',
     )
     def get(self, request):
+        queryset = LineRental.objects.filter(
+            business__status='approved',
+            business__is_active=True,
+        ).select_related(
+            'business', 'service_category', 'sub_service',
+        ).order_by('-created_at')
+
+        # ═══ 🆕 فاز ۳: فیلتر فاصله ═══
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
         if lat and lng:
@@ -222,16 +254,10 @@ class LineRentalListView(APIView, StandardResponseMixin):
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
                 queryset = queryset.filter(
-                    business__location__distance_lte=(point, D(km=radius))
-                ).order_by('business__location__distance')
+                    location__distance_lte=(point, D(km=radius))
+                ).distance(point).order_by('distance')
             except (ValueError, TypeError):
                 pass
-        queryset = LineRental.objects.filter(
-            business__status='approved',
-            business__is_active=True,
-        ).select_related(
-            'business', 'service_category', 'sub_service',
-        ).order_by('-created_at')
 
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
@@ -248,7 +274,6 @@ class LineRentalListView(APIView, StandardResponseMixin):
             data=serializer.data,
             meta={'count': queryset.count()},
         )
-
 
 class LineRentalDetailView(APIView, StandardResponseMixin):
     """جزئیات آگهی اجاره لاین"""
@@ -359,4 +384,102 @@ class BusinessLineRentalDeleteView(APIView, StandardResponseMixin):
                 message='آگهی یافت نشد',
                 code='LINE_RENTAL_NOT_FOUND',
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class BusinessModelRequestUpdateView(APIView, StandardResponseMixin):
+    """ویرایش درخواست مدل"""
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    @extend_schema(
+        request=ModelRequestUpdateSerializer,
+        responses={200: ModelRequestDetailSerializer},
+        tags=['Ads'],
+        summary='ویرایش درخواست مدل',
+    )
+    def put(self, request, pk):
+        business = request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        
+        try:
+            model_request = ModelRequest.objects.get(id=pk, business=business)
+        except ModelRequest.DoesNotExist:
+            return self.error_response(
+                message='درخواست مدل یافت نشد',
+                code='MODEL_REQUEST_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        serializer = ModelRequestUpdateSerializer(
+            model_request,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            updated = serializer.save()
+            return self.success_response(
+                data=ModelRequestDetailSerializer(
+                    updated, context={'request': request}
+                ).data,
+                message='درخواست مدل با موفقیت ویرایش شد',
+            )
+        except Exception as e:
+            logger.error(f"Update model request error: {e}")
+            return self.error_response(
+                message='خطا در ویرایش درخواست',
+                code='UPDATE_ERROR',
+            )
+
+
+class BusinessLineRentalUpdateView(APIView, StandardResponseMixin):
+    """ویرایش آگهی اجاره لاین"""
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    @extend_schema(
+        request=LineRentalUpdateSerializer,
+        responses={200: LineRentalDetailSerializer},
+        tags=['Ads'],
+        summary='ویرایش آگهی اجاره لاین',
+    )
+    def put(self, request, pk):
+        business = request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        
+        try:
+            line_rental = LineRental.objects.get(id=pk, business=business)
+        except LineRental.DoesNotExist:
+            return self.error_response(
+                message='آگهی اجاره لاین یافت نشد',
+                code='LINE_RENTAL_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        serializer = LineRentalUpdateSerializer(
+            line_rental,
+            data=request.data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            updated = serializer.save()
+            return self.success_response(
+                data=LineRentalDetailSerializer(
+                    updated, context={'request': request}
+                ).data,
+                message='آگهی اجاره لاین با موفقیت ویرایش شد',
+            )
+        except Exception as e:
+            logger.error(f"Update line rental error: {e}")
+            return self.error_response(
+                message='خطا در ویرایش آگهی',
+                code='UPDATE_ERROR',
             )

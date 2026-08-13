@@ -1,15 +1,16 @@
 """
 آگهی‌ها (مدلینگ + اجاره لاین)
++ فیلد location برای فیلتر فاصله (فاز ۳)
 """
 from django.db import models
 from django.core.exceptions import ValidationError
-
+from django.contrib.gis.db import models as gis_models
+from django.contrib.gis.geos import Point
 from apps.core.models import BaseModel
 
 
 class ModelRequest(BaseModel):
     """درخواست مدل"""
-
     class CostType(models.TextChoices):
         PAID = 'paid', 'با هزینه'
         MATERIAL_COST = 'material_cost', 'با هزینه مواد'
@@ -42,9 +43,17 @@ class ModelRequest(BaseModel):
     is_urgent = models.BooleanField('فوری', default=False)
     contact_phone = models.CharField('شماره تماس', max_length=11)
 
-    # ═══════════ تاریخ جلالی ═══════════
+    # ═══ تاریخ جلالی ═══
     created_jalali = models.CharField('تاریخ ایجاد جلالی', max_length=10)
     expires_jalali = models.CharField('تاریخ انقضای جلالی', max_length=10)
+
+    # ═══ 🆕 فاز ۳: موقعیت جغرافیایی ═══
+    location = gis_models.PointField(
+        'موقعیت جغرافیایی',
+        null=True,
+        blank=True,
+        geography=True,
+    )
 
     class Meta:
         db_table = 'model_requests'
@@ -55,10 +64,15 @@ class ModelRequest(BaseModel):
     def __str__(self):
         return f'{self.business.name} - {self.title}'
 
+    def save(self, *args, **kwargs):
+        # کپی location از کسب‌وکار
+        if not self.location and self.business_id:
+            self.location = self.business.location
+        super().save(*args, **kwargs)
+
 
 class LineRental(BaseModel):
     """آگهی اجاره لاین"""
-
     class CollabType(models.TextChoices):
         PERCENT = 'percent', 'درصدی'
         FIXED = 'fixed', 'اجاره ثابت'
@@ -87,7 +101,7 @@ class LineRental(BaseModel):
         verbose_name='زیرخدمت',
     )
 
-    # ═══════════ نوع همکاری ═══════════
+    # ═══ نوع همکاری ═══
     collab_type = models.CharField(
         'نوع همکاری',
         max_length=20,
@@ -98,12 +112,19 @@ class LineRental(BaseModel):
     fixed_amount = models.BigIntegerField('مبلغ اجاره ثابت', null=True, blank=True)
     fixed_deposit = models.BigIntegerField('رهن / ودیعه', null=True, blank=True)
     hourly_rate = models.BigIntegerField('نرخ ساعتی', null=True, blank=True)
-
     contact_phone = models.CharField('شماره تماس', max_length=11)
 
-    # ═══════════ تاریخ جلالی ═══════════
+    # ═══ تاریخ جلالی ═══
     created_jalali = models.CharField('تاریخ ایجاد جلالی', max_length=10)
     expires_jalali = models.CharField('تاریخ انقضای جلالی', max_length=10)
+
+    # ═══ 🆕 فاز ۳: موقعیت جغرافیایی ═══
+    location = gis_models.PointField(
+        'موقعیت جغرافیایی',
+        null=True,
+        blank=True,
+        geography=True,
+    )
 
     class Meta:
         db_table = 'line_rentals'
@@ -119,3 +140,9 @@ class LineRental(BaseModel):
             if self.percent_salon and self.percent_partner:
                 if self.percent_salon + self.percent_partner != 100:
                     raise ValidationError('مجموع درصدها باید ۱۰۰٪ باشد')
+
+    def save(self, *args, **kwargs):
+        # کپی location از کسب‌وکار
+        if not self.location and self.business_id:
+            self.location = self.business.location
+        super().save(*args, **kwargs)
