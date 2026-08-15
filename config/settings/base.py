@@ -296,8 +296,11 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-GDAL_LIBRARY_PATH = '/usr/lib64/libgdal.so'
-GEOS_LIBRARY_PATH = '/usr/lib64/libgeos_c.so'
+# ✅ به جای آن:
+# GDAL/GEOS در Docker و اکثر سیستم‌ها خودکار پیدا می‌شوند
+# فقط در صورت نیاز مسیر دستی تنظیم شود
+# GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='')
+# GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='')
 
 # ═══════════════════════════════════════════════
 #   External Services

@@ -6,7 +6,6 @@ from .base import *  # noqa
 DEBUG = True
 
 # ─── Database: PostgreSQL + PostGIS ───
-# در توسعه هم از PostGIS استفاده می‌کنیم
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -17,6 +16,14 @@ DATABASES = {
         'PORT': env('DB_PORT', default='5432'),
     }
 }
+
+# ─── GDAL/GEOS: حذف مسیرهای hardcoded (در Docker لازم نیست) ───
+# ✅ در base.py مسیرهای hardcoded وجود دارد که در Docker خطا می‌دهد
+# در development حذفشان می‌کنیم
+GDAL_LIBRARY_PATH = None
+GEOS_LIBRARY_PATH = None
+# GDAL_LIBRARY_PATH = '/usr/lib64/libgdal.so'
+# GEOS_LIBRARY_PATH = '/usr/lib64/libgeos_c.so'
 
 # ─── Cache: حافظه محلی ───
 CACHES = {

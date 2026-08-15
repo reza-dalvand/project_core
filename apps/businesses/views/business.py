@@ -62,6 +62,7 @@ class BusinessCreateView(APIView, StandardResponseMixin):
             )
 
 
+
 class BusinessListView(APIView, StandardResponseMixin):
     """لیست عمومی کسب‌وکارها با فیلترهای مختلف + nearby"""
     permission_classes = [permissions.AllowAny]
@@ -144,8 +145,6 @@ class BusinessListView(APIView, StandardResponseMixin):
             data=serializer.data,
             meta={'count': qs.count()},
         )
-
-
     
 class BusinessStatusView(APIView, StandardResponseMixin):
     """وضعیت کسب‌وکار کاربر"""

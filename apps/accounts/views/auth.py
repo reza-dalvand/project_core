@@ -46,6 +46,9 @@ logger = logging.getLogger(__name__)
 #   Send OTP
 # ═══════════════════════════════════════════════
 
+# apps/accounts/views/auth.py
+# فقط کلاس SendOTPView را پیدا کنید و متد post را جایگزین کنید:
+
 class SendOTPView(APIView, StandardResponseMixin):
     """ارسال کد تایید به شماره موبایل"""
     permission_classes = [permissions.AllowAny]
@@ -59,14 +62,20 @@ class SendOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         phone = serializer.validated_data['phone']
 
         try:
             otp = OTPService.send_otp(phone)
+
+            # ✅ جدید: بررسی اینکه شماره قبلاً ثبت شده یا نه
+            is_registered = User.objects.filter(phone=phone).exists()
+
             return self.success_response(
                 data={
                     'expires_in': 300,
                     'resend_after': 60,
+                    'is_registered': is_registered,  # ✅ جدید
                 },
                 message=f'کد تایید به شماره {mask_phone(phone)} ارسال شد',
             )
@@ -79,11 +88,12 @@ class SendOTPView(APIView, StandardResponseMixin):
                 code='OTP_SEND_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-
 # ═══════════════════════════════════════════════
 #   Verify OTP
 # ═══════════════════════════════════════════════
+
+# apps/accounts/views/auth.py
+# فقط کلاس VerifyOTPView را پیدا کنید و متد post را جایگزین کنید:
 
 class VerifyOTPView(APIView, StandardResponseMixin):
     """تایید کد OTP و ورود/ثبت‌نام"""
@@ -97,6 +107,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         phone = serializer.validated_data['phone']
         code = serializer.validated_data['code']
 
@@ -107,6 +118,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 phone=phone,
                 defaults={'is_verified': True},
             )
+
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
@@ -126,7 +138,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 },
             )
 
-            # ✅ تولید JWT Token — اصلاح‌شده
+            # تولید JWT Token
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
@@ -137,9 +149,17 @@ class VerifyOTPView(APIView, StandardResponseMixin):
 
             access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 
+            # ✅ جدید: آیا کاربر باید پروفایل را تکمیل کند؟
+            needs_profile_completion = (
+                is_new_user or
+                not user.first_name or
+                not user.last_name
+            )
+
             return self.success_response(
                 data={
                     'is_new_user': is_new_user,
+                    'needs_profile_completion': needs_profile_completion,  # ✅ جدید
                     'access_token': str(access_token),
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
@@ -148,6 +168,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
             )
+
         except OTPException as e:
             return e.as_response()
         except Exception as e:
@@ -157,8 +178,6 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 code='VERIFY_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-
 # ═══════════════════════════════════════════════
 #   Token Refresh
 # ═══════════════════════════════════════════════
@@ -321,6 +340,9 @@ class RevokeDeviceView(APIView, StandardResponseMixin):
 #   Delete Account
 # ═══════════════════════════════════════════════
 
+# apps/accounts/views/auth.py
+# فقط کلاس DeleteAccountView را پیدا و جایگزین کنید:
+
 class DeleteAccountView(APIView, StandardResponseMixin):
     """حذف حساب کاربری"""
     permission_classes = [permissions.IsAuthenticated]
@@ -337,10 +359,11 @@ class DeleteAccountView(APIView, StandardResponseMixin):
         confirmation_code = serializer.validated_data['confirmation_code']
 
         try:
+            # ✅ تغییر: purpose از LOGIN به DELETE_ACCOUNT
             OTPService.verify_otp(
                 request.user.phone,
                 confirmation_code,
-                purpose=OtpCode.Purpose.LOGIN,
+                purpose=OtpCode.Purpose.DELETE_ACCOUNT,  # ✅ تغییر
             )
 
             user = request.user
@@ -368,6 +391,7 @@ class DeleteAccountView(APIView, StandardResponseMixin):
             return self.success_response(
                 message='حساب کاربری شما با موفقیت حذف شد',
             )
+
         except OTPException as e:
             return e.as_response()
         except Exception as e:
@@ -375,5 +399,39 @@ class DeleteAccountView(APIView, StandardResponseMixin):
             return self.error_response(
                 message='خطا در حذف حساب کاربری',
                 code='DELETE_ERROR',
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+# apps/accounts/views/auth.py
+# این کلاس جدید را به انتهای فایل اضافه کنید:
+
+class SendDeleteAccountOTPView(APIView, StandardResponseMixin):
+    """ارسال کد تایید برای حذف حساب"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['Authentication'],
+        summary='ارسال کد تایید حذف حساب',
+    )
+    def post(self, request):
+        try:
+            OTPService.send_otp(
+                request.user.phone,
+                purpose=OtpCode.Purpose.DELETE_ACCOUNT,
+            )
+            return self.success_response(
+                data={
+                    'expires_in': 300,
+                    'resend_after': 60,
+                },
+                message=f'کد تایید حذف حساب به شماره {mask_phone(request.user.phone)} ارسال شد',
+            )
+        except OTPException as e:
+            return e.as_response()
+        except Exception as e:
+            logger.exception(f"Send delete OTP error: {e}")
+            return self.error_response(
+                message='خطا در ارسال کد تایید',
+                code='OTP_SEND_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

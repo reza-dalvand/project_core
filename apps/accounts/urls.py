@@ -1,6 +1,6 @@
-"""
-URL configuration for accounts app — بدون role
-"""
+# apps/accounts/urls.py
+# فایل کامل را جایگزین کنید:
+
 from django.urls import path
 from rest_framework_simplejwt.views import TokenVerifyView
 
@@ -13,7 +13,9 @@ from .views.auth import (
     UserDeviceListView,
     RevokeDeviceView,
     DeleteAccountView,
+    SendDeleteAccountOTPView,  # ✅ جدید
 )
+
 from .views.profile import (
     ProfileView,
     ChangePhoneRequestView,
@@ -45,7 +47,8 @@ urlpatterns = [
 
     # ═══════════ Account ═══════════
     path('account/delete/', DeleteAccountView.as_view(), name='delete-account'),
+    path('account/delete/send-otp/', SendDeleteAccountOTPView.as_view(), name='delete-account-send-otp'),
 
+    # ═══════════ Bank Info ═══════════
     path('bank-info/', UserBankInfoView.as_view(), name='user-bank-info'),
-
 ]

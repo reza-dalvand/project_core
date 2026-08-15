@@ -18,17 +18,20 @@ class ScheduleBreakSerializer(serializers.Serializer):
         return data
 
 
+# apps/schedules/serializers/__init__.py
+# فقط کلاس ServiceScheduleSerializer را پیدا و جایگزین کنید:
+
 class ServiceScheduleSerializer(serializers.ModelSerializer):
+    """Serializer زمان‌بندی — نسخه نهایی"""
     breaks = ScheduleBreakSerializer(many=True, required=False, default=list)
     service_name = serializers.CharField(source='service.name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
-    # ❌ team_member_name حذف شد
+    service_id = serializers.IntegerField(source='service.id', read_only=True)
 
     class Meta:
         model = ServiceSchedule
         fields = [
-            'id', 'business', 'service',
-            # ❌ team_member حذف شد
+            'id', 'business', 'service', 'service_id',
             'jy', 'jm', 'jd', 'date_key',
             'work_start', 'work_end', 'slot_duration',
             'breaks', 'slot_count',
@@ -41,27 +44,39 @@ class ServiceScheduleSerializer(serializers.ModelSerializer):
         jy = data.get('jy')
         jm = data.get('jm')
         jd = data.get('jd')
+
         if not all([jy, jm, jd]):
             raise serializers.ValidationError('تاریخ جلالی الزامی است')
+
         if not (1 <= jm <= 12):
             raise serializers.ValidationError('ماه جلالی باید بین ۱ تا ۱۲ باشد')
+
         if not (1 <= jd <= 31):
             raise serializers.ValidationError('روز جلالی باید بین ۱ تا ۳۱ باشد')
+
         work_start = data.get('work_start')
         work_end = data.get('work_end')
         if work_start and work_end and work_end <= work_start:
             raise serializers.ValidationError(
                 'ساعت پایان باید بعد از ساعت شروع باشد'
             )
+
         return data
 
     def validate_slot_duration(self, value):
         if value < 15:
             raise serializers.ValidationError('مدت هر نوبت باید حداقل ۱۵ دقیقه باشد')
-        if value > 120:
-            raise serializers.ValidationError('مدت هر نوبت نمی‌تواند بیشتر از ۲ ساعت باشد')
+        if value > 360:
+            raise serializers.ValidationError('مدت هر نوبت نمی‌تواند بیشتر از ۶ ساعت باشد')
         return value
 
+    def create(self, validated_data):
+        request = self.context.get('request')
+        business = request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        validated_data['business'] = business
+        return super().create(validated_data)
 
 class ServiceScheduleCreateSerializer(ServiceScheduleSerializer):
     def create(self, validated_data):

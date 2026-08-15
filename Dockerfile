@@ -32,7 +32,6 @@ RUN apt-get update && apt-get install -y \
 # ─── Stage 2: Dependencies ───
 FROM base as dependencies
 
-# انتخاب requirements بر اساس محیط
 ARG DJANGO_ENV=development
 COPY requirements/base.txt requirements/base.txt
 COPY requirements/${DJANGO_ENV}.txt requirements/environment.txt
@@ -42,12 +41,15 @@ RUN pip install --upgrade pip && \
 
 # ─── Stage 3: Development ───
 FROM dependencies as development
+
 COPY . .
+
 EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # ─── Stage 4: Production ───
 FROM dependencies as production
+
 COPY . .
 
 RUN python manage.py collectstatic --noinput \
@@ -59,12 +61,11 @@ RUN useradd -m -r appuser && \
 USER appuser
 
 EXPOSE 8000
-
 CMD ["gunicorn", \
-    "--bind", "0.0.0.0:8000", \
-    "--workers", "4", \
-    "--threads", "2", \
-    "--timeout", "120", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-", \
-    "config.wsgi:application"]
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--threads", "2", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "config.wsgi:application"]

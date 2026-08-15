@@ -142,6 +142,7 @@ class OtpCode(models.Model):
         LOGIN = 'login', 'ورود'
         CHANGE_PHONE = 'change_phone', 'تغییر شماره'
         BOOKING_VERIFY = 'booking_verify', 'تایید رزرو'
+        DELETE_ACCOUNT = 'delete_account', 'حذف حساب'
 
     phone = models.CharField(
         'شماره موبایل',

@@ -33,7 +33,7 @@ class SendOTPResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     expires_in = serializers.IntegerField()
     resend_after = serializers.IntegerField()
-
+    is_registered = serializers.BooleanField()  # ✅ جدید
 
 # ═══════════════════════════════════════════════
 #   Verify OTP

@@ -85,6 +85,9 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
     owner_name = serializers.SerializerMethodField()
     gallery = BusinessGallerySerializer(many=True, read_only=True)
 
+    # ✅ جدید: لیست خدمات کسب‌وکار
+    services = serializers.SerializerMethodField()
+
     class Meta:
         model = Business
         fields = [
@@ -96,16 +99,24 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'rating', 'reviews_count',
             'booking_slug', 'booking_link_clicks',
             'gallery',
+            'services',  # ✅ جدید
             'owner_name', 'created_at',
             'bank_info_registered', 'bank_info_verified',
             'verified_name',
-            'owner_name', 'created_at',
+            'national_id',  # ✅ جدید
         ]
+        # ✅ حذف owner_name تکراری
 
     def get_owner_name(self, obj):
         return obj.owner.full_name
 
+    # ✅ جدید: متد برای دریافت خدمات
+    def get_services(self, obj):
+        from apps.services.serializers import ServiceListSerializer
+        services = obj.services.filter(is_active=True)
+        return ServiceListSerializer(services, many=True).data
 
+    
 class BusinessUpdateSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
     owner_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)

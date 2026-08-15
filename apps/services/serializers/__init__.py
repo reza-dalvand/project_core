@@ -5,14 +5,18 @@ from rest_framework import serializers
 from apps.categories.serializers import SubServiceSerializer
 from apps.services.models import Service
 
+# apps/services/serializers/__init__.py
+# فقط کلاس ServiceListSerializer را پیدا و جایگزین کنید:
+
 class ServiceListSerializer(serializers.ModelSerializer):
-    """Serializer برای لیست خدمات"""
+    """Serializer برای لیست خدمات — نسخه نهایی"""
     final_price = serializers.ReadOnlyField()
     discount_amount = serializers.ReadOnlyField()
     app_fee = serializers.ReadOnlyField()
     category_name = serializers.CharField(source='category.name', read_only=True)
-    category_id = serializers.IntegerField(source='category.id', read_only=True)  # ✅ جدید
-    sub_service = SubServiceSerializer(read_only=True)  # ✅ جدید: nested کامل
+    category_id = serializers.IntegerField(source='category.id', read_only=True)
+    # ✅ اصلاح: sub_service به صورت nested کامل
+    sub_service = SubServiceSerializer(read_only=True)
     sub_service_id = serializers.IntegerField(source='sub_service.id', read_only=True)
     sub_service_name = serializers.CharField(source='sub_service.name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
@@ -27,13 +31,13 @@ class ServiceListSerializer(serializers.ModelSerializer):
             'duration', 'renewal_days',
             'is_active',
             'category_id', 'category_name',
-            'sub_service', 'sub_service_id',
+            'sub_service', 'sub_service_id', 'sub_service_name',
             'business_name',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
 
-
+        
 class ServiceDetailSerializer(ServiceListSerializer):
     """Serializer کامل برای جزئیات خدمت"""
 
