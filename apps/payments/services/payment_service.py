@@ -250,13 +250,31 @@ class PaymentService:
     #   تسویه حساب
     # ═══════════════════════════════════════════════
 
+# apps/payments/services/payment_service.py
+# در کلاس PaymentService، این متد را جایگزین کنید:
+
     @classmethod
     def calculate_app_fee(cls, amount: int) -> int:
-        """محاسبه کارمزد زیبانو"""
-        if amount <= 0:
+        """
+        محاسبه کارمزد زیبانو — هماهنگ با فرانت‌اند
+        
+        قوانین:
+        - زیر ۲۵۰,۰۰۰ تومان: ۷,۰۰۰ تومان ثابت
+        - از ۲۵۰,۰۰۰ تا ۵۰۰,۰۰۰ تومان: ۳٪
+        - از ۵۰۰,۰۰۰ تومان به بالا: ۴٪
+        - سقف: ۵۰,۰۰۰ تومان
+        """
+        if not amount or amount <= 0:
             return 0
-        fee = int(amount * 0.01)
-        return max(fee, 10000)
+        
+        if amount < 250000:
+            fee = 7000
+        elif amount <= 500000:
+            fee = int(amount * 0.03)
+        else:
+            fee = int(amount * 0.04)
+        
+        return min(fee, 50000)
 
     @classmethod
     def get_business_pending_balance(cls, business) -> dict:

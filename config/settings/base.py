@@ -88,7 +88,7 @@ LOCAL_APPS = [
 
     # Ads
     'apps.ads.apps.AdsConfig',
-    'apps.ads_management.apps.AdsManagementConfig',
+    # 'apps.ads_management.apps.AdsManagementConfig',
 
     # Features
     'apps.reminders.apps.RemindersConfig',
