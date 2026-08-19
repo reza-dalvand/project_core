@@ -11,7 +11,7 @@ class ExplorePost(BaseModel):
 
     class Source(models.TextChoices):
         BUSINESS = 'business', 'کسب‌وکار'
-        MAGAZINE = 'magazine', 'مجله زیبانو'
+        MAGAZINE = 'magazine', 'مجله بیو کلاب'
 
     business = models.ForeignKey(
         'businesses.Business',

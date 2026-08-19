@@ -256,7 +256,7 @@ class PaymentService:
     @classmethod
     def calculate_app_fee(cls, amount: int) -> int:
         """
-        محاسبه کارمزد زیبانو — هماهنگ با فرانت‌اند
+        محاسبه کارمزد بیو کلاب — هماهنگ با فرانت‌اند
         
         قوانین:
         - زیر ۲۵۰,۰۰۰ تومان: ۷,۰۰۰ تومان ثابت

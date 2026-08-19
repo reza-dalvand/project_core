@@ -80,9 +80,13 @@ STORAGES = {
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    'https://zibano.app',
-    'https://www.zibano.app',
-    env('FRONTEND_URL', default='https://zibano.app'),
+    'https://beauclub.ir',
+    'https://beuclub.ir',
+    'https://buclub.ir',
+    'https://www.beauclub.app',
+    'https://www.beuclub.app',
+    'https://www.buclub.app',
+    env('FRONTEND_URL', default='https://beauclub.ir'),
 ]
 
 CORS_ALLOW_CREDENTIALS = True

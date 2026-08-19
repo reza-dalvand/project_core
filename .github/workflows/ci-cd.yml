@@ -1,4 +1,4 @@
-name: Zibano CI/CD Pipeline
+name: beau CI/CD Pipeline
 
 on:
   push:
@@ -99,5 +99,5 @@ jobs:
           target: production
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/zibano-backend:latest
-            ${{ secrets.DOCKER_USERNAME }}/zibano-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/beau-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/beau-backend:${{ github.sha }}

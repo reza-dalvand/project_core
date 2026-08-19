@@ -1,5 +1,5 @@
 """
-ASGI config for Zibano Backend.
+ASGI config for BeauClub Backend.
 """
 import os
 

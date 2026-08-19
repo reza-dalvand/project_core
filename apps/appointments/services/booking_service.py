@@ -40,7 +40,7 @@ class BookingService:
 
     @classmethod
     def calculate_commission(cls, amount: int) -> int:
-        """محاسبه کارمزد زیبانو: ۱٪ حداقل ۱۰,۰۰۰ تومان"""
+        """محاسبه کارمزد بیو کلاب: ۱٪ حداقل ۱۰,۰۰۰ تومان"""
         if amount <= 0:
             return 0
         commission = int(amount * 0.01)

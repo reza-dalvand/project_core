@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('is_active', models.BooleanField(default=True)),
-                ('source', models.CharField(choices=[('business', 'کسب\u200cوکار'), ('magazine', 'مجله زیبانو')], default='business', max_length=20, verbose_name='منبع')),
+                ('source', models.CharField(choices=[('business', 'کسب\u200cوکار'), ('magazine', 'مجله بیو کلاب')], default='business', max_length=20, verbose_name='منبع')),
                 ('caption', models.TextField(max_length=500, verbose_name='کپشن')),
                 ('is_pinned', models.BooleanField(default=False, verbose_name='پین شده')),
                 ('business', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='posts', to='businesses.business', verbose_name='کسب\u200cوکار')),

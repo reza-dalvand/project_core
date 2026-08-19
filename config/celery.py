@@ -1,5 +1,5 @@
 """
-تنظیمات Celery برای زیبانو
+تنظیمات Celery برای بیو کلاب
 """
 import os
 from celery import Celery
@@ -7,7 +7,7 @@ from celery import Celery
 # تنظیمات جنگو برای Celery
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
 
-app = Celery('zibano')
+app = Celery('BeauClub')
 
 # خواندن تنظیمات از settings جنگو با پیشوند CELERY_
 app.config_from_object('django.conf:settings', namespace='CELERY')

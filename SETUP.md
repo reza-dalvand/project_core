@@ -1,6 +1,7 @@
-# 🚀 دستورالعمل راه‌اندازی پروژه زیبانو
+# 🚀 دستورالعمل راه‌اندازی پروژه بیو کلاب
 
 ## پیش‌نیازها
+
 - Docker & Docker Compose
 - Node.js 18+
 - Yarn یا npm
@@ -31,3 +32,4 @@ docker-compose exec backend python manage.py create_initial_data
 
 # ایجاد superuser
 docker-compose exec backend python manage.py createsuperuser
+```

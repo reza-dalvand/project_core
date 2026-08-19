@@ -93,7 +93,7 @@ class KavenegarSmsProvider(AbstractSmsProvider):
     def send_otp(self, phone: str, code: str) -> SmsResult:
         return self.send_pattern(
             phone=phone,
-            template_name='zibano-otp',
+            template_name='beau-otp',
             token=code,
         )
 

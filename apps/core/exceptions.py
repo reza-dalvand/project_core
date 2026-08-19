@@ -88,10 +88,10 @@ def custom_exception_handler(exc, context):
 #   Custom Exceptions
 # ═══════════════════════════════════════════════
 
-class ZibanoBaseException(Exception):
+class BeauClubBaseException(Exception):
     """Base exception"""
     default_message = 'خطایی رخ داده است'
-    default_code = 'ZIBANO_ERROR'
+    default_code = 'BEAU_CLUB_ERROR'
     default_status = status.HTTP_400_BAD_REQUEST
 
     def __init__(self, message=None, code=None, details=None):
@@ -114,7 +114,7 @@ class ZibanoBaseException(Exception):
         )
 
 
-class OTPException(ZibanoBaseException):
+class OTPException(BeauClubBaseException):
     default_message = 'خطا در ارسال کد تایید'
     default_code = 'OTP_ERROR'
 
@@ -139,7 +139,7 @@ class OTPRateLimitException(OTPException):
     default_code = 'OTP_RATE_LIMIT'
 
 
-class ShahkarException(ZibanoBaseException):
+class ShahkarException(BeauClubBaseException):
     default_message = 'خطا در استعلام کد ملی'
     default_code = 'SHAHKAR_ERROR'
 
@@ -149,17 +149,17 @@ class ShahkarMismatchException(ShahkarException):
     default_code = 'SHAHKAR_MISMATCH'
 
 
-class PaymentException(ZibanoBaseException):
+class PaymentException(BeauClubBaseException):
     default_message = 'خطا در پرداخت'
     default_code = 'PAYMENT_ERROR'
 
 
-class InsufficientBalanceException(ZibanoBaseException):
+class InsufficientBalanceException(BeauClubBaseException):
     default_message = 'موجودی کافی نیست'
     default_code = 'INSUFFICIENT_BALANCE'
 
 
-class BookingException(ZibanoBaseException):
+class BookingException(BeauClubBaseException):
     default_message = 'خطا در رزرو نوبت'
     default_code = 'BOOKING_ERROR'
 
@@ -169,7 +169,7 @@ class SlotNotAvailableException(BookingException):
     default_code = 'SLOT_NOT_AVAILABLE'
 
 
-class ReviewException(ZibanoBaseException):
+class ReviewException(BeauClubBaseException):
     default_message = 'خطا در ثبت نظر'
     default_code = 'REVIEW_ERROR'
 

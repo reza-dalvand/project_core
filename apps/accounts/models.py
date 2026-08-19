@@ -1,5 +1,5 @@
 """
-مدل کاربر زیبانو — احراز هویت با شماره موبایل
+مدل کاربر بیو کلاب — احراز هویت با شماره موبایل
 بدون نقش (role) — هر کاربر می‌تواند یک کسب‌وکار داشته باشد
 """
 from django.db import models
@@ -10,7 +10,7 @@ from .managers import CustomUserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """کاربر زیبانو — احراز هویت با شماره موبایل"""
+    """کاربر بیو کلاب — احراز هویت با شماره موبایل"""
 
     # ═══════════ احراز هویت ═══════════
     phone = models.CharField(

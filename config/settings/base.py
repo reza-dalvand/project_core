@@ -1,6 +1,6 @@
 """
 Django Base Settings - تنظیمات مشترک برای تمام محیط‌ها
-زیبانو - بک‌اند
+بیو کلاب - بک‌اند
 """
 import os
 import environ
@@ -24,7 +24,7 @@ if env_file.exists():
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = env('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
-SITE_NAME = env('SITE_NAME', default='زیبانو')
+SITE_NAME = env('SITE_NAME', default='بیو کلاب')
 SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 
 # ═══════════════════════════════════════════════
@@ -190,8 +190,8 @@ ASGI_APPLICATION = 'config.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': env('DB_NAME', default='zibano'),
-        'USER': env('DB_USER', default='zibano'),
+        'NAME': env('DB_NAME', default='beau'),
+        'USER': env('DB_USER', default='beau'),
         'PASSWORD': env('DB_PASSWORD', default=''),
         'HOST': env('DB_HOST', default='localhost'),
         'PORT': env('DB_PORT', default='5432'),
@@ -325,7 +325,7 @@ FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 # Storage (Arvan Cloud S3)
 ARVAN_ACCESS_KEY = env('ARVAN_ACCESS_KEY', default='')
 ARVAN_SECRET_KEY = env('ARVAN_SECRET_KEY', default='')
-ARVAN_BUCKET_NAME = env('ARVAN_BUCKET_NAME', default='zibano')
+ARVAN_BUCKET_NAME = env('ARVAN_BUCKET_NAME', default='beau')
 ARVAN_ENDPOINT = env(
     'ARVAN_ENDPOINT',
     default='https://s3.ir-thr-at1.arvanstorage.ir',
@@ -413,11 +413,11 @@ LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 #   Jazzmin Settings
 # ═══════════════════════════════════════════════
 JAZZMIN_SETTINGS = {
-    "site_title": "زیبانو | پنل مدیریت",
-    "site_header": "زیبانو",
-    "site_brand": "Zibano Admin",
-    "welcome_sign": "به پنل مدیریت زیبانو خوش آمدید",
-    "copyright": "Zibano Co. © 2024-2026",
+    "site_title": "بیو کلاب | پنل مدیریت",
+    "site_header": "بیو کلاب",
+    "site_brand": "BEAU CLUB Admin",
+    "welcome_sign": "به پنل مدیریت بیو کلاب خوش آمدید",
+    "copyright": "beau Co. © 2024-2026",
     "user_avatar": "avatar",
     "topmenu_links": [
         {"name": "🏠 سایت معرفی", "url": "/", "new_window": True},

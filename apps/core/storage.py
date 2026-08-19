@@ -15,7 +15,7 @@
 #         # تنظیمات پیش‌فرض از settings
 #         self.access_key = settings_override.get('access_key', getattr(settings, 'ARVAN_ACCESS_KEY', ''))
 #         self.secret_key = settings_override.get('secret_key', getattr(settings, 'ARVAN_SECRET_KEY', ''))
-#         self.bucket_name = settings_override.get('bucket_name', getattr(settings, 'ARVAN_BUCKET_NAME', 'zibano'))
+#         self.bucket_name = settings_override.get('bucket_name', getattr(settings, 'ARVAN_BUCKET_NAME', 'BEAU_CLUB'))
 #         self.endpoint_url = settings_override.get('endpoint_url', getattr(settings, 'ARVAN_ENDPOINT',
 #                                                                           'https://s3.ir-thr-at1.arvanstorage.ir'))
 #         self.region_name = settings_override.get('region_name', getattr(settings, 'ARVAN_REGION', 'ir-thr-at1'))

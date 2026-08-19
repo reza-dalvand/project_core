@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════
-#   زیبانو - Makefile
+#   بیو کلاب - Makefile
 # ═══════════════════════════════════════════════
 
 .PHONY: help run test migrate superuser lint format clean

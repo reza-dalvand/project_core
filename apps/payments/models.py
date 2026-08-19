@@ -56,7 +56,7 @@ class Transaction(BaseModel):
         choices=Type.choices,
     )
     amount = models.BigIntegerField('مبلغ (تومان)')
-    app_fee = models.BigIntegerField('کمیسیون زیبانو (تومان)', default=0)
+    app_fee = models.BigIntegerField('کمیسیون بیو کلاب (تومان)', default=0)
 
     # ═══════════ وضعیت ═══════════
     status = models.CharField(

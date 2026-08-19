@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════
-#   Zibano Backend Dockerfile
+#   BEAU CLUB Backend Dockerfile
 # ═══════════════════════════════════════════════
 
 # ─── Stage 1: Base ───

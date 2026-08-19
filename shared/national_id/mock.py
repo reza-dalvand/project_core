@@ -35,7 +35,7 @@ class MockNationalIdVerifier(AbstractNationalIdVerifier):
         if national_id == self.TEST_NATIONAL_ID:
             return VerificationResult(
                 success=True,
-                verified_name='کاربر آزمایشی زیبانو',
+                verified_name='کاربر آزمایشی بیو کلاب',
                 national_id=national_id,
             )
 

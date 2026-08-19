@@ -1,6 +1,6 @@
 """
-Admin configuration for landing app (سایت معرفی زیبانو)
-پنل مدیریت کامل سایت معرفی زیبانو
+Admin configuration for landing app (سایت معرفی بیو کلاب)
+پنل مدیریت کامل سایت معرفی بیو کلاب
 """
 from django.contrib import admin
 from django.utils.html import format_html

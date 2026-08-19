@@ -9,8 +9,8 @@ DEBUG = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': env('DB_NAME', default='zibano'),
-        'USER': env('DB_USER', default='zibano'),
+        'NAME': env('DB_NAME', default='beau'),
+        'USER': env('DB_USER', default='beau'),
         'PASSWORD': env('DB_PASSWORD', default=''),
         'HOST': env('DB_HOST', default='localhost'),
         'PORT': env('DB_PORT', default='5432'),

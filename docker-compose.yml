@@ -4,18 +4,18 @@ services:
   # ═══════════ Database (PostGIS) ═══════════
   postgres:
     image: postgis/postgis:16-3.4-alpine
-    container_name: zibano_postgres
+    container_name: beau_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: zibano
-      POSTGRES_USER: zibano
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-zibano_secure_password}
+      POSTGRES_DB: beau
+      POSTGRES_USER: beau
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beau_secure_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zibano"]
+      test: ["CMD-SHELL", "pg_isready -U beau"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,7 +23,7 @@ services:
   # ═══════════ Redis ═══════════
   redis:
     image: redis:7-alpine
-    container_name: zibano_redis
+    container_name: beau_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -40,7 +40,7 @@ services:
     build:
       context: .
       target: ${DOCKER_TARGET:-development}
-    container_name: zibano_backend
+    container_name: beau_backend
     restart: unless-stopped
     volumes:
       - .:/app
@@ -53,9 +53,9 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
-      - DB_NAME=zibano
-      - DB_USER=zibano
-      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_NAME=beau
+      - DB_USER=beau
+      - DB_PASSWORD=${DB_PASSWORD:-beau_secure_password}
       - DB_HOST=postgres
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
@@ -76,7 +76,7 @@ services:
     build:
       context: .
       target: ${DOCKER_TARGET:-development}
-    container_name: zibano_celery_worker
+    container_name: beau_celery_worker
     restart: unless-stopped
     volumes:
       - .:/app
@@ -85,9 +85,9 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
-      - DB_NAME=zibano
-      - DB_USER=zibano
-      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_NAME=beau
+      - DB_USER=beau
+      - DB_PASSWORD=${DB_PASSWORD:-beau_secure_password}
       - DB_HOST=postgres
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
@@ -102,7 +102,7 @@ services:
     build:
       context: .
       target: ${DOCKER_TARGET:-development}
-    container_name: zibano_celery_beat
+    container_name: beau_celery_beat
     restart: unless-stopped
     volumes:
       - .:/app
@@ -111,9 +111,9 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings.development}
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
-      - DB_NAME=zibano
-      - DB_USER=zibano
-      - DB_PASSWORD=${DB_PASSWORD:-zibano_secure_password}
+      - DB_NAME=beau
+      - DB_USER=beau
+      - DB_PASSWORD=${DB_PASSWORD:-beau_secure_password}
       - DB_HOST=postgres
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0

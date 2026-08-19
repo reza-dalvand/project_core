@@ -16,7 +16,7 @@ def user_post_save(sender, instance, created, **kwargs):
         UserReferral.objects.get_or_create(
             user=instance,
             defaults={
-                'referral_code': f'ZIBANO-{secrets.token_hex(4).upper()}',
+                'referral_code': f'beau-{secrets.token_hex(4).upper()}',
                 'is_active': False,
             }
         )

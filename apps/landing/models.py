@@ -23,7 +23,7 @@ class SiteSettings(models.Model):
     site_name = models.CharField(
         'نام سایت',
         max_length=100,
-        default='زیبانو',
+        default='بیو کلاب',
     )
     site_slogan = models.CharField(
         'شعار سایت',
@@ -75,7 +75,7 @@ class SiteSettings(models.Model):
     # ─── سئو ───
     meta_description = models.TextField(
         'توضیحات متا',
-        default='زیبانو - رزرو آنلاین خدمات زیبایی و سلامت. بهترین سالن‌های زیبایی، کلینیک‌های پوست و مراکز لیزر در یک اپلیکیشن',
+        default='بیو کلاب - رزرو آنلاین خدمات زیبایی و سلامت. بهترین سالن‌های زیبایی، کلینیک‌های پوست و مراکز لیزر در یک اپلیکیشن',
         max_length=300,
     )
     meta_keywords = models.CharField(
@@ -92,7 +92,7 @@ class SiteSettings(models.Model):
     )
     email = models.EmailField(
         'ایمیل',
-        default='support@zibano.app',
+        default='support@beau.app',
     )
     address = models.CharField(
         'آدرس',
@@ -152,7 +152,7 @@ class SiteSettings(models.Model):
     footer_text = models.CharField(
         'متن فوتر',
         max_length=200,
-        default='تمامی حقوق برای زیبانو محفوظ است. ساخته شده با ❤️ در ایران',
+        default='تمامی حقوق برای بیو کلاب محفوظ است. ساخته شده با ❤️ در ایران',
     )
     copyright_year = models.CharField(
         'سال کپی‌رایت',
@@ -203,7 +203,7 @@ class HeroSection(models.Model):
     )
     description = models.TextField(
         'توضیحات',
-        default='با زیبانو، بهترین سالن‌های زیبایی، کلینیک‌های پوست و مو، و مراکز تخصصی شهر خود را پیدا کنید و در کم‌تر از ۳۰ ثانیه نوبت رزرو کنید.',
+        default='با بیو کلاب، بهترین سالن‌های زیبایی، کلینیک‌های پوست و مو، و مراکز تخصصی شهر خود را پیدا کنید و در کم‌تر از ۳۰ ثانیه نوبت رزرو کنید.',
     )
 
     # ─── دکمه‌ها ───
@@ -272,12 +272,12 @@ class HeroSection(models.Model):
 class FeaturesSection(models.Model):
     """تنظیمات بخش ویژگی‌ها"""
 
-    badge_text = models.CharField('متن بج', max_length=100, default='چرا زیبانو؟')
+    badge_text = models.CharField('متن بج', max_length=100, default='چرا بیو کلاب؟')
     badge_icon = models.CharField('آیکون بج', max_length=50, default='auto_awesome')
     title = models.CharField('عنوان', max_length=200, default='ویژگی‌هایی که تجربه‌ات را متفاوت می‌کنند')
     subtitle = models.TextField(
         'توضیحات',
-        default='زیبانو با ترکیب فناوری روز و درک عمیق از نیازهای کاربران، تجربه‌ای بی‌نظیر از رزرو خدمات زیبایی را برایت رقم می‌زند.',
+        default='بیو کلاب با ترکیب فناوری روز و درک عمیق از نیازهای کاربران، تجربه‌ای بی‌نظیر از رزرو خدمات زیبایی را برایت رقم می‌زند.',
     )
 
     is_active = models.BooleanField('نمایش بخش', default=True)
@@ -343,7 +343,7 @@ class HowToSection(models.Model):
     title = models.CharField('عنوان', max_length=200, default='رزرو نوبت در ۴ قدم')
     subtitle = models.TextField(
         'توضیحات',
-        default='فرآیند رزرو در زیبانو به گونه‌ای طراحی شده که ساده، سریع و لذت‌بخش باشد.',
+        default='فرآیند رزرو در بیو کلاب به گونه‌ای طراحی شده که ساده، سریع و لذت‌بخش باشد.',
     )
 
     is_active = models.BooleanField('نمایش بخش', default=True)
@@ -408,7 +408,7 @@ class ServicesSection(models.Model):
     title = models.CharField('عنوان', max_length=200, default='دسته‌بندی خدمات زیبایی و سلامت')
     subtitle = models.TextField(
         'توضیحات',
-        default='از میکاپ و ناخن گرفته تا لیزر و فیشیال - هر خدمتی که نیاز داری، در زیبانو پیدا می‌کنی.',
+        default='از میکاپ و ناخن گرفته تا لیزر و فیشیال - هر خدمتی که نیاز داری، در بیو کلاب پیدا می‌کنی.',
     )
 
     is_active = models.BooleanField('نمایش بخش', default=True)
@@ -472,14 +472,14 @@ class AboutSection(models.Model):
     )
     description = models.TextField(
         'توضیحات اصلی',
-        default='زیبانو یک پلتفرم هوشمند رزرو آنلاین خدمات زیبایی و سلامته که سالن‌ها، کلینیک‌ها و متخصصان رو به کاربران متصل می‌کنه.',
+        default='بیو کلاب یک پلتفرم هوشمند رزرو آنلاین خدمات زیبایی و سلامته که سالن‌ها، کلینیک‌ها و متخصصان رو به کاربران متصل می‌کنه.',
     )
 
     # ─── کارت بصری ───
     card_title = models.CharField(
         'عنوان کارت',
         max_length=100,
-        default='داستان زیبانو',
+        default='داستان بیو کلاب',
     )
     card_description = models.TextField(
         'توضیحات کارت',
@@ -550,10 +550,10 @@ class TeamSection(models.Model):
 
     badge_text = models.CharField('متن بج', max_length=100, default='تیم ما')
     badge_icon = models.CharField('آیکون بج', max_length=50, default='groups')
-    title = models.CharField('عنوان', max_length=200, default='افراد پشت زیبانو')
+    title = models.CharField('عنوان', max_length=200, default='افراد پشت بیو کلاب')
     subtitle = models.TextField(
         'توضیحات',
-        default='تیمی متعهد و متخصص که با عشق به زیبایی و فناوری، زیبانو را برای شما می‌سازند.',
+        default='تیمی متعهد و متخصص که با عشق به زیبایی و فناوری، بیو کلاب را برای شما می‌سازند.',
     )
 
     is_active = models.BooleanField('نمایش بخش', default=True)
@@ -681,7 +681,7 @@ class FAQSection(models.Model):
     title = models.CharField('عنوان', max_length=200, default='پاسخ سوالات شما')
     subtitle = models.TextField(
         'توضیحات',
-        default='پاسخ رایج‌ترین پرسش‌های کاربران زیبانو را اینجا بخوانید.',
+        default='پاسخ رایج‌ترین پرسش‌های کاربران بیو کلاب را اینجا بخوانید.',
     )
 
     is_active = models.BooleanField('نمایش بخش', default=True)
@@ -741,7 +741,7 @@ class ContactSection(models.Model):
     title = models.CharField('عنوان', max_length=200, default='با ما در تماس باشید')
     subtitle = models.TextField(
         'توضیحات',
-        default='تیم پشتیبانی زیبانو آماده پاسخگویی به سوالات و حل مشکلات شماست.',
+        default='تیم پشتیبانی بیو کلاب آماده پاسخگویی به سوالات و حل مشکلات شماست.',
     )
 
     # ─── کارت اطلاعات ───
@@ -810,10 +810,10 @@ class ContactMessage(models.Model):
 class DownloadSection(models.Model):
     """تنظیمات بخش دانلود"""
 
-    title = models.CharField('عنوان', max_length=200, default='همین حالا زیبانو را نصب کنید')
+    title = models.CharField('عنوان', max_length=200, default='همین حالا بیو کلاب را نصب کنید')
     description = models.TextField(
         'توضیحات',
-        default='اپلیکیشن زیبانو را از مارکت‌های معتبر دانلود کنید و به جمع هزاران کاربر راضی بپیوندید.',
+        default='اپلیکیشن بیو کلاب را از مارکت‌های معتبر دانلود کنید و به جمع هزاران کاربر راضی بپیوندید.',
     )
     hint_text = models.CharField(
         'متن راهنما',

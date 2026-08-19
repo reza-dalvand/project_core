@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
                 ('type', models.CharField(choices=[('deposit', 'بیعانه'), ('full_payment', 'پرداخت کامل'), ('refund', 'استرداد'), ('settlement', 'تسویه')], max_length=20, verbose_name='نوع')),
                 ('amount', models.BigIntegerField(verbose_name='مبلغ (تومان)')),
-                ('app_fee', models.BigIntegerField(default=0, verbose_name='کمیسیون زیبانو (تومان)')),
+                ('app_fee', models.BigIntegerField(default=0, verbose_name='کمیسیون بیو کلاب (تومان)')),
                 ('status', models.CharField(choices=[('blocked', 'بلوکه (در انتظار خدمت)'), ('settling', 'در حال تسویه'), ('settled', 'تسویه شده'), ('refunded', 'مسترد به مشتری'), ('failed', 'ناموفق')], default='blocked', max_length=20, verbose_name='وضعیت')),
                 ('gateway', models.CharField(default='zibal', max_length=50, verbose_name='درگاه پرداخت')),
                 ('gateway_transaction_id', models.CharField(blank=True, default='', max_length=100, verbose_name='شناسه تراکنش درگاه')),

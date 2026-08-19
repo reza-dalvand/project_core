@@ -27,14 +27,14 @@ def site_settings(request):
         # مقادیر پیش‌فرض در صورت نبود رکورد
         return {
             'site': {
-                'name': 'زیبانو',
+                'name': 'بیو کلاب',
                 'slogan': 'رزرو آنلاین خدمات زیبایی و سلامت',
                 'primary_color': '#A88B7D',
                 'primary_dark_color': '#8D7468',
                 'primary_light_color': '#C5AE9F',
                 'background_color': '#F5F0EC',
                 'phone': '۰۲۱-۹۱۰۰۱۲۳۴',
-                'email': 'support@zibano.app',
+                'email': 'support@beau.app',
                 'address': 'تهران، سعادت‌آباد',
                 'working_hours': 'شنبه تا پنجشنبه ۹ تا ۱۸',
                 'instagram_url': '#',
@@ -50,7 +50,7 @@ def site_settings(request):
                 'logo_icon': 'spa',
                 'logo': None,
                 'favicon': None,
-                'meta_description': 'زیبانو - رزرو آنلاین خدمات زیبایی و سلامت',
+                'meta_description': 'بیو کلاب - رزرو آنلاین خدمات زیبایی و سلامت',
                 'meta_keywords': '',
                 'enamad_image': None,
                 'enamad_code': '',

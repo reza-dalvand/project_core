@@ -1,5 +1,5 @@
 """
-Base Model برای تمام مدل‌های زیبانو
+Base Model برای تمام مدل‌های بیو کلاب
 """
 from django.db import models
 

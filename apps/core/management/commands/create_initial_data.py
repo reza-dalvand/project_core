@@ -120,9 +120,9 @@ class Command(BaseCommand):
         from apps.notifications.models import SMSTemplate
 
         templates_data = [
-            ('login', 'کد تایید ورود', 'zibano-otp', 'کد تایید: {code}', ['code']),
-            ('change_phone', 'تغییر شماره', 'zibano-change-phone', 'کد تایید: {code}', ['code']),
-            ('booking_verify', 'تایید رزرو', 'zibano-booking-verify', 'کد تایید نوبت: {code}', ['code']),
+            ('login', 'کد تایید ورود', 'beau-otp', 'کد تایید: {code}', ['code']),
+            ('change_phone', 'تغییر شماره', 'beau-change-phone', 'کد تایید: {code}', ['code']),
+            ('booking_verify', 'تایید رزرو', 'beau-booking-verify', 'کد تایید نوبت: {code}', ['code']),
         ]
 
         for t_type, name, provider_id, pattern, variables in templates_data:

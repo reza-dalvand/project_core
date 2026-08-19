@@ -61,7 +61,7 @@ class ZibalGateway(AbstractPaymentGateway):
             'merchant': self._merchant_id,
             'amount': amount_rial,
             'callbackUrl': callback_url,
-            'description': description or 'پرداخت زیبانو',
+            'description': description or 'پرداخت بیو کلاب',
         }
         if order_id:
             payload['orderId'] = str(order_id)

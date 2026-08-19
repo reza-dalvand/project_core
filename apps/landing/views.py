@@ -11,7 +11,7 @@ from .forms import ContactForm
 def index(request):
     """صفحه اصلی سایت معرفی"""
     context = {
-        'page_title': 'زیبانو | رزرو آنلاین خدمات زیبایی و سلامت',
+        'page_title': 'بیو کلاب | رزرو آنلاین خدمات زیبایی و سلامت',
     }
     return render(request, 'landing/index.html', context)
 

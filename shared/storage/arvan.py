@@ -24,7 +24,7 @@ def get_storage_config() -> dict:
             'options': {},
         }
 
-    bucket = getattr(settings, 'ARVAN_BUCKET_NAME', 'zibano')
+    bucket = getattr(settings, 'ARVAN_BUCKET_NAME', 'beau')
     endpoint = getattr(
         settings, 'ARVAN_ENDPOINT',
         'https://s3.ir-thr-at1.arvanstorage.ir'

@@ -1,5 +1,5 @@
 """
-WSGI config for Zibano Backend.
+WSGI config for BeauClub Backend.
 """
 import os
 

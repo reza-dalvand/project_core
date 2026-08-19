@@ -1,5 +1,5 @@
 """
-URL Configuration - زیبانو — نسخه نهایی کامل
+URL Configuration - بیو کلاب — نسخه نهایی کامل
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -7,8 +7,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # ═══════ سفارشی‌سازی Admin ═══════
-admin.site.site_header = "پنل مدیریت زیبانو"
-admin.site.site_title = "زیبانو | مدیریت"
+admin.site.site_header = "پنل مدیریت بیو کلاب"
+admin.site.site_title = "بیو کلاب | مدیریت"
 admin.site.index_title = "داشبورد مدیریت"
 
 urlpatterns = [

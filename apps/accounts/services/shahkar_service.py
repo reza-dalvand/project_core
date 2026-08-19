@@ -104,7 +104,7 @@ class ShahkarService:
         if national_id == '0012345679':
             return {
                 'success': True,
-                'verified_name': 'کاربر آزمایشی زیبانو',
+                'verified_name': 'کاربر آزمایشی بیو کلاب',
                 'national_id': national_id,
             }
 
