@@ -234,6 +234,7 @@ def test_service(approved_business, service_category, sub_service):
 
 @pytest.fixture
 def test_schedule(approved_business, test_service):
+    """زمان‌بندی تست - با تاریخ پویا (۳۰ روز آینده)"""
     from apps.schedules.models import ServiceSchedule
     from datetime import time
     import jdatetime
@@ -255,11 +256,11 @@ def test_schedule(approved_business, test_service):
 
 @pytest.fixture
 def test_appointment(customer_user, approved_business, test_service):
+    """نوبت تست - با تاریخ پویا (۳۰ روز آینده)"""
     from apps.appointments.models import Appointment
     from datetime import time
     import jdatetime
     
-    # ✅ تاریخ پویا (۳۰ روز آینده)
     future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
     
     return Appointment.objects.create(
@@ -274,4 +275,3 @@ def test_appointment(customer_user, approved_business, test_service):
         total_price=450000,
         deposit_amount=100000,
     )
-   

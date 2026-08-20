@@ -12,36 +12,35 @@ from apps.appointments.models import Appointment
 @pytest.mark.django_db
 class TestCreateAppointment:
     def test_create_appointment_api(
-        self, authenticated_customer_client, test_service, test_schedule
+        self, authenticated_customer_client, test_service, test_schedule  # ✅ اضافه شد
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': 1405,
-            'jm': 4,
-            'jd': 22,
+            'jy': test_schedule.jy,      # ✅ از fixture استفاده کن
+            'jm': test_schedule.jm,
+            'jd': test_schedule.jd,
             'time_slot': '10:00',
         })
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()['success'] is True
 
     def test_create_appointment_with_jalali_date(
-        self, authenticated_customer_client, test_service
+        self, authenticated_customer_client, test_service, test_schedule  # ✅
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': 1405,
-            'jm': 1,
-            'jd': 1,
+            'jy': test_schedule.jy,
+            'jm': test_schedule.jm,
+            'jd': test_schedule.jd,
             'time_slot': '14:00',
         })
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()['data']
-        assert data['jy'] == 1405
-        assert data['jm'] == 1
-        assert data['jd'] == 1
-
+        assert data['jy'] == test_schedule.jy
+        assert data['jm'] == test_schedule.jm
+        assert data['jd'] == test_schedule.jd
 
 @pytest.mark.django_db
 class TestCustomerAppointments:

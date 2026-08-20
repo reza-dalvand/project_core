@@ -197,8 +197,8 @@ class SlotService:
                 business_id=business_id,
                 service_id=service_id,
                 jy=target.year,
-                jm=target.jmonth,
-                jd=target.jday,
+                jm=target.month,
+                jd=target.day,
             )
 
             if slots:
@@ -213,9 +213,9 @@ class SlotService:
 
                 available_dates.append({
                     'jy': target.year,
-                    'jm': target.jmonth,
-                    'jd': target.jday,
-                    'date_key': f'{target.year}/{target.jmonth:02d}/{target.jday:02d}',
+                    'jm': target.month,
+                    'jd': target.day,
+                    'date_key': f'{target.year}/{target.month:02d}/{target.day:02d}',
                     'day_of_week': persian_weekday,
                     'weekday_name': weekday_names[persian_weekday],
                     'available_slots_count': len(slots),

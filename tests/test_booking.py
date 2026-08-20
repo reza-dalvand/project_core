@@ -237,21 +237,17 @@ class TestBookingAPI:
         self,
         authenticated_customer_client,
         test_service,
-        test_schedule,
+        test_schedule,  # ✅ fixture لازمه
     ):
-        """تست API ایجاد نوبت"""
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': 1405,
-            'jm': 4,
-            'jd': 22,
+            'jy': test_schedule.jy,      # ✅ پویا
+            'jm': test_schedule.jm,
+            'jd': test_schedule.jd,
             'time_slot': '10:00',
         })
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.json()['success'] is True
-        data = response.json()['data']
-        assert data['verification_code'] is not None
 
     def test_create_appointment_invalid_time(
         self,

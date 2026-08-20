@@ -78,4 +78,3 @@ class BusinessFinancialStatsSerializer(serializers.Serializer):
     settled = serializers.IntegerField()
     refunded = serializers.IntegerField()
     total = serializers.IntegerField()
-    pending_commission = serializers.IntegerField()
