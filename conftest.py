@@ -234,34 +234,44 @@ def test_service(approved_business, service_category, sub_service):
 
 @pytest.fixture
 def test_schedule(approved_business, test_service):
-    """زمان‌بندی تست"""
     from apps.schedules.models import ServiceSchedule
+    from datetime import time
+    import jdatetime
+    
+    # ✅ تاریخ پویا (۳۰ روز آینده)
+    future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
+    
     return ServiceSchedule.objects.create(
         business=approved_business,
         service=test_service,
-        jy=1405,
-        jm=4,
-        jd=22,
+        jy=future_date.year,
+        jm=future_date.month,
+        jd=future_date.day,
         work_start=time(9, 0),
         work_end=time(18, 0),
         slot_duration=30,
         breaks=[{'start': '13:00', 'end': '14:00'}],
     )
 
-
 @pytest.fixture
 def test_appointment(customer_user, approved_business, test_service):
-    """نوبت تست"""
     from apps.appointments.models import Appointment
+    from datetime import time
+    import jdatetime
+    
+    # ✅ تاریخ پویا (۳۰ روز آینده)
+    future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
+    
     return Appointment.objects.create(
         business=approved_business,
         service=test_service,
         customer=customer_user,
-        jy=1405,
-        jm=4,
-        jd=22,
+        jy=future_date.year,
+        jm=future_date.month,
+        jd=future_date.day,
         time_slot=time(10, 0),
         status=Appointment.Status.RESERVED,
         total_price=450000,
         deposit_amount=100000,
     )
+   

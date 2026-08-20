@@ -44,7 +44,7 @@ def check_renewal_reminders(self):
 
             # محاسبه تاریخ موعد تمدید
             due_date = today + jdatetime.timedelta(days=renewal_days)
-            due_date_key = jalali_to_key(due_date.jyear, due_date.jmonth, due_date.jday)
+            due_date_key = jalali_to_key(due_date.year, due_date.jmonth, due_date.jday)
 
             # بررسی وجود یادآوری قبلی
             exists = RenewalReminder.objects.filter(

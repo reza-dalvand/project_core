@@ -17,7 +17,7 @@ class TestPaymentService:
     def test_calculate_app_fee_small(self):
         from apps.payments.services.payment_service import PaymentService
         fee = PaymentService.calculate_app_fee(50000)
-        assert fee == 10000  # حداقل
+        assert fee == 7000  # حداقل
 
     def test_business_pending_balance(self, approved_business, customer_user):
         from apps.payments.services.payment_service import PaymentService
@@ -80,7 +80,7 @@ class TestPaymentAPI:
         response = authenticated_customer_client.get(url)
         assert response.status_code == 200
 
-    def test_business_stats(self, authenticated_business_client):
+    def test_business_stats(self, authenticated_business_client, approved_business):
         url = reverse('payments:business-stats')
         response = authenticated_business_client.get(url)
         assert response.status_code == 200

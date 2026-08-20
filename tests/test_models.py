@@ -39,11 +39,14 @@ class TestOtpCode:
     """تست OtpCode"""
 
     def test_create_otp(self, db):
+        from django.utils import timezone
+        from datetime import timedelta
         from apps.accounts.models import OtpCode
         otp = OtpCode.objects.create(
             phone='09123456789',
             code='12345',
             purpose=OtpCode.Purpose.LOGIN,
+            expires_at=timezone.now() + timedelta(minutes=5) # ✅ اضافه شد
         )
         assert otp.is_valid is True
         assert otp.is_expired is False

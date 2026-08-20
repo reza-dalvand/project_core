@@ -12,7 +12,7 @@ from apps.appointments.models import Appointment
 @pytest.mark.django_db
 class TestCreateAppointment:
     def test_create_appointment_api(
-        self, authenticated_customer_client, test_service
+        self, authenticated_customer_client, test_service, test_schedule
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {

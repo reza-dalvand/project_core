@@ -33,5 +33,4 @@ urlpatterns = [
     path('gallery/reorder/', BusinessGalleryReorderView.as_view(), name='gallery-reorder'),
     
     # ═══════════ Public ═══════════
-    path('public/<slug:booking_slug>/', PublicBusinessDetailView.as_view(), name='public-business-detail'),
-]
+    path('public/<str:booking_slug>/', PublicBusinessDetailView.as_view(), name='public-business-detail'),]

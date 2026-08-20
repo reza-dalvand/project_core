@@ -53,6 +53,7 @@ class TestNotificationService:
     def test_send_sms_notification(
         self, customer_user, sms_templates, settings
     ):
+        settings.DEBUG = True 
         """تست ارسال پیامک"""
         # ✅ غیرفعال کردن API Key برای استفاده از Mock
         settings.KAVENEGAR_API_KEY = ''

@@ -19,7 +19,8 @@ def jalali_to_key(jy: int, jm: int, jd: int) -> str:
 def today_jalali_key() -> str:
     """کلید تاریخ امروز جلالی"""
     today = jdatetime.date.today()
-    return jalali_to_key(today.jyear, today.jmonth, today.jday)
+    # ✅ اصلاح: jyear -> year
+    return jalali_to_key(today.year, today.month, today.day)
 
 
 def now_jalali():
@@ -142,12 +143,12 @@ def generate_tracking_code():
     random_part = ''.join(random.choices(string.digits, k=10))
     return f'TRK-{random_part}'
 
-
 def generate_ref_number():
     """تولید شماره ارجاع"""
     now = now_jalali()
     random_part = ''.join(random.choices(string.digits, k=6))
-    return f'REF-{now.jyear}-{random_part}'
+    # ✅ اصلاح: jyear -> year
+    return f'REF-{now.year}-{random_part}'
 
 
 def generate_booking_slug(length=8):

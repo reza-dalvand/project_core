@@ -126,7 +126,7 @@ class SlotService:
 
         # ۵. حذف اسلات‌های گذشته (اگر امروز است)
         today = jdatetime.date.today()
-        if jy == today.jyear and jm == today.jmonth and jd == today.jday:
+        if jy == today.year and jm == today.jmonth and jd == today.jday:
             # ✅ استفاده از timezone-aware
             from django.utils import timezone as dj_timezone
             now_tehran = dj_timezone.now().astimezone()
@@ -196,7 +196,7 @@ class SlotService:
             slots = SlotService.get_available_slots(
                 business_id=business_id,
                 service_id=service_id,
-                jy=target.jyear,
+                jy=target.year,
                 jm=target.jmonth,
                 jd=target.jday,
             )
@@ -212,10 +212,10 @@ class SlotService:
                 ]
 
                 available_dates.append({
-                    'jy': target.jyear,
+                    'jy': target.year,
                     'jm': target.jmonth,
                     'jd': target.jday,
-                    'date_key': f'{target.jyear}/{target.jmonth:02d}/{target.jday:02d}',
+                    'date_key': f'{target.year}/{target.jmonth:02d}/{target.jday:02d}',
                     'day_of_week': persian_weekday,
                     'weekday_name': weekday_names[persian_weekday],
                     'available_slots_count': len(slots),

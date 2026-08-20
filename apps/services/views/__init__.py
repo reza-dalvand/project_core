@@ -1,10 +1,10 @@
 """
 Views برای مدیریت خدمات
 """
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 
@@ -24,7 +24,7 @@ class ServiceListView(generics.ListCreateAPIView, StandardResponseMixin):
     """لیست و ایجاد خدمات"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
     pagination_class = StandardResultsSetPagination
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -64,6 +64,7 @@ class ServiceListView(generics.ListCreateAPIView, StandardResponseMixin):
 class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView, StandardResponseMixin):
     """جزئیات، بروزرسانی و حذف خدمت"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = 'pk'
 
     def get_serializer_class(self):

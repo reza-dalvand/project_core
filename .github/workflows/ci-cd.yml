@@ -93,10 +93,12 @@ jobs:
             proj-bin libproj-dev \
             postgresql-client
 
-      - name: Enable PostGIS Extension
+      - name: Enable PostGIS & pg_trgm Extensions
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres \
             -d test_beau -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          PGPASSWORD=postgres psql -h localhost -U postgres \
+            -d test_beau -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
       - name: Install Python Dependencies
         run: |
