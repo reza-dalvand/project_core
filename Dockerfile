@@ -55,7 +55,8 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     SECRET_KEY=build-secret-key \
     python manage.py collectstatic --noinput 2>/dev/null || true
 
-# Create non-root user
+#test commond
+# Create non-root user 
 RUN useradd -m -r appuser && \
     chown -R appuser:appuser /app
 
@@ -71,4 +72,3 @@ CMD ["gunicorn", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "config.wsgi:application"]
-###
