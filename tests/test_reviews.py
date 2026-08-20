@@ -11,16 +11,21 @@ from apps.reviews.models import Review
 def completed_appointment(customer_user, approved_business, test_service):
     from apps.appointments.models import Appointment
     from datetime import time
+    import jdatetime
+    
+    future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
+    
     return Appointment.objects.create(
         business=approved_business,
         service=test_service,
         customer=customer_user,
-        jy=1405, jm=4, jd=22,
+        jy=future_date.year,
+        jm=future_date.month,
+        jd=future_date.day,
         time_slot=time(10, 0),
         status=Appointment.Status.DONE,
         total_price=450000,
     )
-
 
 @pytest.mark.django_db
 class TestReviewService:

@@ -5,7 +5,6 @@ import pytest
 from datetime import time
 from django.urls import reverse
 from rest_framework import status
-
 from apps.appointments.models import Appointment
 from apps.schedules.models import ServiceSchedule
 from apps.appointments.services.slot_service import SlotService
@@ -26,27 +25,29 @@ class TestSlotService:
         slots = SlotService.get_available_slots(
             business_id=approved_business.id,
             service_id=test_service.id,
-            jy=1405,
-            jm=4,
-            jd=22,
+            jy=test_schedule.jy,      # ✅ پویا
+            jm=test_schedule.jm,
+            jd=test_schedule.jd,
         )
         assert len(slots) > 0
-
         # بررسی اینکه اسلات‌ها در بازه استراحت نیستند
         for slot in slots:
             assert slot['start_time'] != '13:00'
             assert slot['start_time'] != '13:30'
 
     def test_no_slots_without_schedule(
-        self, approved_business, test_service
+        self, approved_business, test_service, test_schedule
     ):
         """بدون schedule هیچ اسلاتی نیست"""
+        import jdatetime
+        # تاریخ متفاوت از schedule
+        other_date = jdatetime.date.today() + jdatetime.timedelta(days=10)
         slots = SlotService.get_available_slots(
             business_id=approved_business.id,
             service_id=test_service.id,
-            jy=1405,
-            jm=4,
-            jd=25,
+            jy=other_date.year,
+            jm=other_date.month,
+            jd=other_date.day,
         )
         assert len(slots) == 0
 
@@ -59,11 +60,7 @@ class TestSlotService:
             service_id=test_service.id,
             days_ahead=30,
         )
-        # حداقل یک روز باید باشد (همان روز schedule)
-        found = any(
-            d['date_key'] == '1405/04/22' for d in dates
-        )
-        # ممکن است تاریخ گذشته باشد، پس فقط ساختار را چک می‌کنیم
+        # بررسی ساختار
         for d in dates:
             assert 'jy' in d
             assert 'jm' in d
@@ -88,12 +85,11 @@ class TestBookingService:
         appointment = BookingService.create_appointment(
             customer=customer_user,
             service_id=test_service.id,
-            jy=1405,
-            jm=4,
-            jd=22,
+            jy=test_schedule.jy,      # ✅ پویا
+            jm=test_schedule.jm,
+            jd=test_schedule.jd,
             time_slot_str='10:00',
         )
-
         assert appointment.id is not None
         assert appointment.customer == customer_user
         assert appointment.business == approved_business
@@ -118,9 +114,9 @@ class TestBookingService:
             BookingService.create_appointment(
                 customer=customer_user,
                 service_id=test_service.id,
-                jy=1405,
-                jm=4,
-                jd=22,
+                jy=test_schedule.jy,
+                jm=test_schedule.jm,
+                jd=test_schedule.jd,
                 time_slot_str='23:00',  # خارج از ساعات کاری
             )
 
@@ -131,13 +127,15 @@ class TestBookingService:
         test_service,
     ):
         """تست رزرو بدون schedule"""
+        import jdatetime
+        other_date = jdatetime.date.today() + jdatetime.timedelta(days=15)
         with pytest.raises(BookingException):
             BookingService.create_appointment(
                 customer=customer_user,
                 service_id=test_service.id,
-                jy=1405,
-                jm=5,
-                jd=1,
+                jy=other_date.year,
+                jm=other_date.month,
+                jd=other_date.day,
                 time_slot_str='10:00',
             )
 
@@ -152,57 +150,43 @@ class TestBookingService:
         BookingService.create_appointment(
             customer=customer_user,
             service_id=test_service.id,
-            jy=1405,
-            jm=4,
-            jd=22,
+            jy=test_schedule.jy,
+            jm=test_schedule.jm,
+            jd=test_schedule.jd,
             time_slot_str='10:00',
         )
-
         with pytest.raises(BookingException):
             BookingService.create_appointment(
                 customer=customer_user,
                 service_id=test_service.id,
-                jy=1405,
-                jm=4,
-                jd=22,
+                jy=test_schedule.jy,
+                jm=test_schedule.jm,
+                jd=test_schedule.jd,
                 time_slot_str='10:00',
             )
 
-    def test_cancel_by_customer(
-        self, test_appointment
-    ):
+    def test_cancel_by_customer(self, test_appointment):
         """تست لغو نوبت توسط مشتری"""
         test_appointment.cancel_by_customer('تغییر برنامه')
-
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'cancelled_by_customer'
         assert test_appointment.cancellation_reason == 'تغییر برنامه'
         assert test_appointment.cancelled_at is not None
 
-    def test_cancel_by_salon(
-        self, test_appointment
-    ):
+    def test_cancel_by_salon(self, test_appointment):
         """تست لغو نوبت توسط سالن"""
         test_appointment.cancel_by_salon('تعطیلی')
-
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'cancelled_by_salon'
         assert test_appointment.cancelled_at is not None
 
-    def test_regenerate_code_cooldown(
-        self, test_appointment
-    ):
+    def test_regenerate_code_cooldown(self, test_appointment):
         """تست cooldown تولید مجدد کد"""
-        # تلاش فوری باید خطا بدهد
         with pytest.raises(BookingException) as exc_info:
-            BookingService.regenerate_verification_code(
-                test_appointment
-            )
+            BookingService.regenerate_verification_code(test_appointment)
         assert exc_info.value.code == 'CODE_REGENERATE_COOLDOWN'
 
-    def test_verify_service_code(
-        self, test_appointment, business_owner_user
-    ):
+    def test_verify_service_code(self, test_appointment, business_owner_user):
         """تست تایید کد خدمت"""
         code = test_appointment.verification_code
         success = BookingService.verify_service_code(
@@ -215,9 +199,7 @@ class TestBookingService:
         assert test_appointment.status == Appointment.Status.DONE
         assert test_appointment.is_verified is True
 
-    def test_verify_invalid_code(
-        self, test_appointment, business_owner_user
-    ):
+    def test_verify_invalid_code(self, test_appointment, business_owner_user):
         """تست کد اشتباه"""
         success = BookingService.verify_service_code(
             appointment=test_appointment,
@@ -237,8 +219,9 @@ class TestBookingAPI:
         self,
         authenticated_customer_client,
         test_service,
-        test_schedule,  # ✅ fixture لازمه
+        test_schedule,
     ):
+        """تست API ایجاد نوبت"""
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
@@ -248,6 +231,9 @@ class TestBookingAPI:
             'time_slot': '10:00',
         })
         assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()['success'] is True
+        data = response.json()['data']
+        assert data['verification_code'] is not None
 
     def test_create_appointment_invalid_time(
         self,
@@ -259,9 +245,9 @@ class TestBookingAPI:
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': 1405,
-            'jm': 4,
-            'jd': 22,
+            'jy': test_schedule.jy,
+            'jm': test_schedule.jm,
+            'jd': test_schedule.jd,
             'time_slot': '25:99',
         })
         assert response.status_code == 400
@@ -332,9 +318,7 @@ class TestBookingAPI:
             'appointments:verify-code',
             kwargs={'pk': test_appointment.id},
         )
-        response = authenticated_business_client.post(
-            url, {'code': code}
-        )
+        response = authenticated_business_client.post(url, {'code': code})
         assert response.status_code == 200
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'done'
@@ -349,9 +333,7 @@ class TestBookingAPI:
             'appointments:verify-code',
             kwargs={'pk': test_appointment.id},
         )
-        response = authenticated_business_client.post(
-            url, {'code': '0000'}
-        )
+        response = authenticated_business_client.post(url, {'code': '0000'})
         assert response.status_code == 400
 
     def test_business_stats_api(

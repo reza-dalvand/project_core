@@ -195,6 +195,35 @@ class TestSchedule:
             )
 
 @pytest.mark.django_db
+class TestSchedule:
+    """تست مدل ServiceSchedule جدید"""
+
+    def test_create_schedule(self, test_schedule):
+        # ✅ از fixture استفاده کن
+        assert test_schedule.date_key is not None
+        assert test_schedule.slot_count > 0
+
+    def test_schedule_with_breaks(self, test_schedule):
+        assert len(test_schedule.breaks) == 1
+        assert test_schedule.breaks[0]['start'] == '13:00'
+
+    def test_schedule_unique(self, approved_business, test_service, test_schedule):
+        from apps.schedules.models import ServiceSchedule
+        from datetime import time
+        with pytest.raises(Exception):
+            ServiceSchedule.objects.create(
+                business=approved_business,
+                service=test_service,
+                jy=test_schedule.jy,
+                jm=test_schedule.jm,
+                jd=test_schedule.jd,
+                work_start=time(9, 0),
+                work_end=time(18, 0),
+                slot_duration=30,
+            )
+
+
+@pytest.mark.django_db
 class TestAppointment:
     """تست مدل Appointment جدید"""
 
@@ -207,7 +236,7 @@ class TestAppointment:
         assert test_appointment.remaining_amount == 350000
 
     def test_jalali_date_fields(self, test_appointment):
-        # ✅ چک کن فیلدها پر شدن
+        # ✅ فقط چک کن مقادیر معتبر باشن
         assert test_appointment.jy > 1400
         assert 1 <= test_appointment.jm <= 12
         assert 1 <= test_appointment.jd <= 31
@@ -217,7 +246,6 @@ class TestAppointment:
         assert test_appointment.status == 'cancelled_by_customer'
         assert test_appointment.cancellation_reason == 'تغییر برنامه'
         assert test_appointment.cancelled_at is not None
-
 
 @pytest.mark.django_db
 class TestTransaction:

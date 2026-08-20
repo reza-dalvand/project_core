@@ -239,7 +239,6 @@ def test_schedule(approved_business, test_service):
     from datetime import time
     import jdatetime
     
-    # ✅ تاریخ پویا (۳۰ روز آینده)
     future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
     
     return ServiceSchedule.objects.create(

@@ -5,19 +5,19 @@ import pytest
 from datetime import time
 from django.urls import reverse
 from rest_framework import status
-
 from apps.appointments.models import Appointment
 
 
 @pytest.mark.django_db
 class TestCreateAppointment:
+
     def test_create_appointment_api(
-        self, authenticated_customer_client, test_service, test_schedule  # ✅ اضافه شد
+        self, authenticated_customer_client, test_service, test_schedule
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': test_schedule.jy,      # ✅ از fixture استفاده کن
+            'jy': test_schedule.jy,      # ✅ پویا
             'jm': test_schedule.jm,
             'jd': test_schedule.jd,
             'time_slot': '10:00',
@@ -26,7 +26,7 @@ class TestCreateAppointment:
         assert response.json()['success'] is True
 
     def test_create_appointment_with_jalali_date(
-        self, authenticated_customer_client, test_service, test_schedule  # ✅
+        self, authenticated_customer_client, test_service, test_schedule
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
@@ -42,17 +42,21 @@ class TestCreateAppointment:
         assert data['jm'] == test_schedule.jm
         assert data['jd'] == test_schedule.jd
 
+
 @pytest.mark.django_db
 class TestCustomerAppointments:
+
     def test_my_appointments(
         self, authenticated_customer_client, customer_user,
-        approved_business, test_service,
+        approved_business, test_service, test_schedule,
     ):
         Appointment.objects.create(
             business=approved_business,
             service=test_service,
             customer=customer_user,
-            jy=1405, jm=4, jd=22,
+            jy=test_schedule.jy,
+            jm=test_schedule.jm,
+            jd=test_schedule.jd,
             time_slot=time(10, 0),
             total_price=450000,
         )
@@ -64,15 +68,18 @@ class TestCustomerAppointments:
 
 @pytest.mark.django_db
 class TestBusinessAppointments:
+
     def test_business_appointments(
         self, authenticated_business_client, customer_user,
-        approved_business, test_service,
+        approved_business, test_service, test_schedule,
     ):
         Appointment.objects.create(
             business=approved_business,
             service=test_service,
             customer=customer_user,
-            jy=1405, jm=4, jd=22,
+            jy=test_schedule.jy,
+            jm=test_schedule.jm,
+            jd=test_schedule.jd,
             time_slot=time(10, 0),
             total_price=450000,
         )
@@ -83,6 +90,7 @@ class TestBusinessAppointments:
 
 @pytest.mark.django_db
 class TestCancelAppointment:
+
     def test_cancel_by_customer(
         self, authenticated_customer_client, test_appointment
     ):
@@ -108,13 +116,13 @@ class TestCancelAppointment:
 
 @pytest.mark.django_db
 class TestVerifyCode:
+
     def test_verify_service_code(
         self, authenticated_business_client, test_appointment
     ):
         test_appointment.status = Appointment.Status.RESERVED
         test_appointment.save()
         code = test_appointment.verification_code
-
         url = reverse('appointments:verify-code', kwargs={'pk': test_appointment.id})
         response = authenticated_business_client.post(url, {'code': code})
         assert response.status_code == 200
@@ -131,6 +139,7 @@ class TestVerifyCode:
 
 @pytest.mark.django_db
 class TestAppointmentStats:
+
     def test_stats(self, authenticated_business_client, test_appointment):
         url = reverse('appointments:business-stats')
         response = authenticated_business_client.get(url)
