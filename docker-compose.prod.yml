@@ -1,0 +1,151 @@
+services:
+  # ═══════════ PostgreSQL + PostGIS ═══════════
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: beau_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-beau}
+      POSTGRES_USER: ${DB_USER:-beau}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-beau}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ═══════════ Redis ═══════════
+  redis:
+    image: redis:7-alpine
+    container_name: beau_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ═══════════ Backend (Django + Gunicorn) ═══════════
+  backend:
+    build:
+      context: .
+      target: production
+    container_name: beau_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput 2>/dev/null || true &&
+        gunicorn config.wsgi:application
+          --bind 0.0.0.0:8000
+          --workers 2
+          --threads 2
+          --timeout 120
+          --access-logfile -
+          --error-logfile -
+      "
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ═══════════ Celery Worker ═══════════
+  celery_worker:
+    build:
+      context: .
+      target: production
+    container_name: beau_celery_worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config worker -l info -c 2
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # ═══════════ Celery Beat ═══════════
+  celery_beat:
+    build:
+      context: .
+      target: production
+    container_name: beau_celery_beat
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ═══════════ Nginx ═══════════
+  nginx:
+    build: ./nginx
+    container_name: beau_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
