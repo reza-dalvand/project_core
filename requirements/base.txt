@@ -7,14 +7,7 @@ Django==5.1.4
 django-environ==0.11.2
 
 # ─── Admin Panel UI ───
-# ─── Admin Panel UI ───
-django-jazzmin==3.0.0  # یا حذف و استفاده از jazzmin
-
-# ─── PostGIS ───
-# در development بدون PostGIS:
-# GDAL_LIBRARY_PATH = ''
-# GEOS_LIBRARY_PATH = ''
-
+django-jazzmin==3.0.0
 
 # ─── Jinja2 (Landing + Dashboard) ───
 Jinja2==3.1.4
@@ -52,7 +45,6 @@ kavenegar==1.1.2
 
 # ─── Payment (Zibal) ───
 requests==2.32.3
-# ─── PostGIS ───
-# GDAL/GEOS باید روی سیستم نصب باشد
-# apt-get install -y gdal-bin libgdal-dev geos libgeos-dev
+
+# ─── Static Files Serving ───
 whitenoise==6.8.2

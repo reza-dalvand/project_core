@@ -4,15 +4,11 @@
 import os
 from celery import Celery
 
-# تنظیمات جنگو برای Celery
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.development')
+# ✅ تغییر از development به production
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 
 app = Celery('BeauClub')
-
-# خواندن تنظیمات از settings جنگو با پیشوند CELERY_
 app.config_from_object('django.conf:settings', namespace='CELERY')
-
-# کشف task ها در همه اپ‌ها
 app.autodiscover_tasks()
 
 

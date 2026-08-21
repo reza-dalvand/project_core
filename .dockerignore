@@ -2,7 +2,6 @@
 .github
 .env
 .env.*
-!.env.example
 !.env.production.example
 venv/
 .venv/
@@ -11,6 +10,8 @@ __pycache__/
 *.pyo
 media/
 staticfiles/
+logs/
+backups/
 .pytest_cache/
 htmlcov/
 .coverage
@@ -18,8 +19,10 @@ coverage.xml
 .ruff_cache/
 .mypy_cache/
 *.log
-logs/
 tmp/
 docker-compose.override.yml
 *.md
 Makefile
+SETUP.md
+test.py
+test_*.py
