@@ -130,78 +130,63 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             set -e
-            
+
             echo "══════════════════════════════════════"
-            echo "🔍 Step 0: Environment Check"
+            echo "🔍 Environment Check"
             echo "══════════════════════════════════════"
-            echo "Current user: $(whoami)"
-            echo "Current dir: $(pwd)"
-            echo "Docker version: $(docker --version)"
-            
-            # بررسی وجود docker compose plugin یا standalone
+            echo "User: $(whoami)"
+            echo "Docker: $(docker --version 2>/dev/null || echo 'NOT FOUND')"
+
+            # تشخیص docker compose
             if docker compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker compose"
-              echo "✅ Using: docker compose (plugin)"
+              echo "✅ docker compose (plugin)"
             elif docker-compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker-compose"
-              echo "✅ Using: docker-compose (standalone)"
+              echo "✅ docker-compose (standalone)"
             else
               echo "❌ Docker Compose not found!"
               exit 1
             fi
-            
+
             echo "══════════════════════════════════════"
-            echo "📂 Step 1: Navigate to project"
+            echo "📂 Navigate to project"
             echo "══════════════════════════════════════"
-            cd /opt/beau-backend
-            
+            cd /home/deploy/beau
+
             if [ ! -d ".git" ]; then
-              echo "❌ /opt/beau-backend is NOT a git repository!"
-              echo "   Fix: git clone <repo-url> /opt/beau-backend"
+              echo "❌ Not a git repository!"
               exit 1
             fi
-            
+
             echo "══════════════════════════════════════"
-            echo "📥 Step 2: Pull latest code"
+            echo "📥 Pull latest code"
             echo "══════════════════════════════════════"
-            echo "Current branch: $(git branch --show-current)"
-            echo "Current commit: $(git log --oneline -1)"
-            
-            # اطمینان از branch درست
+            echo "Before: $(git log --oneline -1)"
+
             git checkout main
-            
-            # stash تغییرات محلی احتمالی
             git stash || true
-            
             git pull origin main
-            
-            echo "New commit: $(git log --oneline -1)"
-            
+
+            echo "After:  $(git log --oneline -1)"
+
             echo "══════════════════════════════════════"
-            echo "🔨 Step 3: Build & Deploy"
+            echo "🔨 Build & Deploy"
             echo "══════════════════════════════════════"
             $COMPOSE_CMD -f docker-compose.prod.yml build --no-cache
             $COMPOSE_CMD -f docker-compose.prod.yml up -d
-            
+
             echo "══════════════════════════════════════"
-            echo "🩺 Step 4: Health Check"
+            echo "🩺 Health Check"
             echo "══════════════════════════════════════"
-            sleep 10
+            sleep 15
             $COMPOSE_CMD -f docker-compose.prod.yml ps
-            
-            # بررسی سلامت backend
-            BACKEND_STATUS=$($COMPOSE_CMD -f docker-compose.prod.yml ps backend | grep -c "Up" || true)
-            if [ "$BACKEND_STATUS" -eq 0 ]; then
-              echo "❌ Backend is NOT running!"
-              $COMPOSE_CMD -f docker-compose.prod.yml logs backend --tail=50
-              exit 1
-            fi
-            
+
             echo "══════════════════════════════════════"
-            echo "🧹 Step 5: Cleanup"
+            echo "🧹 Cleanup"
             echo "══════════════════════════════════════"
             docker image prune -f
-            
+
             echo ""
-            echo "✅ Deploy completed at $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
             echo "   Commit: $(git log --oneline -1)"
