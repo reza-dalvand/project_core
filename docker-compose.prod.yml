@@ -63,9 +63,13 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
-      - logs_volume:/app/logs
+      # ✅ Bind mount به جای named volume — تا host Nginx دسترسی داشته باشه
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./logs:/app/logs
+    ports:
+      # ✅ فقط روی localhost — host Nginx proxy می‌کنه
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,15 +77,15 @@ services:
         condition: service_healthy
     command: >
       sh -c "
-      python manage.py migrate --noinput &&
-      python manage.py collectstatic --noinput &&
-      gunicorn config.wsgi:application
-      --bind 0.0.0.0:8000
-      --workers 2
-      --threads 2
-      --timeout 120
-      --access-logfile /app/logs/gunicorn_access.log
-      --error-logfile /app/logs/gunicorn_error.log
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        gunicorn config.wsgi:application
+          --bind 0.0.0.0:8000
+          --workers 3
+          --threads 2
+          --timeout 120
+          --access-logfile /app/logs/gunicorn_access.log
+          --error-logfile /app/logs/gunicorn_error.log
       "
     deploy:
       resources:
@@ -109,7 +113,8 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - logs_volume:/app/logs
+      - ./media:/app/media
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,7 +147,7 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - logs_volume:/app/logs
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,26 +158,6 @@ services:
       resources:
         limits:
           memory: 256M
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ═══════════ Nginx ═══════════
-  nginx:
-    build: ./nginx
-    container_name: beau_nginx
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - static_volume:/app/staticfiles:ro
-      - media_volume:/app/media:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - backend
     logging:
       driver: "json-file"
       options:
@@ -190,14 +175,14 @@ services:
       PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       PGDATABASE: ${DB_NAME:-beau}
     volumes:
-      - backup_volume:/backups
+      - ./backups:/backups
     depends_on:
       postgres:
         condition: service_healthy
     entrypoint: >
       sh -c '
-      echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\\%Y\\%m\\%d_\\%H\\%M\\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
-      crond -f -l 2
+        echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\\%Y\\%m\\%d_\\%H\\%M\\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
+        crond -f -l 2
       '
     logging:
       driver: "json-file"
@@ -205,10 +190,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ❌ Nginx container حذف شد — host Nginx این کار رو می‌کنه
+
 volumes:
   postgres_data:
   redis_data:
-  static_volume:
-  media_volume:
-  logs_volume:
-  backup_volume:
+  # static_volume:   ← حذف شد (bind mount جایگزین شد)
+  # media_volume:    ← حذف شد
+  # logs_volume:     ← حذف شد
+  # backup_volume:   ← حذف شد
