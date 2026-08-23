@@ -308,9 +308,12 @@ SIMPLE_JWT = {
 # SMS
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
 
-# National ID
-SHAHKAR_API_URL = env('SHAHKAR_API_URL', default='')
-SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='')
+# National ID (Shahkar Lite — api.ir)
+SHAHKAR_API_URL = env(
+    'SHAHKAR_API_URL',
+    default='https://s.api.ir/api/sw1/ShahkarLite',
+)
+SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='fake-api-key-for-dev')
 
 # Payment
 ZARINPAL_MERCHANT_ID = env(

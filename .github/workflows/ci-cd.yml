@@ -15,8 +15,8 @@ env:
   DB_PORT: "5432"
   REDIS_URL: redis://localhost:6379/0
   KAVENEGAR_API_KEY: ""
-  SHAHKAR_API_URL: ""
-  SHAHKAR_API_KEY: ""
+  SHAHKAR_API_URL: "https://s.api.ir/api/sw1/ShahkarLite"
+  SHAHKAR_API_KEY: "Bearer Vp5mvQM7JkF7ws6GWtwx3JHzJ/mjWOw9F9GBA0XQukIv73cy7EJNB9b45GOEUoSJHDy9njL3WjLftNEAJmmiAw4YVDqL0o2jrk3mcBCyTGw="
   ZARINPAL_MERCHANT_ID: "fake-merchant-id-for-ci"
   ZARINPAL_SANDBOX: "True"
 
