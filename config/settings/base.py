@@ -306,7 +306,8 @@ SIMPLE_JWT = {
 #   External Services
 # ═══════════════════════════════════════════════
 # SMS
-KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
+KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='fake-api-key-for-dev')
+
 
 # National ID (Shahkar Lite — api.ir)
 SHAHKAR_API_URL = env(

@@ -1,13 +1,17 @@
 """
 سرویس یکپارچه نوتیفیکیشن
 ارسال اعلان از طریق SMS (کاوه‌نگار) + In-App
+
+متدهای کاوه‌نگار:
+- verify_lookup: فقط برای پترن‌های احراز هویت (مثل کد تایید)
+- sms_send: ارسال پیام ساده (برای اطلاع‌رسانی مثل رزرو)
+- sms_sendarray: ارسال گروهی (برای تبلیغات)
 """
 import logging
 from django.conf import settings
 from django.template import Template, Context
 from django.utils import timezone
-
-from .models import Notification, SMSTemplate, SMSLog, PushDevice
+from .models import Notification, SMSTemplate, SMSLog
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +79,12 @@ class NotificationService:
         variables: dict = None,
         user=None,
     ) -> dict:
-        """ارسال پیامک از طریق کاوه‌نگار"""
+        """
+        ارسال پیامک بر اساس قالب
+        روش ارسال بر اساس فیلد send_method قالب تعیین می‌شود:
+        - otp: verify_lookup (پترن احراز هویت)
+        - simple: sms_send (پیام ساده)
+        """
         variables = variables or {}
 
         try:
@@ -87,41 +96,47 @@ class NotificationService:
             logger.error(f"SMS template not found: {template_type}")
             return {'success': False, 'error': 'Template not found'}
 
-        # ساخت متن پیام
-        try:
-            django_template = Template(template.pattern)
-            message = django_template.render(Context(variables))
-        except Exception as e:
-            logger.error(f"SMS template render error: {e}")
-            message = template.pattern
-
         # ایجاد لاگ
         sms_log = SMSLog.objects.create(
             phone=phone,
             user=user,
             template=template,
-            message=message,
+            message='',
             variables=variables,
             status=SMSLog.Status.PENDING,
         )
 
-        # ارسال واقعی
         try:
             from shared.sms import get_sms_provider
             provider = get_sms_provider()
 
-            result = provider.send_pattern(
-                phone=phone,
-                template_name=template.provider_template_id,
-                **variables,
-            )
+            # ─── روش ارسال بر اساس فیلد قالب ───
+            if template.send_method == SMSTemplate.SendMethod.OTP:
+                # پترن احراز هویت (مثل کد تایید)
+                result = provider.send_pattern(
+                    phone=phone,
+                    template_name=template.provider_template_id,
+                    **variables,
+                )
+            else:
+                # پیام ساده (مثل رزرو)
+                try:
+                    django_template = Template(template.pattern)
+                    message = django_template.render(Context(variables))
+                except Exception as e:
+                    logger.error(f"SMS template render error: {e}")
+                    message = template.pattern
+
+                result = provider.send(
+                    phone=phone,
+                    message=message,
+                )
 
             if result.success:
                 sms_log.status = SMSLog.Status.SENT
                 sms_log.provider_message_id = result.message_id
                 sms_log.cost = result.cost
                 sms_log.save()
-
                 return {
                     'success': True,
                     'message_id': result.message_id,
@@ -131,7 +146,6 @@ class NotificationService:
                 sms_log.status = SMSLog.Status.FAILED
                 sms_log.error_message = result.error_message
                 sms_log.save()
-
                 return {
                     'success': False,
                     'error': result.error_message,
@@ -142,6 +156,41 @@ class NotificationService:
             sms_log.status = SMSLog.Status.FAILED
             sms_log.error_message = str(e)
             sms_log.save()
+            return {'success': False, 'error': str(e)}
+
+    @classmethod
+    def send_bulk_sms(
+        cls,
+        recipients: list,
+        message: str,
+        sender: str = '',
+        user=None,
+    ) -> dict:
+        """
+        ارسال گروهی پیامک (برای تبلیغات)
+        """
+        if not recipients:
+            return {'success': False, 'error': 'لیست دریافت‌کنندگان خالی است'}
+
+        try:
+            from shared.sms import get_sms_provider
+            provider = get_sms_provider()
+
+            result = provider.send_bulk(
+                recipients=recipients,
+                messages=[message],
+                senders=[sender] if sender else None,
+            )
+
+            return {
+                'success': result.success,
+                'total_sent': result.total_sent,
+                'total_failed': result.total_failed,
+                'total_cost': result.total_cost,
+            }
+
+        except Exception as e:
+            logger.error(f"Bulk SMS send error: {e}")
             return {'success': False, 'error': str(e)}
 
     # ═══════════════════════════════════════════════
@@ -385,7 +434,6 @@ class NotificationService:
         qs = Notification.objects.filter(user=user, is_read=False)
         if notification_id:
             qs = qs.filter(id=notification_id)
-
         count = qs.update(
             is_read=True,
             read_at=timezone.now(),

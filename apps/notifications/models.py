@@ -125,6 +125,12 @@ class SMSTemplate(models.Model):
         BUSINESS_REJECTED = 'business_rejected', 'رد کسب‌وکار'
         VERIFICATION_CODE = 'verification_code', 'کد تایید نوبت'
 
+    # 🆕 روش ارسال
+    class SendMethod(models.TextChoices):
+        OTP = 'otp', 'پترن احراز هویت (verify_lookup)'
+        SIMPLE = 'simple', 'پیام ساده (sms_send)'
+        BULK = 'bulk', 'ارسال گروهی (sms_sendarray)'
+
     type = models.CharField(
         'نوع قالب',
         max_length=30,
@@ -147,6 +153,13 @@ class SMSTemplate(models.Model):
         blank=True,
         help_text='لیست متغیرها: ["code", "name"]',
     )
+    # 🆕 روش ارسال
+    send_method = models.CharField(
+        'روش ارسال',
+        max_length=20,
+        choices=SendMethod.choices,
+        default=SendMethod.SIMPLE,
+    )
     is_active = models.BooleanField('فعال', default=True)
     created_at = models.DateTimeField('تاریخ ایجاد', auto_now_add=True)
     updated_at = models.DateTimeField('آخرین بروزرسانی', auto_now=True)
@@ -159,7 +172,7 @@ class SMSTemplate(models.Model):
     def __str__(self):
         return f'{self.name} ({self.get_type_display()})'
 
-
+    
 class SMSLog(models.Model):
     """لاگ پیامک‌های ارسال شده"""
 
