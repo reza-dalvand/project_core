@@ -119,13 +119,38 @@ class Command(BaseCommand):
         # ═══════════ ۵. قالب‌های پیامک ═══════════
         from apps.notifications.models import SMSTemplate
 
+        # ✅ اصلاح:
+        # 1. سینتکس {{ code }} به جای {code}
+        # 2. type معتبر مطابق با SMSTemplate.Type
+        # 3. send_method='otp' برای پترن‌های احراز هویت
         templates_data = [
-            ('login', 'کد تایید ورود', 'beau-otp', 'کد تایید: {code}', ['code']),
-            ('change_phone', 'تغییر شماره', 'beau-change-phone', 'کد تایید: {code}', ['code']),
-            ('booking_verify', 'تایید رزرو', 'beau-booking-verify', 'کد تایید نوبت: {code}', ['code']),
+            (
+                SMSTemplate.Type.OTP_LOGIN,
+                'کد تایید ورود',
+                'beau-otp',
+                'کد تایید ورود شما به بیو کلاب: {{ code }}\nاین کد را با کسی به اشتراک نگذارید.',
+                ['code'],
+                SMSTemplate.SendMethod.OTP,
+            ),
+            (
+                SMSTemplate.Type.OTP_CHANGE_PHONE,
+                'کد تایید تغییر شماره',
+                'beau-change-phone',
+                'کد تایید تغییر شماره موبایل: {{ code }}\nاگر شما این درخواست را نداده‌اید، با پشتیبانی تماس بگیرید.',
+                ['code'],
+                SMSTemplate.SendMethod.OTP,
+            ),
+            (
+                SMSTemplate.Type.VERIFICATION_CODE,
+                'کد تایید نوبت',
+                'beau-booking-verify',
+                'کد تایید نوبت شما: {{ code }}\nاین کد را پس از انجام خدمت به سالن‌دار ارائه دهید.',
+                ['code'],
+                SMSTemplate.SendMethod.OTP,
+            ),
         ]
 
-        for t_type, name, provider_id, pattern, variables in templates_data:
+        for t_type, name, provider_id, pattern, variables, send_method in templates_data:
             SMSTemplate.objects.get_or_create(
                 type=t_type,
                 defaults={
@@ -133,9 +158,11 @@ class Command(BaseCommand):
                     'provider_template_id': provider_id,
                     'pattern': pattern,
                     'variables': variables,
+                    'send_method': send_method,
                 },
             )
 
+        self.stdout.write(self.style.SUCCESS('✓ قالب‌های پیامک ایجاد شد'))
         self.stdout.write(self.style.SUCCESS('✓ قالب‌های پیامک ایجاد شد'))
 
         self.stdout.write(self.style.SUCCESS('\n✅ ایجاد داده‌های اولیه با موفقیت انجام شد!'))

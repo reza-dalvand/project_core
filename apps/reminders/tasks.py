@@ -5,8 +5,7 @@ import logging
 import jdatetime
 from celery import shared_task
 from django.utils import timezone
-from django.db.models import Q
-
+from datetime import datetime
 from apps.reminders.models import RenewalReminder
 from apps.appointments.models import Appointment
 from apps.services.models import Service
@@ -141,6 +140,59 @@ def send_due_reminders(self):
 
 @shared_task
 def check_new_booking_after_reminder():
+    """
+    بررسی اینکه آیا کاربر پس از ارسال یادآوری، رزرو جدیدی داشته است
+    """
+    try:
+        sent_reminders = RenewalReminder.objects.filter(
+            reminder_sent=True,
+            has_new_booking_after_send=False,
+        ).select_related('customer', 'service')
+
+        updated_count = 0
+
+        for reminder in sent_reminders:
+            # ✅ اصلاح: تبدیل تاریخ جلالی به datetime میلادی
+            if not reminder.sent_date:
+                continue
+
+            try:
+                parts = reminder.sent_date.split('/')
+                jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
+                gregorian_date = jdatetime.date(jy, jm, jd).togregorian()
+                # شروع روز ارسال (ساعت ۰۰:۰۰)
+                sent_datetime = timezone.make_aware(
+                    datetime.combine(gregorian_date, datetime.min.time())
+                )
+            except (ValueError, IndexError):
+                logger.warning(
+                    f"Invalid sent_date format for reminder {reminder.id}: "
+                    f"'{reminder.sent_date}'"
+                )
+                continue
+
+            # بررسی رزرو جدید پس از ارسال یادآوری
+            has_new = Appointment.objects.filter(
+                customer=reminder.customer,
+                service=reminder.service,
+                status__in=[
+                    Appointment.Status.RESERVED,
+                    Appointment.Status.DONE,
+                ],
+                created_at__gt=sent_datetime,  # ✅ مقایسه datetime با datetime
+            ).exists()
+
+            if has_new:
+                reminder.has_new_booking_after_send = True
+                reminder.save(update_fields=['has_new_booking_after_send'])
+                updated_count += 1
+
+        logger.info(f"New booking after reminder: {updated_count}")
+        return {'updated': updated_count}
+
+    except Exception as e:
+        logger.error(f"Check new booking failed: {e}")
+        return {'updated': 0}
     """
     بررسی اینکه آیا کاربر پس از ارسال یادآوری، رزرو جدیدی داشته است
     """

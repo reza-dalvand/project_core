@@ -5,7 +5,6 @@ Serializers مربوط به ثبت و مدیریت کسب‌وکار
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from apps.businesses.models import Business, BusinessGallery
-# ❌ BusinessTeamMember حذف شد
 from apps.categories.serializers import BusinessCategorySerializer
 from apps.locations.serializers import ProvinceSerializer, CitySerializer
 
@@ -13,13 +12,19 @@ User = get_user_model()
 
 
 class BusinessGallerySerializer(serializers.ModelSerializer):
+    """Serializer تصاویر گالری"""
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = BusinessGallery
-        fields = ['id', 'image', 'sort_order']
+        fields = ['id', 'image', 'image_url', 'sort_order']
+        read_only_fields = ['image_url']
 
-
-# ❌ BusinessTeamMemberSerializer حذف شد
-
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
 
 class BusinessCreateSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
@@ -215,22 +220,6 @@ class BusinessListSerializer(serializers.ModelSerializer):
             'booking_slug', 'is_vip',
             'created_at',
         ]
-
-
-class BusinessGallerySerializer(serializers.ModelSerializer):
-    """Serializer تصاویر گالری"""
-    image_url = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = BusinessGallery
-        fields = ['id', 'image', 'image_url', 'sort_order']
-        read_only_fields = ['image_url']
-    
-    def get_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.image and request:
-            return request.build_absolute_uri(obj.image.url)
-        return None
 
 
 class BusinessGalleryUploadSerializer(serializers.Serializer):

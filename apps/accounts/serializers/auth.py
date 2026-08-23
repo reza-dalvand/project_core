@@ -98,33 +98,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return mask_phone(obj.phone)
 
 
-class UpdateProfileSerializer(serializers.ModelSerializer):
-    """
-    Serializer بروزرسانی پروفایل
-    فقط first_name و last_name قابل ویرایش هستند.
-    avatar نیز پشتیبانی می‌شود (آپلود جداگانه).
-    """
-    class Meta:
-        model = User
-        fields = ['first_name', 'last_name', 'avatar']
 
-    def validate_first_name(self, value):
-        if value is not None:
-            cleaned = value.strip()
-            if len(cleaned) < 2:
-                raise serializers.ValidationError('نام باید حداقل ۲ کاراکتر باشد')
-            return cleaned
-        return value
-
-    def validate_last_name(self, value):
-        if value is not None:
-            cleaned = value.strip()
-            if len(cleaned) < 2:
-                raise serializers.ValidationError('نام خانوادگی باید حداقل ۲ کاراکتر باشد')
-            return cleaned
-        return value
-
-    
 class UpdateProfileSerializer(serializers.ModelSerializer):
     """Serializer بروزرسانی پروفایل"""
 

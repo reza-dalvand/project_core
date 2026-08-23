@@ -95,7 +95,6 @@ def send_same_day_reminders(self):
 
     return {'sent': sent_count}
 
-
 @shared_task
 def verify_unconfirmed_payments():
     """
@@ -111,7 +110,9 @@ def verify_unconfirmed_payments():
         created_at__gte=timezone.now() - timedelta(hours=2),
     ).select_related('appointment')
 
-    # ✅ اصلاح فاز ۲: فیلتر رشته خالی هم اضافه شود
+    # ✅ اصلاح: فیلتر رشته خالی
+    # فیلد gateway_transaction_id دارای blank=True, default='' است
+    # رکوردهایی که هنوز به درگاه نرفته‌اند مقدار '' دارند
     transactions = transactions.exclude(gateway_transaction_id='')
 
     verified = 0
