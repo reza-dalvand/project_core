@@ -5,7 +5,8 @@ on:
     branches: [main]
 
 env:
-  DJANGO_SETTINGS_MODULE: config.settings.production
+  # ✅ اصلاح: استفاده از تنظیمات تست
+  DJANGO_SETTINGS_MODULE: config.settings.test
   SECRET_KEY: ci-test-secret-key-not-for-production
   DB_ENGINE: django.contrib.gis.db.backends.postgis
   DB_NAME: test_beau
@@ -14,7 +15,6 @@ env:
   DB_HOST: localhost
   DB_PORT: "5432"
   REDIS_URL: redis://localhost:6379/0
-  # ✅ اصلاح: استفاده از GitHub Secrets به جای مقادیر hardcoded
   KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
   SHAHKAR_API_URL: "https://s.api.ir/api/sw1/ShahkarLite"
   SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}

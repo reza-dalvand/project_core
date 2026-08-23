@@ -1,6 +1,7 @@
 """
 تست‌های سیستم نوتیفیکیشن
 """
+from django.urls import reverse
 import pytest
 from django.utils import timezone
 from datetime import timedelta
@@ -148,11 +149,9 @@ class TestNotificationAPI:
             title='تست',
             body='متن',
         )
-
-        response = authenticated_customer_client.get(
-            '/api/v1/notifications/'
-        )
-
+        # ✅ اصلاح: استفاده از reverse به جای URL hardcoded
+        url = reverse('notifications:notification-list')
+        response = authenticated_customer_client.get(url)
         assert response.status_code == 200
         assert response.json()['success'] is True
 
@@ -165,11 +164,9 @@ class TestNotificationAPI:
             body='متن',
             is_read=False,
         )
-
-        response = authenticated_customer_client.get(
-            '/api/v1/notifications/count/'
-        )
-
+        # ✅ اصلاح
+        url = reverse('notifications:notification-count')
+        response = authenticated_customer_client.get(url)
         assert response.status_code == 200
         data = response.json()['data']
         assert data['unread'] == 1
@@ -184,13 +181,9 @@ class TestNotificationAPI:
             body='متن',
             is_read=False,
         )
-
-        response = authenticated_customer_client.post(
-            '/api/v1/notifications/mark-read/',
-            {},
-            format='json',
-        )
-
+        # ✅ اصلاح
+        url = reverse('notifications:mark-read')
+        response = authenticated_customer_client.post(url, {}, format='json')
         assert response.status_code == 200
         assert Notification.objects.filter(is_read=False).count() == 0
 
@@ -202,11 +195,8 @@ class TestNotificationAPI:
             title='تست',
             body='متن',
         )
-
-        response = authenticated_customer_client.delete(
-            f'/api/v1/notifications/{notification.id}/'
-        )
-
+        # ✅ اصلاح
+        url = reverse('notifications:delete-notification', kwargs={'pk': notification.id})
+        response = authenticated_customer_client.delete(url)
         assert response.status_code == 200
         assert Notification.objects.count() == 0
-

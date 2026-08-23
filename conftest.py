@@ -98,16 +98,29 @@ def authenticated_admin_client(api_client, admin_user):
 
 @pytest.fixture
 def mock_otp(monkeypatch):
-    """Mock کردن OTP Service"""
+    """Mock کردن OTP Service — نسخه کامل"""
+
+    class MockOtpCode:
+        """شبیه‌سازی آبجکت OtpCode"""
+        def __init__(self, phone, code='12345'):
+            self.phone = phone
+            self.code = code
+            self.is_used = False
 
     class MockOTPService:
+        _sent_codes = {}
+
         @classmethod
         def send_otp(cls, phone, purpose=None, user=None):
-            ...
+            # ✅ اصلاح: برگرداندن یک آبجکت mock
+            otp = MockOtpCode(phone)
+            cls._sent_codes[phone] = otp.code
+            return otp
 
         @classmethod
         def verify_otp(cls, phone, code, purpose=None):
-            ...
+            # ✅ اصلاح: برگرداندن یک آبجکت mock
+            return MockOtpCode(phone, code)
 
     from apps.accounts.services import otp_service
     from apps.accounts.views import auth as auth_views
@@ -116,12 +129,13 @@ def mock_otp(monkeypatch):
     monkeypatch.setattr(otp_service, 'OTPService', MockOTPService)
     monkeypatch.setattr(auth_views, 'OTPService', MockOTPService)
     monkeypatch.setattr(profile_views, 'OTPService', MockOTPService)
+
     return MockOTPService
 
 
 @pytest.fixture
 def mock_shahkar(monkeypatch):
-    """Mock کردن Shahkar Service"""
+    """Mock کردن Shahkar Service — نسخه کامل"""
 
     class MockShahkar:
         @classmethod
@@ -133,11 +147,13 @@ def mock_shahkar(monkeypatch):
             }
 
     from apps.accounts.services import shahkar_service
-    monkeypatch.setattr(
-        shahkar_service, 'ShahkarService', MockShahkar
-    )
-    return MockShahkar
+    # ✅ اصلاح: patch کردن auth_views هم
+    from apps.accounts.views import auth as auth_views
 
+    monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
+    monkeypatch.setattr(auth_views, 'ShahkarService', MockShahkar)
+
+    return MockShahkar
 
 # ═══════════════════════════════════════════════
 #   Lookup Data
