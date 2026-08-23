@@ -20,8 +20,9 @@ class SearchResultBusinessSerializer(serializers.Serializer):
     """نتیجه جستجوی کسب‌وکار"""
     id = serializers.IntegerField()
     name = serializers.CharField()
-    category_name = serializers.CharField()
-    city_name = serializers.CharField()
+    # ✅ اصلاح: اضافه کردن source برای فیلدهای FK
+    category_name = serializers.CharField(source='category.name')
+    city_name = serializers.CharField(source='city.name')
     address = serializers.CharField()
     logo = serializers.SerializerMethodField()
     rating = serializers.DecimalField(max_digits=2, decimal_places=1)
@@ -35,7 +36,6 @@ class SearchResultBusinessSerializer(serializers.Serializer):
         if obj.logo and request:
             return request.build_absolute_uri(obj.logo.url)
         return None
-
 
 class SearchResultServiceSerializer(serializers.Serializer):
     """نتیجه جستجوی خدمت"""

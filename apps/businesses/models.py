@@ -119,7 +119,11 @@ class Business(BaseModel):
     bank_info_verified = models.BooleanField('اطلاعات بانکی تایید شده', default=False)
 
     # ═══════════ لینک رزرو ═══════════
-    booking_slug = models.SlugField('اسلاگ رزرو', unique=True)
+    booking_slug = models.SlugField(
+        'اسلاگ رزرو',
+        unique=True,
+        allow_unicode=True,  # ← این خط اضافه شد
+    )
     booking_link_clicks = models.IntegerField('کلیک‌های لینک رزرو', default=0)
     booking_link_bookings = models.IntegerField('رزروهای لینک رزرو', default=0)
 

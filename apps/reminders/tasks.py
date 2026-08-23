@@ -86,11 +86,9 @@ def send_due_reminders(self):
     هر روز ۸ صبح اجرا می‌شود
     """
     try:
-        today_key = jalali_to_key(
-            jdatetime.date.today().jyear,
-            jdatetime.date.today().jmonth,
-            jdatetime.date.today().jday,
-        )
+        today = jdatetime.date.today()
+        # ✅ اصلاح: jyear/jmonth/jday → year/month/day
+        today_key = jalali_to_key(today.year, today.month, today.day)
 
         # یادآوری‌هایی که موعدشان امروز است و هنوز ارسال نشده‌اند
         due_reminders = RenewalReminder.objects.filter(

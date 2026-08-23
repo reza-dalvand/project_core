@@ -183,41 +183,38 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
         # ─── 🆕 فاز ۴: فیلتر بازه زمانی ───
         date_filter = self.request.query_params.get('date_filter')
-
         if date_filter:
             today = jdatetime.date.today()
-            today_key = f'{today.jyear}/{today.jmonth:02d}/{today.jday:02d}'
+            # ✅ اصلاح: jyear/jmonth/jday → year/month/day
+            today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
             if date_filter == 'today':
                 qs = qs.filter(date_key=today_key)
 
             elif date_filter == 'week':
-                # ۷ روز آینده
                 week_end = today + jdatetime.timedelta(days=7)
-                week_end_key = f'{week_end.jyear}/{week_end.jmonth:02d}/{week_end.jday:02d}'
+                # ✅ اصلاح
+                week_end_key = f'{week_end.year}/{week_end.month:02d}/{week_end.day:02d}'
                 qs = qs.filter(date_key__gte=today_key, date_key__lte=week_end_key)
 
             elif date_filter == 'month':
-                # ماه جاری
-                month_start = jdatetime.date(today.jyear, today.jmonth, 1)
-                month_start_key = f'{month_start.jyear}/{month_start.jmonth:02d}/01'
+                # ✅ اصلاح
+                month_start = jdatetime.date(today.year, today.month, 1)
+                month_start_key = f'{month_start.year}/{month_start.month:02d}/01'
 
-                # محاسبه پایان ماه
-                if today.jmonth == 12:
-                    next_month = jdatetime.date(today.jyear + 1, 1, 1)
+                if today.month == 12:
+                    next_month = jdatetime.date(today.year + 1, 1, 1)
                 else:
-                    next_month = jdatetime.date(today.jyear, today.jmonth + 1, 1)
+                    next_month = jdatetime.date(today.year, today.month + 1, 1)
+
                 month_end = next_month - jdatetime.timedelta(days=1)
-                month_end_key = f'{month_end.jyear}/{month_end.jmonth:02d}/{month_end.jday:02d}'
-
+                # ✅ اصلاح
+                month_end_key = f'{month_end.year}/{month_end.month:02d}/{month_end.day:02d}'
                 qs = qs.filter(date_key__gte=month_start_key, date_key__lte=month_end_key)
-
-            # 'all' → هیچ فیلتری اعمال نمی‌شود
 
         # ─── 🆕 فاز ۴: فیلتر بازه دلخواه ───
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
-
         if date_from:
             qs = qs.filter(date_key__gte=date_from)
         if date_to:
@@ -234,7 +231,6 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
             )
 
         return qs
-
     
 class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات نوبت"""

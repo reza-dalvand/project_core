@@ -33,7 +33,8 @@ SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 THIRD_PARTY_APPS = [
     # ═══ Jazzmin باید اول از همه باشد ═══
     'jazzmin',
-
+    # ✅ فاز ۱: اضافه شد — بدون این، بک‌اند Jinja2 در TEMPLATES کار نمی‌کند
+    'django_jinja',
     # REST API
     'rest_framework',
     'rest_framework_simplejwt',
@@ -41,7 +42,6 @@ THIRD_PARTY_APPS = [
     'drf_spectacular',
     'django_filters',
     'corsheaders',
-
     # Utils
     'django_cleanup.apps.CleanupConfig',
     'django_ckeditor_5',
@@ -56,7 +56,6 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # ✅ GIS - PostGIS
     'django.contrib.gis',
 ]
@@ -64,38 +63,29 @@ DJANGO_APPS = [
 LOCAL_APPS = [
     # Core
     'apps.core.apps.CoreConfig',
-
     # Auth
     'apps.accounts.apps.AccountsConfig',
-
     # Lookup Data
     'apps.categories.apps.CategoriesConfig',
     'apps.locations.apps.LocationsConfig',
-
     # Business
     'apps.businesses.apps.BusinessesConfig',
     'apps.services.apps.ServicesConfig',
     'apps.schedules.apps.SchedulesConfig',
     'apps.appointments.apps.AppointmentsConfig',
-
     # Financial
     'apps.payments.apps.PaymentsConfig',
-
     # Social
     'apps.reviews.apps.ReviewsConfig',
     'apps.portfolios.apps.PortfoliosConfig',
     'apps.explore.apps.ExploreConfig',
-
     # Ads
     'apps.ads.apps.AdsConfig',
-    # 'apps.ads_management.apps.AdsManagementConfig',
-
     # Features
     'apps.reminders.apps.RemindersConfig',
     'apps.favorites.apps.FavoritesConfig',
     'apps.search.apps.SearchConfig',
     'apps.support.apps.SupportConfig',
-
     # System
     'apps.notifications.apps.NotificationsConfig',
     'apps.landing.apps.LandingConfig',
@@ -109,7 +99,7 @@ INSTALLED_APPS = THIRD_PARTY_APPS + DJANGO_APPS + LOCAL_APPS
 # ═══════════════════════════════════════════════
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ اضافه شد
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
@@ -198,10 +188,6 @@ DATABASES = {
     }
 }
 
-# GDAL/GEOS Library Paths (اختیاری - اگر در مسیر پیش‌فرض نباشند)
-# GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='')
-# GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='')
-
 # ═══════════════════════════════════════════════
 #   Custom User Model
 # ═══════════════════════════════════════════════
@@ -230,7 +216,14 @@ USE_TZ = True
 # ═══════════════════════════════════════════════
 STATIC_URL = env('STATIC_URL', default='/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# ✅ فاز ۱: شرطی شد — در سرور پوشه static/ وجود ندارد
+# فقط اگر پوشه فیزیکی موجود باشد اضافه می‌شود تا
+# collectstatic در Docker و سرور خطا ندهد
+STATICFILES_DIRS = []
+_static_dir = BASE_DIR / 'static'
+if os.path.isdir(_static_dir):
+    STATICFILES_DIRS = [_static_dir]
 
 MEDIA_URL = env('MEDIA_URL', default='/media/')
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -296,27 +289,15 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
-# ✅ به جای آن:
-# GDAL/GEOS در Docker و اکثر سیستم‌ها خودکار پیدا می‌شوند
-# فقط در صورت نیاز مسیر دستی تنظیم شود
-# GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='')
-# GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='')
-
 # ═══════════════════════════════════════════════
 #   External Services
 # ═══════════════════════════════════════════════
-# SMS
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='fake-api-key-for-dev')
-
-
-# National ID (Shahkar Lite — api.ir)
 SHAHKAR_API_URL = env(
     'SHAHKAR_API_URL',
     default='https://s.api.ir/api/sw1/ShahkarLite',
 )
 SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='fake-api-key-for-dev')
-
-# Payment
 ZARINPAL_MERCHANT_ID = env(
     'ZARINPAL_MERCHANT_ID',
     default='fake-merchant-id-for-dev',
@@ -326,8 +307,6 @@ ZARINPAL_CALLBACK_URL = env(
     'ZARINPAL_CALLBACK_URL',
     default='http://localhost:8000/api/v1/payments/callback/',
 )
-
-# ─── Frontend (PWA) ───
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 
 # Storage (Arvan Cloud S3)
@@ -341,9 +320,8 @@ ARVAN_ENDPOINT = env(
 ARVAN_REGION = env('ARVAN_REGION', default='ir-thr-at1')
 ARVAN_CDN_URL = env('ARVAN_CDN_URL', default='')
 
-# File Upload
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # ═══════════════════════════════════════════════
 #   DRF Spectacular
@@ -358,21 +336,17 @@ SPECTACULAR_SETTINGS = {
 # ═══════════════════════════════════════════════
 #   CORS
 # ═══════════════════════════════════════════════
-CORS_ALLOW_ALL_ORIGINS = True  # در توسعه باز است
-
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = env.list(
-'CORS_ALLOWED_ORIGINS',
-default=[
-# ═══ وب ═══
-'http://localhost:3000',
-'http://localhost:8081',
-'http://127.0.0.1:3000',
-'http://127.0.0.1:8081',
-# ═══ 🆕 فاز ۵: توسعه با شبیه‌ساز اندروید ═══
-'capacitor://localhost',
-# برای شبیه‌ساز اندروید روی پورت‌های مختلف
-'http://192.168.1.43:3000',
-]
+    'CORS_ALLOWED_ORIGINS',
+    default=[
+        'http://localhost:3000',
+        'http://localhost:8081',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:8081',
+        'capacitor://localhost',
+        'http://192.168.1.43:3000',
+    ]
 )
 CORS_ALLOW_CREDENTIALS = True
 
@@ -459,7 +433,6 @@ JAZZMIN_SETTINGS = {
         "businesses": "fas fa-building",
         "businesses.Business": "fas fa-building",
         "businesses.BusinessGallery": "fas fa-images",
-        "businesses.BusinessTeamMember": "fas fa-users",
         "services": "fas fa-concierge-bell",
         "services.Service": "fas fa-concierge-bell",
         "schedules": "fas fa-calendar-week",

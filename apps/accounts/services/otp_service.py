@@ -88,7 +88,8 @@ class OTPService:
         try:
             from shared.sms import get_sms_provider
             provider = get_sms_provider()
-            provider.send_otp(phone, code)
+            # ✅ اصلاح: اضافه کردن پارامتر template_name
+            provider.send_otp(phone, template_name='beau-otp', token=code)
         except Exception as e:
             logger.error(f"Failed to send OTP SMS to {phone}: {e}")
             # در پروداکشن خطا را بالا بده، در dev فقط لاگ کن

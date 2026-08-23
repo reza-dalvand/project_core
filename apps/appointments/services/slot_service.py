@@ -126,7 +126,7 @@ class SlotService:
 
         # ۵. حذف اسلات‌های گذشته (اگر امروز است)
         today = jdatetime.date.today()
-        if jy == today.year and jm == today.jmonth and jd == today.jday:
+        if jy == today.year and jm == today.month and jd == today.day:
             # ✅ استفاده از timezone-aware
             from django.utils import timezone as dj_timezone
             now_tehran = dj_timezone.now().astimezone()

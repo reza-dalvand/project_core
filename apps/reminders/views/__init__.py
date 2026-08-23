@@ -153,8 +153,8 @@ class SendRenewalReminderView(APIView, StandardResponseMixin):
         import jdatetime
 
         today = jdatetime.date.today()
-        today_key = f'{today.jyear}/{today.jmonth:02d}/{today.jday:02d}'
-
+        today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
+        
         sent_count = 0
         skipped_count = 0
         errors = []

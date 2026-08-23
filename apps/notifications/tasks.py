@@ -17,7 +17,8 @@ def send_booking_reminders(self):
     import jdatetime
 
     tomorrow = jdatetime.date.today() + jdatetime.timedelta(days=1)
-    tomorrow_key = f'{tomorrow.jyear}/{tomorrow.jmonth:02d}/{tomorrow.jday:02d}'
+    # ✅ اصلاح: jyear/jmonth/jday → year/month/day
+    tomorrow_key = f'{tomorrow.year}/{tomorrow.month:02d}/{tomorrow.day:02d}'
 
     appointments = Appointment.objects.filter(
         date_key=tomorrow_key,
@@ -29,13 +30,11 @@ def send_booking_reminders(self):
     for appointment in appointments:
         try:
             NotificationService.send_booking_reminder(appointment)
-
             appointment.reminder_sent = True
             appointment.reminder_sent_at = timezone.now()
             appointment.save(update_fields=[
                 'reminder_sent', 'reminder_sent_at',
             ])
-
             sent_count += 1
         except Exception as e:
             logger.error(f"Reminder failed for appointment {appointment.id}: {e}")
@@ -54,7 +53,8 @@ def send_same_day_reminders(self):
 
     now = timezone.now()
     today = jdatetime.date.today()
-    today_key = f'{today.jyear}/{today.jmonth:02d}/{today.jday:02d}'
+    # ✅ اصلاح: jyear/jmonth/jday → year/month/day
+    today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
     appointments = Appointment.objects.filter(
         date_key=today_key,
@@ -65,12 +65,10 @@ def send_same_day_reminders(self):
     sent_count = 0
     for appointment in appointments:
         try:
-            # بررسی فاصله زمانی
             apt_time = datetime.combine(
                 datetime.today(), appointment.time_slot
             )
             apt_time = timezone.make_aware(apt_time)
-
             hours_until = (apt_time - now).total_seconds() / 3600
 
             if 0 < hours_until <= 2:
@@ -86,15 +84,12 @@ def send_same_day_reminders(self):
                     data={'appointment_id': appointment.id},
                     channels=['in_app', 'sms'],
                 )
-
                 appointment.reminder_sent = True
                 appointment.reminder_sent_at = timezone.now()
                 appointment.save(update_fields=[
                     'reminder_sent', 'reminder_sent_at',
                 ])
-
                 sent_count += 1
-
         except Exception as e:
             logger.error(f"Same-day reminder failed: {e}")
 
@@ -116,6 +111,9 @@ def verify_unconfirmed_payments():
         created_at__gte=timezone.now() - timedelta(hours=2),
     ).select_related('appointment')
 
+    # ✅ اصلاح فاز ۲: فیلتر رشته خالی هم اضافه شود
+    transactions = transactions.exclude(gateway_transaction_id='')
+
     verified = 0
     for tx in transactions:
         try:
@@ -124,19 +122,16 @@ def verify_unconfirmed_payments():
                 track_id=tx.gateway_transaction_id,
                 amount_toman=tx.amount,
             )
-
             if result.success:
                 tx.status = Transaction.Status.BLOCKED
                 tx.ref_number = result.ref_number
                 tx.save(update_fields=['status', 'ref_number'])
                 verified += 1
-
         except Exception as e:
             logger.debug(f"Payment {tx.id} not yet confirmed: {e}")
 
     if verified > 0:
         logger.info(f"Verified {verified} unconfirmed payments")
-
     return {'verified': verified}
 
 
@@ -146,7 +141,6 @@ def cleanup_old_notifications():
     from apps.notifications.models import Notification
 
     cutoff = timezone.now() - timedelta(days=90)
-
     total_deleted = 0
     batch_size = 1000
 
@@ -157,15 +151,12 @@ def cleanup_old_notifications():
                 is_read=True,
             ).values_list('id', flat=True)[:batch_size]
         )
-
         if not ids_to_delete:
             break
-
         deleted_count, _ = Notification.objects.filter(
             id__in=ids_to_delete
         ).delete()
         total_deleted += deleted_count
-
         if len(ids_to_delete) < batch_size:
             break
 
@@ -179,7 +170,6 @@ def cleanup_old_otp_codes():
     from apps.accounts.models import OtpCode
 
     cutoff = timezone.now() - timedelta(hours=24)
-
     total_deleted = 0
     batch_size = 2000
 
@@ -190,13 +180,10 @@ def cleanup_old_otp_codes():
                 is_used=True,
             ).values_list('id', flat=True)[:batch_size]
         )
-
         if not ids:
             break
-
         deleted, _ = OtpCode.objects.filter(id__in=ids).delete()
         total_deleted += deleted
-
         if len(ids) < batch_size:
             break
 
