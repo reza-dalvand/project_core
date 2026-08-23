@@ -111,6 +111,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         phone = serializer.validated_data['phone']
         code = serializer.validated_data['code']
 
@@ -123,6 +124,14 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 phone=phone,
                 defaults={'is_verified': True},
             )
+
+            # ✅ FIX فاز ۳: بررسی is_active قبل از اجازه ورود
+            if not is_new_user and not user.is_active:
+                return self.error_response(
+                    message='این حساب کاربری غیرفعال شده است. لطفاً با پشتیبانی تماس بگیرید.',
+                    code='ACCOUNT_DEACTIVATED',
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             # اگر کاربر قدیمی است اما هنوز وریفای نشده
             if not is_new_user and not user.is_verified:
@@ -150,21 +159,17 @@ class VerifyOTPView(APIView, StandardResponseMixin):
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
-            
             access_token = refresh.access_token
             access_token['user_id'] = user.id
             access_token['is_verified'] = user.is_verified
 
             # ✅ FIX PHASE 1: محاسبه دقیق نیاز به تکمیل پروفایل
-            # فرانت اند چک میکند: needsProfileCompletion
             needs_profile_completion = (
-                is_new_user or 
-                not user.first_name or 
+                is_new_user or
+                not user.first_name or
                 not user.last_name
             )
 
-            # ✅ FIX PHASE 1: ساختار پاسخ استاندارد برای فرانت
-            # کلیدها باید snake_case باشند چون response-normalizer فرانت آنها را به camelCase تبدیل میکند
             return self.success_response(
                 data={
                     'is_new_user': is_new_user,
@@ -187,8 +192,6 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 code='VERIFY_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-        
 # ═══════════════════════════════════════════════
 #   Token Refresh
 # ═══════════════════════════════════════════════

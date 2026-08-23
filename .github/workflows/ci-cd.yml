@@ -14,9 +14,10 @@ env:
   DB_HOST: localhost
   DB_PORT: "5432"
   REDIS_URL: redis://localhost:6379/0
-  KAVENEGAR_API_KEY: "7467496C2B63305472546A6F52345952592F676D78474A6E4C59714A5258794151366F316937435A7565413D"
+  # ✅ اصلاح: استفاده از GitHub Secrets به جای مقادیر hardcoded
+  KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
   SHAHKAR_API_URL: "https://s.api.ir/api/sw1/ShahkarLite"
-  SHAHKAR_API_KEY: "Bearer Vp5mvQM7JkF7ws6GWtwx3JHzJ/mjWOw9F9GBA0XQukIv73cy7EJNB9b45GOEUoSJHDy9njL3WjLftNEAJmmiAw4YVDqL0o2jrk3mcBCyTGw="
+  SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}
   ZARINPAL_MERCHANT_ID: "fake-merchant-id-for-ci"
   ZARINPAL_SANDBOX: "True"
 
