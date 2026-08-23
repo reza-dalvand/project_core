@@ -104,14 +104,51 @@ if SENTRY_DSN:
 # ─── Storage: فایل سیستم محلی (Arvan S3 فعلاً فعال نیست) ───
 # ✅ اگر Arvan S3 فعال شد، مقادیر ARVAN_ACCESS_KEY و ARVAN_SECRET_KEY را در .env تنظیم کنید
 # در غیر این صورت فایل‌ها روی دیسک سرور ذخیره می‌شوند
+# ─── Storage: فایل سیستم محلی (اگر مقادیر ابر آروان تنظیم نشده باشد) ───
 _storage_access = env('ARVAN_ACCESS_KEY', default='')
 _storage_secret = env('ARVAN_SECRET_KEY', default='')
+
 if _storage_access and _storage_secret:
-    from shared.storage.arvan import get_storage_config
-    _storage_config = get_storage_config()
+    # استفاده از ابر آروان
+    from shared.storage.arvan import ArvanCloudStorage
+
+    # Storage برای فایل‌های آپلود (رسانه‌ای)
     STORAGES["default"] = {
-        "BACKEND": _storage_config['backend'],
-        "OPTIONS": _storage_config['options'],
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "access_key": _storage_access,
+            "secret_key": _storage_secret,
+            "bucket_name": env('ARVAN_BUCKET_NAME', default='beau'),
+            "endpoint_url": env(
+                'ARVAN_ENDPOINT',
+                default='https://s3.ir-thr-at1.arvanstorage.ir',
+            ),
+            "region_name": env('ARVAN_REGION', default='ir-thr-at1'),
+            "default_acl": "public-read",
+            "querystring_auth": False,
+            "file_overwrite": False,
+            "custom_domain": env('ARVAN_CDN_URL', default=''),
+        },
+    }
+
+    # Storage برای فایل‌های استاتیک
+    STORAGES["staticfiles"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "access_key": _storage_access,
+            "secret_key": _storage_secret,
+            "bucket_name": env('ARVAN_BUCKET_NAME', default='beau'),
+            "endpoint_url": env(
+                'ARVAN_ENDPOINT',
+                default='https://s3.ir-thr-at1.arvanstorage.ir',
+            ),
+            "region_name": env('ARVAN_REGION', default='ir-thr-at1'),
+            "default_acl": "public-read",
+            "querystring_auth": False,
+            "file_overwrite": True,
+            "location": "static",
+            "custom_domain": env('ARVAN_CDN_URL', default=''),
+        },
     }
 
 # ─── CORS — Production ───
