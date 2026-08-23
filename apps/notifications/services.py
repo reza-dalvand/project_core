@@ -112,11 +112,14 @@ class NotificationService:
 
             # ─── روش ارسال بر اساس فیلد قالب ───
             if template.send_method == SMSTemplate.SendMethod.OTP:
-                # پترن احراز هویت (مثل کد تایید)
+                # تبدیل 'code' به 'token' برای سازگاری با کاوه‌نگار
+                kavenegar_vars = {}
+                for key, val in variables.items():
+                    kavenegar_vars['token' if key == 'code' else key] = val
                 result = provider.send_pattern(
                     phone=phone,
                     template_name=template.provider_template_id,
-                    **variables,
+                    **kavenegar_vars,
                 )
             else:
                 # پیام ساده (مثل رزرو)

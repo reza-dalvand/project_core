@@ -86,7 +86,6 @@ def send_due_reminders(self):
     """
     try:
         today = jdatetime.date.today()
-        # ✅ اصلاح: jyear/jmonth/jday → year/month/day
         today_key = jalali_to_key(today.year, today.month, today.day)
 
         # یادآوری‌هایی که موعدشان امروز است و هنوز ارسال نشده‌اند
@@ -180,39 +179,6 @@ def check_new_booking_after_reminder():
                     Appointment.Status.DONE,
                 ],
                 created_at__gt=sent_datetime,  # ✅ مقایسه datetime با datetime
-            ).exists()
-
-            if has_new:
-                reminder.has_new_booking_after_send = True
-                reminder.save(update_fields=['has_new_booking_after_send'])
-                updated_count += 1
-
-        logger.info(f"New booking after reminder: {updated_count}")
-        return {'updated': updated_count}
-
-    except Exception as e:
-        logger.error(f"Check new booking failed: {e}")
-        return {'updated': 0}
-    """
-    بررسی اینکه آیا کاربر پس از ارسال یادآوری، رزرو جدیدی داشته است
-    """
-    try:
-        sent_reminders = RenewalReminder.objects.filter(
-            reminder_sent=True,
-            has_new_booking_after_send=False,
-        ).select_related('customer', 'service')
-
-        updated_count = 0
-        for reminder in sent_reminders:
-            # بررسی رزرو جدید پس از ارسال یادآوری
-            has_new = Appointment.objects.filter(
-                customer=reminder.customer,
-                service=reminder.service,
-                status__in=[
-                    Appointment.Status.RESERVED,
-                    Appointment.Status.DONE,
-                ],
-                created_at__gt=reminder.sent_date,
             ).exists()
 
             if has_new:

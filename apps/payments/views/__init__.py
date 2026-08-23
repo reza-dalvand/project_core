@@ -227,14 +227,13 @@ class PaymentCallbackView(APIView, StandardResponseMixin):
     def get(self, request):
         authority  = request.query_params.get('Authority')
         status     = request.query_params.get('Status')
-        order_id   = request.query_params.get('orderId')
 
         frontend_url = getattr(
             settings, 'FRONTEND_URL', 'http://localhost:3000'
         )
         frontend_url = frontend_url.rstrip('/')
 
-        if not authority or not order_id:
+        if not authority:
             return redirect(
                 f'{frontend_url}/profile/payments'
                 f'?status=failed&reason=invalid_callback'
@@ -242,7 +241,6 @@ class PaymentCallbackView(APIView, StandardResponseMixin):
 
         try:
             tx = Transaction.objects.select_related('appointment').get(
-                id=order_id,
                 gateway_transaction_id=authority,
             )
         except Transaction.DoesNotExist:

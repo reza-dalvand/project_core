@@ -17,7 +17,6 @@ def send_booking_reminders(self):
     import jdatetime
 
     tomorrow = jdatetime.date.today() + jdatetime.timedelta(days=1)
-    # ✅ اصلاح: jyear/jmonth/jday → year/month/day
     tomorrow_key = f'{tomorrow.year}/{tomorrow.month:02d}/{tomorrow.day:02d}'
 
     appointments = Appointment.objects.filter(
@@ -53,7 +52,6 @@ def send_same_day_reminders(self):
 
     now = timezone.now()
     today = jdatetime.date.today()
-    # ✅ اصلاح: jyear/jmonth/jday → year/month/day
     today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
     appointments = Appointment.objects.filter(

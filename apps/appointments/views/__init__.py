@@ -185,7 +185,6 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         date_filter = self.request.query_params.get('date_filter')
         if date_filter:
             today = jdatetime.date.today()
-            # ✅ اصلاح: jyear/jmonth/jday → year/month/day
             today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
             if date_filter == 'today':

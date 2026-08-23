@@ -101,7 +101,6 @@ class ModelRequestCreateSerializer(serializers.ModelSerializer):
         validated_data['business'] = business
 
         today = jdatetime.date.today()
-        # ✅ اصلاح: jyear/jmonth/jday → year/month/day
         validated_data['created_jalali'] = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
         expires = today + jdatetime.timedelta(days=30)
@@ -221,9 +220,9 @@ class LineRentalCreateSerializer(serializers.ModelSerializer):
         validated_data['business'] = business
 
         today = jdatetime.date.today()
-        validated_data['created_jalali'] = f'{today.jyear}/{today.jmonth:02d}/{today.jday:02d}'
+        validated_data['created_jalali'] = f'{today.year}/{today.month:02d}/{today.day:02d}'
         expires = today + jdatetime.timedelta(days=30)
-        validated_data['expires_jalali'] = f'{expires.jyear}/{expires.jmonth:02d}/{expires.jday:02d}'
+        validated_data['expires_jalali'] = f'{expires.year}/{expires.month:02d}/{expires.day:02d}'
 
         return super().create(validated_data)
 

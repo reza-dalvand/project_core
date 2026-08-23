@@ -17,9 +17,8 @@ def jalali_to_key(jy: int, jm: int, jd: int) -> str:
 
 
 def today_jalali_key() -> str:
-    """کلید تاریخ امروز جلالی"""
-    today = jdatetime.date.today()
-    # ✅ اصلاح: jyear -> year
+    now_tehran = timezone.now().astimezone()  # ✅ Tehran aware
+    today = jdatetime.date.fromgregorian(date=now_tehran.date())
     return jalali_to_key(today.year, today.month, today.day)
 
 

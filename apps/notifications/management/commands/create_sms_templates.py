@@ -98,6 +98,7 @@ class Command(BaseCommand):
                     'pattern': template_data['pattern'],
                     'variables': template_data['variables'],
                     'is_active': True,
+                    'send_method': SMSTemplate.SendMethod.OTP  # ✅ برای قالب‌های OTP
                 }
             )
 
