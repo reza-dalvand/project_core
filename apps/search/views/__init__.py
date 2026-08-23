@@ -71,16 +71,29 @@ class GlobalSearchView(APIView, StandardResponseMixin):
         if request.user.is_authenticated:
             SearchService._save_history(request.user, query, total)
 
+        # ✅ FIX فاز ۹: سریالایز کردن نتایج
+        from apps.search.serializers import (
+            SearchResultBusinessSerializer,
+            SearchResultServiceSerializer,
+        )
+
+        businesses_data = SearchResultBusinessSerializer(
+            businesses, many=True, context={'request': request}
+        ).data
+        services_data = SearchResultServiceSerializer(
+            services, many=True, context={'request': request}
+        ).data
+
         return self.success_response(
             data={
-                'businesses': businesses,
-                'services': services,
+                'businesses': businesses_data,
+                'services': services_data,
                 'total': total,
                 'query': query,
             },
         )
 
-
+    
 class SearchSuggestionsView(APIView, StandardResponseMixin):
     """پیشنهادات جستجو (Autocomplete)"""
     permission_classes = [permissions.AllowAny]

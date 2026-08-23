@@ -14,7 +14,7 @@ from django.utils import timezone
 from apps.appointments.models import Appointment
 from apps.businesses.models import Business
 from apps.services.models import Service
-from apps.core.utils import jalali_to_key
+from apps.core.utils import jalali_to_key, calculate_app_fee
 # ✅ import از core به جای تعریف محلی
 from apps.core.exceptions import (
     BookingException,
@@ -40,11 +40,8 @@ class BookingService:
 
     @classmethod
     def calculate_commission(cls, amount: int) -> int:
-        """محاسبه کارمزد بیو کلاب: ۱٪ حداقل ۱۰,۰۰۰ تومان"""
-        if amount <= 0:
-            return 0
-        commission = int(amount * 0.01)
-        return max(commission, 10000)
+        """محاسبه کارمزد — هماهنگ با فرانت‌اند و PaymentService"""
+        return calculate_app_fee(amount)
 
     @classmethod
     @transaction.atomic
@@ -56,6 +53,7 @@ class BookingService:
         jm: int,
         jd: int,
         time_slot_str: str,
+        is_trust_based: bool = False,  # ✅ فاز ۳: پارامتر جدید
     ) -> Appointment:
         try:
             service = Service.objects.select_related('business').only(
@@ -88,7 +86,6 @@ class BookingService:
             service_id=service.id,
             jy=jy, jm=jm, jd=jd,
         )
-
         slot_available = any(
             s['start_time'] == time_slot_str
             for s in available_slots
@@ -118,7 +115,12 @@ class BookingService:
             deposit_amount = min(service.deposit_amount, final_price)
         remaining_amount = final_price - deposit_amount
 
-        verification_code = cls._generate_verification_code()
+        # ✅ فاز ۳: منطق کد تایید بر اساس اعتماد
+        # فرانت‌اند برای تایید اعتمادی کد '0000' می‌فرستد
+        if is_trust_based:
+            verification_code = '0000'
+        else:
+            verification_code = cls._generate_verification_code()
 
         date_key = jalali_to_key(jy, jm, jd)
 
@@ -131,6 +133,7 @@ class BookingService:
             time_slot=time_slot,
             status=Appointment.Status.RESERVED,
             verification_code=verification_code,
+            is_trust_based=is_trust_based,  # ✅ فاز ۳
             total_price=final_price,
             deposit_amount=deposit_amount,
             remaining_amount=remaining_amount,
@@ -143,10 +146,12 @@ class BookingService:
         logger.info(
             f"Appointment created: customer={customer.phone}, "
             f"business={business.name}, date_key={date_key}, "
-            f"time={time_slot_str}"
+            f"time={time_slot_str}, trust_based={is_trust_based}"
         )
         return appointment
 
+
+    
     @classmethod
     def regenerate_verification_code(cls, appointment: Appointment) -> str:
         if appointment.updated_at:

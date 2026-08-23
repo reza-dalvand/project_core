@@ -57,27 +57,74 @@ class VerifyOTPSerializer(serializers.Serializer):
         return value
 
 
+# apps/accounts/serializers/auth.py
+# جایگزین کلاس‌های UserProfileSerializer و UpdateProfileSerializer
+
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer پروفایل کاربر — بدون role"""
+    """
+    Serializer پروفایل کاربر — نسخه نهایی هماهنگ با فرانت
+    فیلدها طوری طراحی شده‌اند که response-normalizer فرانت
+    آن‌ها را به camelCase تبدیل کند:
+      phone_display → phoneDisplay
+      full_name → fullName
+      is_national_id_verified → isNationalIdVerified
+      verified_name → verifiedName
+      date_joined → dateJoined
+    """
     phone_display = serializers.SerializerMethodField()
+    full_name = serializers.CharField(source='get_full_name', read_only=True)
 
     class Meta:
         model = User
         fields = [
-            'id', 'phone', 'phone_display', 'first_name', 'last_name',
-            'full_name', 'avatar', 'is_verified',
-            'is_national_id_verified', 'verified_name',
+            'id',
+            'phone',
+            'phone_display',
+            'first_name',
+            'last_name',
+            'full_name',
+            'avatar',
+            'is_verified',
+            'is_national_id_verified',
+            'verified_name',
             'date_joined',
         ]
         read_only_fields = [
             'id', 'phone', 'is_verified',
-            'is_national_id_verified', 'date_joined',
+            'is_national_id_verified', 'verified_name', 'date_joined',
         ]
 
     def get_phone_display(self, obj):
         return mask_phone(obj.phone)
 
 
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer بروزرسانی پروفایل
+    فقط first_name و last_name قابل ویرایش هستند.
+    avatar نیز پشتیبانی می‌شود (آپلود جداگانه).
+    """
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'avatar']
+
+    def validate_first_name(self, value):
+        if value is not None:
+            cleaned = value.strip()
+            if len(cleaned) < 2:
+                raise serializers.ValidationError('نام باید حداقل ۲ کاراکتر باشد')
+            return cleaned
+        return value
+
+    def validate_last_name(self, value):
+        if value is not None:
+            cleaned = value.strip()
+            if len(cleaned) < 2:
+                raise serializers.ValidationError('نام خانوادگی باید حداقل ۲ کاراکتر باشد')
+            return cleaned
+        return value
+
+    
 class UpdateProfileSerializer(serializers.ModelSerializer):
     """Serializer بروزرسانی پروفایل"""
 

@@ -1,12 +1,10 @@
 """
-Views برای زمان‌بندی — با تاریخ جلالی
-+ Available Slots / Available Dates (فاز ۱)
+Views برای زمان‌بندی — نسخه نهایی (فاز ۴)
 """
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.shortcuts import get_object_or_404
-
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
@@ -33,6 +31,10 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
             business__owner=self.request.user,
             business__is_active=True,
         ).select_related('service', 'business').order_by('jy', 'jm', 'jd')
+
+    # ✅ اصلاح: اعتبارسنجی کسب‌وکار قبل از ایجاد
+    def perform_create(self, serializer):
+        serializer.save()
 
     @extend_schema(
         summary='لیست زمان‌بندی‌ها',
@@ -80,6 +82,19 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView, StandardResponse
             business__is_active=True,
         ).select_related('service', 'business')
 
+    # ✅ اصلاح: اعتبارسنجی مالکیت در بروزرسانی و حذف
+    def perform_update(self, serializer):
+        if serializer.instance.business.owner != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('شما اجازه ویرایش این زمان‌بندی را ندارید')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.business.owner != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('شما اجازه حذف این زمان‌بندی را ندارید')
+        instance.delete()
+
     @extend_schema(
         summary='جزئیات زمان‌بندی',
         tags=['Schedules'],
@@ -118,6 +133,8 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
             OpenApiParameter(name='jm', type=int, required=True),
             OpenApiParameter(name='jd', type=int, required=True),
             OpenApiParameter(name='service_id', type=int, required=False),
+            # ✅ جدید: فیلتر کسب‌وکار
+            OpenApiParameter(name='business_id', type=int, required=False),
         ],
         responses={200: ServiceScheduleSerializer(many=True)},
     )
@@ -142,40 +159,22 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
         if service_id:
             schedules = schedules.filter(service_id=service_id)
 
+        # ✅ جدید: فیلتر کسب‌وکار
+        business_id = request.query_params.get('business_id')
+        if business_id:
+            schedules = schedules.filter(business_id=business_id)
+
         serializer = ServiceScheduleSerializer(schedules, many=True)
+
         return self.success_response(
             data=serializer.data,
             meta={'count': schedules.count()},
         )
 
 
-# ═══════════════════════════════════════════════════════
-#   🆕 فاز ۱: اسلات‌های آزاد
-# ═══════════════════════════════════════════════════════
-
 class AvailableSlotsView(APIView, StandardResponseMixin):
     """
     دریافت اسلات‌های آزاد برای یک تاریخ جلالی خاص
-
-    GET /schedules/available-slots/?business_id=&service_id=&jy=&jm=&jd=
-
-    Response:
-    {
-        "success": true,
-        "data": [
-            {
-                "id": "14050422_1030",
-                "jy": 1405, "jm": 4, "jd": 22,
-                "date_key": "1405/04/22",
-                "start_time": "10:30",
-                "end_time": "11:30",
-                "is_available": true,
-                "display_time": "10:30"
-            },
-            ...
-        ],
-        "meta": { "count": 8 }
-    }
     """
     permission_classes = [permissions.AllowAny]
 
@@ -185,13 +184,12 @@ class AvailableSlotsView(APIView, StandardResponseMixin):
         parameters=[
             OpenApiParameter(name='business_id', type=int, required=True),
             OpenApiParameter(name='service_id', type=int, required=True),
-            OpenApiParameter(name='jy', type=int, required=True, description='سال جلالی'),
-            OpenApiParameter(name='jm', type=int, required=True, description='ماه جلالی'),
-            OpenApiParameter(name='jd', type=int, required=True, description='روز جلالی'),
+            OpenApiParameter(name='jy', type=int, required=True),
+            OpenApiParameter(name='jm', type=int, required=True),
+            OpenApiParameter(name='jd', type=int, required=True),
         ],
     )
     def get(self, request):
-        # ─── اعتبارسنجی پارامترها ───
         business_id = request.query_params.get('business_id')
         service_id = request.query_params.get('service_id')
         jy = request.query_params.get('jy')
@@ -222,7 +220,6 @@ class AvailableSlotsView(APIView, StandardResponseMixin):
                 code='INVALID_DATE',
             )
 
-        # ─── فراخوانی SlotService ───
         from apps.appointments.services.slot_service import SlotService
 
         slots = SlotService.get_available_slots(
@@ -241,27 +238,7 @@ class AvailableSlotsView(APIView, StandardResponseMixin):
 
 class AvailableDatesView(APIView, StandardResponseMixin):
     """
-    دریافت روزهای دارای اسلات آزاد برای N روز آینده
-
-    GET /schedules/available-dates/?business_id=&service_id=&days_ahead=30
-
-    Response:
-    {
-        "success": true,
-        "data": [
-            {
-                "jy": 1405, "jm": 4, "jd": 22,
-                "date_key": "1405/04/22",
-                "day_of_week": 2,
-                "weekday_name": "دوشنبه",
-                "available_slots_count": 8,
-                "is_today": true,
-                "is_friday": false
-            },
-            ...
-        ],
-        "meta": { "count": 12 }
-    }
+    دریافت روزهای دارای اسلات آزاد
     """
     permission_classes = [permissions.AllowAny]
 
@@ -275,7 +252,7 @@ class AvailableDatesView(APIView, StandardResponseMixin):
                 name='days_ahead',
                 type=int,
                 required=False,
-                description='تعداد روزهای آینده (پیش‌فرض: ۳۰، حداکثر: ۶۰)',
+                description='تعداد روزهای آینده (پیش‌فرض: ۳۰)',
             ),
         ],
     )
@@ -293,7 +270,7 @@ class AvailableDatesView(APIView, StandardResponseMixin):
         try:
             business_id = int(business_id)
             service_id = int(service_id)
-            days_ahead = min(int(days_ahead), 60)  # حداکثر ۶۰ روز
+            days_ahead = min(int(days_ahead), 60)
             days_ahead = max(days_ahead, 1)
         except (ValueError, TypeError):
             return self.error_response(

@@ -67,7 +67,7 @@ class Transaction(BaseModel):
     )
 
     # ═══════════ درگاه پرداخت ═══════════
-    gateway = models.CharField('درگاه پرداخت', max_length=50, default='zibal')
+    gateway = models.CharField('درگاه پرداخت', max_length=50, default='zarinpal')
     gateway_transaction_id = models.CharField('شناسه تراکنش درگاه', max_length=100, blank=True, default='')
     tracking_code = models.CharField('کد پیگیری', max_length=50, blank=True, default='')
     ref_number = models.CharField('شماره ارجاع', max_length=50, blank=True, default='')

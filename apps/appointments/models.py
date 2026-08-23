@@ -92,10 +92,17 @@ class Appointment(BaseModel):
 
     def save(self, *args, **kwargs):
         self.date_key = f'{self.jy}/{self.jm:02d}/{self.jd:02d}'
-        if not self.verification_code and self.status == self.Status.RESERVED:
+        # ✅ فاز ۳: فقط برای نوبت‌های غیراعتمادی کد تولید شود
+        # نوبت‌های اعتمادی کد ثابت '0000' دارند
+        if (
+            not self.verification_code
+            and self.status == self.Status.RESERVED
+            and not self.is_trust_based  # ✅ شرط جدید
+        ):
             self.verification_code = self.generate_verification_code()
         self.remaining_amount = self.total_price - self.deposit_amount
         super().save(*args, **kwargs)
+        
 
     def generate_verification_code(self):
         return ''.join([str(random.randint(0, 9)) for _ in range(4)])

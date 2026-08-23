@@ -17,6 +17,8 @@ env:
   KAVENEGAR_API_KEY: ""
   SHAHKAR_API_URL: ""
   SHAHKAR_API_KEY: ""
+  ZARINPAL_MERCHANT_ID: "fake-merchant-id-for-ci"
+  ZARINPAL_SANDBOX: "True"
 
 jobs:
   # ═══════════ Lint ═══════════

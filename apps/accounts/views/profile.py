@@ -23,6 +23,9 @@ from apps.accounts.serializers.auth import (
 logger = logging.getLogger(__name__)
 
 
+# apps/accounts/views/profile.py
+# فقط کلاس ProfileView را پیدا و جایگزین کنید:
+
 class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
     """مشاهده و بروزرسانی پروفایل"""
     permission_classes = [permissions.IsAuthenticated]
@@ -45,20 +48,28 @@ class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
 
     @extend_schema(
         request=UpdateProfileSerializer,
+        responses={200: UserProfileSerializer},  # ✅ پاسخ کامل پروفایل
         tags=['Profile'],
         summary='بروزرسانی پروفایل',
     )
     def update(self, request, *args, **kwargs):
         user = self.get_object()
-        serializer = UpdateProfileSerializer(user, data=request.data, partial=True)
+        serializer = UpdateProfileSerializer(
+            user, data=request.data, partial=True
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # ✅ FIX فاز ۲: بازگرداندن پروفایل کامل پس از آپدیت
+        # فرانت انتظار دارد پس از PUT، آبجکت کامل user را دریافت کند
+        # تا store را بدون نیاز به درخواست اضافی بروزرسانی کند
+        profile_serializer = UserProfileSerializer(user)
         return self.success_response(
-            data=UserProfileSerializer(user).data,
+            data=profile_serializer.data,
             message='پروفایل با موفقیت بروزرسانی شد',
         )
 
-
+    
 class ChangePhoneRequestView(APIView, StandardResponseMixin):
     """درخواست تغییر شماره - ارسال OTP به شماره جدید"""
     permission_classes = [permissions.IsAuthenticated]

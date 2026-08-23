@@ -15,6 +15,12 @@ class AppointmentCreateSerializer(serializers.Serializer):
     jm = serializers.IntegerField()
     jd = serializers.IntegerField()
     time_slot = serializers.CharField(max_length=5)
+    # ✅ فاز ۳: فیلد اعتماد به سالن
+    trust_based = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text='اگر فعال باشد، نوبت بدون کد تایید ثبت می‌شود',
+    )
 
     def validate_time_slot(self, value):
         import re
@@ -30,12 +36,12 @@ class AppointmentCreateSerializer(serializers.Serializer):
         jy = data.get('jy')
         jm = data.get('jm')
         jd = data.get('jd')
+
         if not (1 <= jm <= 12):
             raise serializers.ValidationError('ماه جلالی باید بین ۱ تا ۱۲ باشد')
         if not (1 <= jd <= 31):
             raise serializers.ValidationError('روز جلالی باید بین ۱ تا ۳۱ باشد')
         return data
-
 
 class AppointmentListSerializer(serializers.ModelSerializer):
     """Serializer لیست نوبت‌ها + فیلدهای محاسباتی"""

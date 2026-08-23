@@ -95,6 +95,10 @@ class SendOTPView(APIView, StandardResponseMixin):
 # apps/accounts/views/auth.py
 # فقط کلاس VerifyOTPView را پیدا کنید و متد post را جایگزین کنید:
 
+# apps/accounts/views/auth.py
+
+# ... (imports existing) ...
+
 class VerifyOTPView(APIView, StandardResponseMixin):
     """تایید کد OTP و ورود/ثبت‌نام"""
     permission_classes = [permissions.AllowAny]
@@ -107,27 +111,31 @@ class VerifyOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         phone = serializer.validated_data['phone']
         code = serializer.validated_data['code']
 
         try:
+            # 1. اعتبارسنجی کد
             OTPService.verify_otp(phone, code)
 
+            # 2. دریافت یا ایجاد کاربر
             user, is_new_user = User.objects.get_or_create(
                 phone=phone,
                 defaults={'is_verified': True},
             )
 
+            # اگر کاربر قدیمی است اما هنوز وریفای نشده
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
 
+            # آپدیت آخرین ورود
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
+            # 3. ثبت دستگاه (Device Tracking)
             device_info = get_device_info(request)
-            device, _ = UserDevice.objects.update_or_create(
+            UserDevice.objects.update_or_create(
                 user=user,
                 device_type=device_info['device_type'],
                 device_name=device_info.get('device_name', ''),
@@ -138,32 +146,33 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 },
             )
 
-            # تولید JWT Token
+            # 4. تولید JWT Token
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
-
+            
             access_token = refresh.access_token
             access_token['user_id'] = user.id
             access_token['is_verified'] = user.is_verified
 
-            access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
-
-            # ✅ جدید: آیا کاربر باید پروفایل را تکمیل کند؟
+            # ✅ FIX PHASE 1: محاسبه دقیق نیاز به تکمیل پروفایل
+            # فرانت اند چک میکند: needsProfileCompletion
             needs_profile_completion = (
-                is_new_user or
-                not user.first_name or
+                is_new_user or 
+                not user.first_name or 
                 not user.last_name
             )
 
+            # ✅ FIX PHASE 1: ساختار پاسخ استاندارد برای فرانت
+            # کلیدها باید snake_case باشند چون response-normalizer فرانت آنها را به camelCase تبدیل میکند
             return self.success_response(
                 data={
                     'is_new_user': is_new_user,
-                    'needs_profile_completion': needs_profile_completion,  # ✅ جدید
+                    'needs_profile_completion': needs_profile_completion,
                     'access_token': str(access_token),
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
-                    'expires_in': int(access_lifetime.total_seconds()),
+                    'expires_in': int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
                     'user': UserProfileSerializer(user).data,
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
@@ -178,6 +187,8 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 code='VERIFY_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        
 # ═══════════════════════════════════════════════
 #   Token Refresh
 # ═══════════════════════════════════════════════

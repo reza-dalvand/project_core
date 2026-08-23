@@ -18,16 +18,20 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     '127.0.0.1',
 ])
 
+
 # ─── CSRF Trusted Origins (Django 4+) ───
 CSRF_TRUSTED_ORIGINS = [
-    'https://beauclub.ir',
-    'https://beuclub.ir',
-    'https://buclub.ir',
-    'https://api.beauclub.ir',
-    'https://www.beauclub.ir',
-    'https://www.beuclub.ir',
-    'https://www.buclub.ir',
-    env('FRONTEND_URL', default='https://beauclub.ir'),
+'https://beauclub.ir',
+'https://beuclub.ir',
+'https://buclub.ir',
+'https://api.beauclub.ir',
+'https://www.beauclub.ir',
+'https://www.beuclub.ir',
+'https://www.buclub.ir',
+env('FRONTEND_URL', default='https://beauclub.ir'),
+# 🆕 فاز ۵: برای اپ موبایل نیاز نیست (از JWT استفاده می‌شود)
+# ولی برای اطمینان در برخی فرم‌ها اضافه می‌کنیم
+'capacitor://localhost',
 ]
 
 # ─── Security Headers ───
@@ -121,7 +125,23 @@ CORS_ALLOWED_ORIGINS = [
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
     env('FRONTEND_URL', default='https://beauclub.ir'),
+    # ═══ 🆕 فاز ۵: اپلیکیشن موبایل (Capacitor) ═══
+    # وقتی اپ با Capacitor روی اندروید/آیفون اجرا می‌شود،
+    # مرورگر داخلی درخواست‌ها را با این اورجین ارسال می‌کند
+    'capacitor://localhost',
 ]
+
+# ═══ 🆕 فاز ۵: پشتیبان با Regex ═══
+# در صورتی که نسخه خاصی از مرورگر یا کاستوم دامین
+# با فرمت متفاوتی ارسال شود، این ریجکس پوشش می‌دهد
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r'^capacitor://localhost$',
+    r'^https://beauclub\.ir$',
+    r'^https://www\.beauclub\.ir$',
+    r'^https://beuclub\.ir$',
+    r'^https://buclub\.ir$',
+]
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 CORS_ALLOW_HEADERS = [

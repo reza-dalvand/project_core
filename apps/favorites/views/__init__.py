@@ -1,10 +1,9 @@
 """
-Views برای علاقه‌مندی‌ها
+Views برای علاقه‌مندی‌ها — نسخه نهایی (فاز ۸)
 """
 from rest_framework import permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
-
 from apps.core.mixins import StandardResponseMixin
 from apps.favorites.models import FavoriteBusiness, FavoritePost
 from apps.favorites.serializers import (
@@ -97,26 +96,36 @@ class FavoriteListView(APIView, StandardResponseMixin):
         if favorite_type == 'business':
             favorites = FavoriteBusiness.objects.filter(
                 user=request.user
-            ).select_related('business')
-            serializer = FavoriteBusinessSerializer(favorites, many=True)
+            ).select_related('business', 'business__category', 'business__city')
+            # ✅ فاز ۸: اضافه کردن context
+            serializer = FavoriteBusinessSerializer(
+                favorites, many=True, context={'request': request}
+            )
         elif favorite_type == 'post':
             favorites = FavoritePost.objects.filter(
                 user=request.user
-            ).select_related('post')
-            serializer = FavoritePostSerializer(favorites, many=True)
+            ).select_related('post', 'post__business').prefetch_related('post__images')
+            # ✅ فاز ۸: اضافه کردن context
+            serializer = FavoritePostSerializer(
+                favorites, many=True, context={'request': request}
+            )
         else:
             # همه
             business_favs = FavoriteBusiness.objects.filter(
                 user=request.user
-            ).select_related('business')
+            ).select_related('business', 'business__category', 'business__city')
             post_favs = FavoritePost.objects.filter(
                 user=request.user
-            ).select_related('post')
+            ).select_related('post', 'post__business').prefetch_related('post__images')
 
             return self.success_response(
                 data={
-                    'businesses': FavoriteBusinessSerializer(business_favs, many=True).data,
-                    'posts': FavoritePostSerializer(post_favs, many=True).data,
+                    'businesses': FavoriteBusinessSerializer(
+                        business_favs, many=True, context={'request': request}
+                    ).data,
+                    'posts': FavoritePostSerializer(
+                        post_favs, many=True, context={'request': request}
+                    ).data,
                 }
             )
 

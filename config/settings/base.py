@@ -313,9 +313,13 @@ SHAHKAR_API_URL = env('SHAHKAR_API_URL', default='')
 SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='')
 
 # Payment
-ZIBAL_MERCHANT_ID = env('ZIBAL_MERCHANT_ID', default='zibal')
-ZIBAL_CALLBACK_URL = env(
-    'ZIBAL_CALLBACK_URL',
+ZARINPAL_MERCHANT_ID = env(
+    'ZARINPAL_MERCHANT_ID',
+    default='fake-merchant-id-for-dev',
+)
+ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True)
+ZARINPAL_CALLBACK_URL = env(
+    'ZARINPAL_CALLBACK_URL',
     default='http://localhost:8000/api/v1/payments/callback/',
 )
 
@@ -350,13 +354,21 @@ SPECTACULAR_SETTINGS = {
 # ═══════════════════════════════════════════════
 #   CORS
 # ═══════════════════════════════════════════════
+CORS_ALLOW_ALL_ORIGINS = True  # در توسعه باز است
+
 CORS_ALLOWED_ORIGINS = env.list(
-    'CORS_ALLOWED_ORIGINS',
-    default=[
-        'http://localhost:3000',
-        'http://localhost:8081',
-        'http://127.0.0.1:3000',
-    ]
+'CORS_ALLOWED_ORIGINS',
+default=[
+# ═══ وب ═══
+'http://localhost:3000',
+'http://localhost:8081',
+'http://127.0.0.1:3000',
+'http://127.0.0.1:8081',
+# ═══ 🆕 فاز ۵: توسعه با شبیه‌ساز اندروید ═══
+'capacitor://localhost',
+# برای شبیه‌ساز اندروید روی پورت‌های مختلف
+'http://192.168.1.43:3000',
+]
 )
 CORS_ALLOW_CREDENTIALS = True
 

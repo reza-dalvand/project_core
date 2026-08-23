@@ -48,6 +48,8 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 jm=serializer.validated_data['jm'],
                 jd=serializer.validated_data['jd'],
                 time_slot_str=serializer.validated_data['time_slot'],
+                # ✅ فاز ۳: ارسال وضعیت اعتماد
+                is_trust_based=serializer.validated_data.get('trust_based', False),
             )
 
             return self.success_response(
@@ -67,7 +69,7 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
+        
 class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
     """لیست نوبت‌های مشتری"""
     permission_classes = [permissions.IsAuthenticated]

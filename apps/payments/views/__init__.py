@@ -206,61 +206,79 @@ class SettlementListView(generics.ListAPIView, StandardResponseMixin):
         ).order_by('-created_at')
 
 
+
+
 class PaymentCallbackView(APIView, StandardResponseMixin):
-    """Callback درگاه پرداخت"""
+    """
+    Callback درگاه پرداخت زرین‌پال
+    فرمت زرین‌پال: ?Authority=xxx&Status=OK
+    """
     permission_classes = [AllowAny]
 
     @extend_schema(
         parameters=[
-            OpenApiParameter(name='trackId', type=str, required=True),
-            OpenApiParameter(name='success', type=str, required=True),
+            OpenApiParameter(name='Authority', type=str, required=True),
+            OpenApiParameter(name='Status', type=str, required=True),
             OpenApiParameter(name='orderId', type=str, required=False),
         ],
         tags=['Payment'],
-        summary='Callback پرداخت',
+        summary='Callback پرداخت زرین‌پال',
     )
     def get(self, request):
-        track_id = request.query_params.get('trackId')
-        success = request.query_params.get('success')
-        order_id = request.query_params.get('orderId')
+        authority  = request.query_params.get('Authority')
+        status     = request.query_params.get('Status')
+        order_id   = request.query_params.get('orderId')
 
-        if not track_id or not order_id:
-            return self.error_response(
-                message='پارامترهای callback نامعتبر هستند',
-                code='INVALID_CALLBACK',
+        frontend_url = getattr(
+            settings, 'FRONTEND_URL', 'http://localhost:3000'
+        )
+        frontend_url = frontend_url.rstrip('/')
+
+        if not authority or not order_id:
+            return redirect(
+                f'{frontend_url}/profile/payments'
+                f'?status=failed&reason=invalid_callback'
             )
 
         try:
-            tx = Transaction.objects.get(
+            tx = Transaction.objects.select_related('appointment').get(
                 id=order_id,
-                gateway_transaction_id=track_id,
+                gateway_transaction_id=authority,
             )
         except Transaction.DoesNotExist:
-            return self.error_response(
-                message='تراکنش یافت نشد',
-                code='TRANSACTION_NOT_FOUND',
-                status=status.HTTP_404_NOT_FOUND,
+            return redirect(
+                f'{frontend_url}/profile/payments'
+                f'?status=failed&reason=transaction_not_found'
             )
 
-        if success == '1':
+        if status == 'OK':
             try:
                 PaymentService.verify_payment(
-                    track_id=track_id,
+                    track_id=authority,
                     expected_amount=tx.amount,
                 )
                 return redirect(
-                    f'{settings.FRONTEND_URL}/payment/success'
-                    f'?tracking_code={tx.tracking_code}'
+                    f'{frontend_url}/profile/payments'
+                    f'?status=success'
+                    f'&tracking_code={tx.tracking_code}'
+                    f'&amount={tx.amount}'
                 )
             except Exception as e:
+                error_code = getattr(e, 'code', 'VERIFY_ERROR')
                 return redirect(
-                    f'{settings.FRONTEND_URL}/payment/failed'
-                    f'?tracking_code={tx.tracking_code}&reason={e.code if hasattr(e, "code") else "ERROR"}'
+                    f'{frontend_url}/profile/payments'
+                    f'?status=failed'
+                    f'&reason={error_code}'
+                    f'&tracking_code={tx.tracking_code}'
                 )
 
+        # Status == NOK یا هر چیز دیگر
         tx.status = Transaction.Status.FAILED
         tx.save(update_fields=['status'])
+
         return redirect(
-            f'{settings.FRONTEND_URL}/payment/failed'
-            f'?tracking_code={tx.tracking_code}&reason=cancelled'
+            f'{frontend_url}/profile/payments'
+            f'?status=failed'
+            f'&reason=cancelled'
+            f'&tracking_code={tx.tracking_code}'
         )

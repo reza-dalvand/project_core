@@ -8,7 +8,7 @@ from django.db.models import Sum, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 
 from apps.payments.models import Transaction, Settlement
-from apps.core.utils import generate_tracking_code, generate_ref_number
+from apps.core.utils import generate_tracking_code, generate_ref_number, calculate_app_fee
 from apps.core.exceptions import PaymentException
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class PaymentService:
             status=Transaction.Status.BLOCKED,
             amount=amount,
             app_fee=app_fee,
-            gateway='zibal',
+            gateway='zarinpal',
         )
 
         # اتصال به درگاه پرداخت
@@ -250,31 +250,10 @@ class PaymentService:
     #   تسویه حساب
     # ═══════════════════════════════════════════════
 
-# apps/payments/services/payment_service.py
-# در کلاس PaymentService، این متد را جایگزین کنید:
-
     @classmethod
     def calculate_app_fee(cls, amount: int) -> int:
-        """
-        محاسبه کارمزد بیو کلاب — هماهنگ با فرانت‌اند
-        
-        قوانین:
-        - زیر ۲۵۰,۰۰۰ تومان: ۷,۰۰۰ تومان ثابت
-        - از ۲۵۰,۰۰۰ تا ۵۰۰,۰۰۰ تومان: ۳٪
-        - از ۵۰۰,۰۰۰ تومان به بالا: ۴٪
-        - سقف: ۵۰,۰۰۰ تومان
-        """
-        if not amount or amount <= 0:
-            return 0
-        
-        if amount < 250000:
-            fee = 7000
-        elif amount <= 500000:
-            fee = int(amount * 0.03)
-        else:
-            fee = int(amount * 0.04)
-        
-        return min(fee, 50000)
+        """محاسبه کارمزد — ارجاع به تابع مشترک core"""
+        return calculate_app_fee(amount)
 
     @classmethod
     def get_business_pending_balance(cls, business) -> dict:
