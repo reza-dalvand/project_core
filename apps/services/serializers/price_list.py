@@ -20,6 +20,16 @@ class PriceListNoteWriteSerializer(serializers.Serializer):
     min_value = serializers.IntegerField(default=0, min_value=0)
     max_value = serializers.IntegerField(default=0, min_value=0)
 
+    # ✅ FIX فاز ۴: اعتبارسنجی max >= min
+    def validate(self, data):
+        min_val = data.get('min_value', 0)
+        max_val = data.get('max_value', 0)
+        if max_val < min_val:
+            raise serializers.ValidationError(
+                'مقدار حداکثر نمی‌تواند کمتر از مقدار حداقل باشد'
+            )
+        return data
+
 
 class PriceListServiceItemSerializer(serializers.Serializer):
     """Serializer آیتم‌های خدمات در لیست قیمت"""

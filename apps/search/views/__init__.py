@@ -300,19 +300,6 @@ class NearbyView(APIView, StandardResponseMixin):
             line_rentals, many=True, context={'request': request}
         ).data
 
-        # افزودن فاصله به هر آیتم
-        for i, biz in enumerate(businesses):
-            if i < len(business_data):
-                business_data[i]['distance_km'] = round(biz.distance.m / 1000, 2)
-
-        for i, mr in enumerate(model_requests):
-            if i < len(model_data):
-                model_data[i]['distance_km'] = round(mr.distance.m / 1000, 2)
-
-        for i, lr in enumerate(line_rentals):
-            if i < len(line_data):
-                line_data[i]['distance_km'] = round(lr.distance.m / 1000, 2)
-
         return self.success_response(
             data={
                 'businesses': business_data,
