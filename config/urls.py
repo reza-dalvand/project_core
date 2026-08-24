@@ -35,13 +35,15 @@ urlpatterns = [
         path('reviews/', include('apps.reviews.urls')),
         path('favorites/', include('apps.favorites.urls')),
         path('notifications/', include('apps.notifications.urls')),
-        # ✅ جدید اضافه شدند:
         path('search/', include('apps.search.urls')),
         path('explore/', include('apps.explore.urls')),
         path('portfolios/', include('apps.portfolios.urls')),
         path('ads/', include('apps.ads.urls')),
         path('reminders/', include('apps.reminders.urls')),
         path('support/', include('apps.support.urls')),
+
+        # ✅ فاز ۱: اندپوینت‌های کانفیگ
+        path('config/', include('apps.core.urls')),
     ])),
 
     # ═══════ Dashboard ═══════
