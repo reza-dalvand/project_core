@@ -63,10 +63,11 @@ def send_same_day_reminders(self):
     sent_count = 0
     for appointment in appointments:
         try:
-            apt_time = datetime.combine(
-                datetime.today(), appointment.time_slot
+            now = timezone.now()
+            today_date = now.date()
+            apt_time = timezone.make_aware(
+                datetime.combine(today_date, appointment.time_slot)
             )
-            apt_time = timezone.make_aware(apt_time)
             hours_until = (apt_time - now).total_seconds() / 3600
 
             if 0 < hours_until <= 2:

@@ -3,7 +3,7 @@ Views مربوط به احراز هویت — بدون role
 """
 import logging
 from datetime import timedelta
-
+import uuid
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -385,7 +385,7 @@ class DeleteAccountView(APIView, StandardResponseMixin):
 
             # Soft delete
             user.is_active = False
-            user.phone = f'deleted_{phone}_{timezone.now().timestamp()}'
+            user.phone = f'del_{uuid.uuid4().hex[:7]}'
             user.first_name = ''
             user.last_name = ''
             user.avatar = None

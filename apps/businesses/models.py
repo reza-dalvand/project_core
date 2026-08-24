@@ -148,6 +148,7 @@ class Business(BaseModel):
     def __str__(self):
         return self.name
 
+
     @transaction.atomic
     def save(self, *args, **kwargs):
         # به‌روزرسانی location از lat/lng
@@ -164,6 +165,11 @@ class Business(BaseModel):
         # تولید booking_slug
         if not self.booking_slug:
             base_slug = slugify(self.name, allow_unicode=True)[:50]
+            
+            # ✅ FIX: اگر نام فقط کاراکترهای خاص بود، اسلاگ خالی می‌شود
+            if not base_slug:
+                base_slug = secrets.token_hex(4)
+            
             slug = base_slug
             counter = 1
             while True:
@@ -180,26 +186,6 @@ class Business(BaseModel):
             self.booking_slug = slug
 
         super().save(*args, **kwargs)
-
-    def calculate_distance(self, user_lat, user_lng):
-        """محاسبه فاصله تا کاربر (متر) — با PostGIS"""
-        if self.location is None:
-            return None
-        user_point = Point(float(user_lng), float(user_lat), srid=4326)
-        return self.location.distance(user_point)
-
-    @classmethod
-    def nearby(cls, lat, lng, radius_km=10):
-        """دریافت کسب‌وکارهای نزدیک"""
-        from django.contrib.gis.measure import D
-        point = Point(float(lng), float(lat), srid=4326)
-        return cls.objects.filter(
-            location__distance_lte=(point, D(km=radius_km)),
-            status=cls.Status.APPROVED,
-            is_active=True,
-        ).distance(point).order_by('distance')
-
-
 class BusinessGallery(BaseModel):
     """گالری تصاویر کسب‌وکار (حداکثر ۳ تصویر)"""
     business = models.ForeignKey(

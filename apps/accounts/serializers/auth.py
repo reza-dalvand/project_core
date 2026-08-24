@@ -210,8 +210,6 @@ class DeleteAccountSerializer(serializers.Serializer):
 # ═══════════════════════════════════════════════
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
-    """Token Refresh با چرخش توکن + بررسی is_active"""
-
     def validate(self, attrs):
         data = super().validate(attrs)
         data['token_type'] = 'Bearer'
@@ -221,12 +219,12 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
             access_token = AccessToken(data['access'])
             user_id = access_token.get('user_id')
 
-            # ✅ FIX فاز ۳: بررسی is_active هنگام refresh
             if user_id:
                 from django.contrib.auth import get_user_model
                 User = get_user_model()
                 try:
                     user = User.objects.get(id=user_id)
+                    # ✅ بررسی is_active — بدون بلعیده شدن
                     if not user.is_active:
                         raise serializers.ValidationError(
                             'حساب کاربری غیرفعال شده است'
@@ -236,10 +234,10 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
                         'is_verified': user.is_verified,
                     }
                 except User.DoesNotExist:
-                    raise serializers.ValidationError(
-                        'کاربر یافت نشد'
-                    )
+                    raise serializers.ValidationError('کاربر یافت نشد')
+        except serializers.ValidationError:
+            raise  # ✅ خطاهای اعتبارسنجی حتماً بالا داده شوند
         except Exception:
-            pass
+            pass  # فقط خطاهای غیرمنتظره (مثلاً فرمت توکن) نادیده گرفته شوند
 
         return data

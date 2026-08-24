@@ -49,12 +49,35 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
         ],
         responses={200: ServiceScheduleSerializer(many=True)},
     )
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        service_id = request.query_params.get('service_id')
+
+    def get_queryset(self):
+        qs = ServiceSchedule.objects.filter(
+            business__owner=self.request.user,
+            business__is_active=True,
+        ).select_related('service', 'business').order_by('jy', 'jm', 'jd')
+
+        # ✅ فیلتر service_id در get_queryset اعمال شود
+        service_id = self.request.query_params.get('service_id')
         if service_id:
-            queryset = queryset.filter(service_id=service_id)
+            qs = qs.filter(service_id=service_id)
+
+        return qs
+
+    @extend_schema(
+        summary='لیست زمان‌بندی‌ها',
+        tags=['Schedules'],
+        parameters=[
+            OpenApiParameter(
+                name='service_id', type=int, required=False,
+                description='فیلتر بر اساس شناسه خدمت',
+            ),
+        ],
+        responses={200: ServiceScheduleSerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+    
 
     @extend_schema(
         summary='ایجاد زمان‌بندی جدید',

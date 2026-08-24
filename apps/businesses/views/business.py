@@ -5,8 +5,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.contrib.gis.measure import D
 from django.contrib.gis.geos import Point
-from django.db.models import Q
-
+from django.db.models import Q, F
 from apps.core.mixins import StandardResponseMixin
 from apps.core.pagination import StandardResultsSetPagination
 from apps.core.permissions import AllowAnyVerified, IsApprovedBusinessOwner
@@ -371,8 +370,9 @@ class PublicBusinessDetailView(APIView, StandardResponseMixin):
             )
 
         # افزایش شمارنده کلیک
-        business.booking_link_clicks += 1
-        business.save(update_fields=['booking_link_clicks'])
+        Business.objects.filter(pk=business.pk).update(
+            booking_link_clicks=F('booking_link_clicks') + 1
+        )
 
         serializer = BusinessDetailSerializer(business)
         return self.success_response(data=serializer.data)

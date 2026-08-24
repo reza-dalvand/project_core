@@ -226,7 +226,7 @@ class PaymentCallbackView(APIView, StandardResponseMixin):
     )
     def get(self, request):
         authority  = request.query_params.get('Authority')
-        status     = request.query_params.get('Status')
+        gateway_status = request.query_params.get('Status') 
 
         frontend_url = getattr(
             settings, 'FRONTEND_URL', 'http://localhost:3000'
@@ -249,7 +249,7 @@ class PaymentCallbackView(APIView, StandardResponseMixin):
                 f'?status=failed&reason=transaction_not_found'
             )
 
-        if status == 'OK':
+        if gateway_status == 'OK':
             try:
                 PaymentService.verify_payment(
                     track_id=authority,

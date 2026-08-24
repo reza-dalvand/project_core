@@ -68,18 +68,20 @@ class BusinessCreateSerializer(serializers.ModelSerializer):
         cover_image = validated_data.pop('cover_image', None)
         owner_photo = validated_data.pop('owner_photo', None)
         logo = validated_data.pop('logo', None)
+
         user = self.context['request'].user
         validated_data['owner'] = user
         validated_data['status'] = Business.Status.PENDING
-        business = Business.objects.create(**validated_data)
+
+        # ✅ تصاویر مستقیماً در validated_data قرار گیرند
         if cover_image:
-            business.cover_image = cover_image
+            validated_data['cover_image'] = cover_image
         if owner_photo:
-            business.owner_photo = owner_photo
+            validated_data['owner_photo'] = owner_photo
         if logo:
-            business.logo = logo
-        if any([cover_image, owner_photo, logo]):
-            business.save()
+            validated_data['logo'] = logo
+
+        business = Business.objects.create(**validated_data)  # ← فقط یک save
         return business
 
 

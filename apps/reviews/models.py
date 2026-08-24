@@ -62,7 +62,6 @@ class Review(BaseModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # آپدیت امتیاز کسب‌وکار
         from django.db.models import Avg
         stats = self.business.reviews.aggregate(
             avg=models.Avg('rating'),
