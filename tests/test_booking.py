@@ -25,7 +25,7 @@ class TestSlotService:
         slots = SlotService.get_available_slots(
             business_id=approved_business.id,
             service_id=test_service.id,
-            jy=test_schedule.jy,      # ✅ پویا
+            jy=test_schedule.jy,
             jm=test_schedule.jm,
             jd=test_schedule.jd,
         )
@@ -40,7 +40,6 @@ class TestSlotService:
     ):
         """بدون schedule هیچ اسلاتی نیست"""
         import jdatetime
-        # تاریخ متفاوت از schedule
         other_date = jdatetime.date.today() + jdatetime.timedelta(days=10)
         slots = SlotService.get_available_slots(
             business_id=approved_business.id,
@@ -60,7 +59,6 @@ class TestSlotService:
             service_id=test_service.id,
             days_ahead=30,
         )
-        # بررسی ساختار
         for d in dates:
             assert 'jy' in d
             assert 'jm' in d
@@ -75,17 +73,13 @@ class TestBookingService:
     """تست‌های Booking Service"""
 
     def test_create_booking_success(
-        self,
-        customer_user,
-        approved_business,
-        test_service,
-        test_schedule,
+        self, customer_user, approved_business, test_service, test_schedule,
     ):
         """تست ایجاد موفق نوبت"""
         appointment = BookingService.create_appointment(
             customer=customer_user,
             service_id=test_service.id,
-            jy=test_schedule.jy,      # ✅ پویا
+            jy=test_schedule.jy,
             jm=test_schedule.jm,
             jd=test_schedule.jd,
             time_slot_str='10:00',
@@ -97,17 +91,12 @@ class TestBookingService:
         assert appointment.status == Appointment.Status.RESERVED
         assert appointment.verification_code is not None
         assert len(appointment.verification_code) == 4
-        # قیمت نهایی = 500000 - 10% = 450000
         assert appointment.total_price == 450000
         assert appointment.deposit_amount == 100000
         assert appointment.remaining_amount == 350000
 
     def test_create_booking_slot_not_available(
-        self,
-        customer_user,
-        approved_business,
-        test_service,
-        test_schedule,
+        self, customer_user, approved_business, test_service, test_schedule,
     ):
         """تست رزرو ساعت غیرمجاز"""
         with pytest.raises(BookingException):
@@ -117,14 +106,11 @@ class TestBookingService:
                 jy=test_schedule.jy,
                 jm=test_schedule.jm,
                 jd=test_schedule.jd,
-                time_slot_str='23:00',  # خارج از ساعات کاری
+                time_slot_str='23:00',
             )
 
     def test_create_booking_no_schedule(
-        self,
-        customer_user,
-        approved_business,
-        test_service,
+        self, customer_user, approved_business, test_service,
     ):
         """تست رزرو بدون schedule"""
         import jdatetime
@@ -140,11 +126,7 @@ class TestBookingService:
             )
 
     def test_create_booking_duplicate(
-        self,
-        customer_user,
-        approved_business,
-        test_service,
-        test_schedule,
+        self, customer_user, approved_business, test_service, test_schedule,
     ):
         """تست عدم امکان رزرو تکراری"""
         BookingService.create_appointment(
@@ -216,16 +198,13 @@ class TestBookingAPI:
     """تست‌های API نوبت‌دهی"""
 
     def test_create_appointment_api(
-        self,
-        authenticated_customer_client,
-        test_service,
-        test_schedule,
+        self, authenticated_customer_client, test_service, test_schedule,
     ):
         """تست API ایجاد نوبت"""
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': test_schedule.jy,      # ✅ پویا
+            'jy': test_schedule.jy,
             'jm': test_schedule.jm,
             'jd': test_schedule.jd,
             'time_slot': '10:00',
@@ -236,10 +215,7 @@ class TestBookingAPI:
         assert data['verification_code'] is not None
 
     def test_create_appointment_invalid_time(
-        self,
-        authenticated_customer_client,
-        test_service,
-        test_schedule,
+        self, authenticated_customer_client, test_service, test_schedule,
     ):
         """تست API با ساعت نامعتبر"""
         url = reverse('appointments:create-appointment')
@@ -253,9 +229,7 @@ class TestBookingAPI:
         assert response.status_code == 400
 
     def test_my_appointments_api(
-        self,
-        authenticated_customer_client,
-        test_appointment,
+        self, authenticated_customer_client, test_appointment,
     ):
         """تست API نوبت‌های من"""
         url = reverse('appointments:my-appointments')
@@ -264,9 +238,7 @@ class TestBookingAPI:
         assert response.json()['success'] is True
 
     def test_business_appointments_api(
-        self,
-        authenticated_business_client,
-        test_appointment,
+        self, authenticated_business_client, test_appointment,
     ):
         """تست API نوبت‌های کسب‌وکار"""
         url = reverse('appointments:business-appointments')
@@ -274,9 +246,7 @@ class TestBookingAPI:
         assert response.status_code == 200
 
     def test_cancel_appointment_api(
-        self,
-        authenticated_customer_client,
-        test_appointment,
+        self, authenticated_customer_client, test_appointment,
     ):
         """تست API لغو نوبت"""
         url = reverse(
@@ -291,9 +261,7 @@ class TestBookingAPI:
         assert test_appointment.status == 'cancelled_by_customer'
 
     def test_cancel_by_business_api(
-        self,
-        authenticated_business_client,
-        test_appointment,
+        self, authenticated_business_client, test_appointment,
     ):
         """تست API لغو نوبت توسط سالن"""
         url = reverse(
@@ -308,9 +276,7 @@ class TestBookingAPI:
         assert test_appointment.status == 'cancelled_by_salon'
 
     def test_verify_code_api(
-        self,
-        authenticated_business_client,
-        test_appointment,
+        self, authenticated_business_client, test_appointment,
     ):
         """تست API تایید کد خدمت"""
         code = test_appointment.verification_code
@@ -324,9 +290,7 @@ class TestBookingAPI:
         assert test_appointment.status == 'done'
 
     def test_verify_invalid_code_api(
-        self,
-        authenticated_business_client,
-        test_appointment,
+        self, authenticated_business_client, test_appointment,
     ):
         """تست API کد اشتباه"""
         url = reverse(
@@ -337,9 +301,7 @@ class TestBookingAPI:
         assert response.status_code == 400
 
     def test_business_stats_api(
-        self,
-        authenticated_business_client,
-        test_appointment,
+        self, authenticated_business_client, test_appointment,
     ):
         """تست API آمار نوبت‌ها"""
         url = reverse('appointments:business-stats')

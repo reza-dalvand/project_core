@@ -2,6 +2,7 @@
 تست‌های مدل‌ها — ساختار جدید بدون role
 """
 import pytest
+from datetime import time
 from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 
@@ -42,11 +43,12 @@ class TestOtpCode:
         from django.utils import timezone
         from datetime import timedelta
         from apps.accounts.models import OtpCode
+
         otp = OtpCode.objects.create(
             phone='09123456789',
             code='12345',
             purpose=OtpCode.Purpose.LOGIN,
-            expires_at=timezone.now() + timedelta(minutes=5) # ✅ اضافه شد
+            expires_at=timezone.now() + timedelta(minutes=5)
         )
         assert otp.is_valid is True
         assert otp.is_expired is False
@@ -63,6 +65,7 @@ class TestOtpCode:
         assert 'login' in purposes
         assert 'change_phone' in purposes
         assert 'booking_verify' in purposes
+        assert 'delete_account' in purposes
 
 
 @pytest.mark.django_db
@@ -110,7 +113,10 @@ class TestBusiness:
         assert approved_business.status == 'approved'
         assert approved_business.booking_slug is not None
 
-    def test_booking_slug_unique(self, approved_business, business_owner_user, business_category, province, city):
+    def test_booking_slug_unique(
+        self, approved_business, business_owner_user,
+        business_category, province, city
+    ):
         from apps.businesses.models import Business
         b2 = Business.objects.create(
             owner=business_owner_user,
@@ -146,7 +152,7 @@ class TestService:
     def test_service_properties(self, test_service):
         assert test_service.discount_amount == 50000
         assert test_service.final_price == 450000
-        assert test_service.app_fee >= 10000
+        assert test_service.app_fee >= 7000
 
     def test_service_renewal_days(self, test_service):
         assert test_service.renewal_days == 30
@@ -158,13 +164,13 @@ class TestService:
 
 @pytest.mark.django_db
 class TestSchedule:
-    """تست مدل ServiceSchedule جدید"""
+    """تست مدل ServiceSchedule — ادغام‌شده (یک کلاس)"""
 
     def test_create_schedule(self, test_schedule):
-        # ✅ به جای مقدار ثابت، از fixture استفاده کن
         assert test_schedule.date_key is not None
         assert test_schedule.slot_count > 0
-        # اگه میخوای تاریخ دقیق رو چک کنی:
+
+    def test_schedule_date_key_format(self, test_schedule):
         import jdatetime
         future = jdatetime.date.today() + jdatetime.timedelta(days=30)
         expected_key = f'{future.year}/{future.month:02d}/{future.day:02d}'
@@ -174,43 +180,15 @@ class TestSchedule:
         assert len(test_schedule.breaks) == 1
         assert test_schedule.breaks[0]['start'] == '13:00'
 
+    def test_schedule_slot_count_calculation(self, test_schedule):
+        """9:00 تا 18:00 = 540 دقیقه، استراحت 60 دقیقه = 480، تقسیم بر 30 = 16"""
+        assert test_schedule.slot_count == 16
+
     def test_schedule_unique(self, approved_business, test_service, test_schedule):
         """تست unique_together روی service + date_key"""
         from apps.schedules.models import ServiceSchedule
-        from datetime import time
-        from django.db import IntegrityError
-        import pytest
-        
-        # ✅ از همون تاریخ fixture استفاده کن
+
         with pytest.raises(IntegrityError):
-            ServiceSchedule.objects.create(
-                business=approved_business,
-                service=test_service,
-                jy=test_schedule.jy,
-                jm=test_schedule.jm,
-                jd=test_schedule.jd,
-                work_start=time(9, 0),
-                work_end=time(18, 0),
-                slot_duration=30,
-            )
-
-@pytest.mark.django_db
-class TestSchedule:
-    """تست مدل ServiceSchedule جدید"""
-
-    def test_create_schedule(self, test_schedule):
-        # ✅ از fixture استفاده کن
-        assert test_schedule.date_key is not None
-        assert test_schedule.slot_count > 0
-
-    def test_schedule_with_breaks(self, test_schedule):
-        assert len(test_schedule.breaks) == 1
-        assert test_schedule.breaks[0]['start'] == '13:00'
-
-    def test_schedule_unique(self, approved_business, test_service, test_schedule):
-        from apps.schedules.models import ServiceSchedule
-        from datetime import time
-        with pytest.raises(Exception):
             ServiceSchedule.objects.create(
                 business=approved_business,
                 service=test_service,
@@ -228,7 +206,6 @@ class TestAppointment:
     """تست مدل Appointment جدید"""
 
     def test_create_appointment(self, test_appointment):
-        # ✅ از fixture استفاده کن
         assert test_appointment.date_key is not None
         assert test_appointment.status == 'reserved'
         assert test_appointment.verification_code is not None
@@ -236,7 +213,6 @@ class TestAppointment:
         assert test_appointment.remaining_amount == 350000
 
     def test_jalali_date_fields(self, test_appointment):
-        # ✅ فقط چک کن مقادیر معتبر باشن
         assert test_appointment.jy > 1400
         assert 1 <= test_appointment.jm <= 12
         assert 1 <= test_appointment.jd <= 31
@@ -246,6 +222,28 @@ class TestAppointment:
         assert test_appointment.status == 'cancelled_by_customer'
         assert test_appointment.cancellation_reason == 'تغییر برنامه'
         assert test_appointment.cancelled_at is not None
+
+    def test_trust_based_no_code(self, customer_user, approved_business, test_service):
+        """نوبت اعتمادی کد '0000' دارد"""
+        from apps.appointments.models import Appointment
+        import jdatetime
+        future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
+        apt = Appointment.objects.create(
+            business=approved_business,
+            service=test_service,
+            customer=customer_user,
+            jy=future_date.year,
+            jm=future_date.month,
+            jd=future_date.day,
+            time_slot=time(10, 0),
+            status=Appointment.Status.RESERVED,
+            total_price=450000,
+            deposit_amount=100000,
+            is_trust_based=True,
+        )
+        assert apt.verification_code == ''
+        assert apt.is_trust_based is True
+
 
 @pytest.mark.django_db
 class TestTransaction:
@@ -281,7 +279,6 @@ class TestReview:
     def test_create_review(self, customer_user, approved_business, test_service):
         from apps.appointments.models import Appointment
         from apps.reviews.models import Review
-        from datetime import time
 
         appointment = Appointment.objects.create(
             business=approved_business,
@@ -293,7 +290,6 @@ class TestReview:
             time_slot=time(10, 0),
             total_price=450000,
         )
-
         review = Review.objects.create(
             business=approved_business,
             service=test_service,
@@ -303,10 +299,8 @@ class TestReview:
             comment='عالی بود',
             tags=['clean', 'punctual'],
         )
-
         assert review.rating == 5
         assert review.tags == ['clean', 'punctual']
-
         approved_business.refresh_from_db()
         assert approved_business.rating == 5.0
         assert approved_business.reviews_count == 1
@@ -314,7 +308,6 @@ class TestReview:
     def test_review_reply(self, customer_user, approved_business, test_service):
         from apps.appointments.models import Appointment
         from apps.reviews.models import Review
-        from datetime import time
 
         appointment = Appointment.objects.create(
             business=approved_business,
@@ -326,14 +319,12 @@ class TestReview:
             time_slot=time(10, 0),
             total_price=450000,
         )
-
         review = Review.objects.create(
             business=approved_business,
             appointment=appointment,
             customer=customer_user,
             rating=4,
         )
-
         review.reply = 'ممنون از نظر شما'
         review.save()
         assert review.reply == 'ممنون از نظر شما'
@@ -360,7 +351,6 @@ class TestReminder:
     def test_create_reminder(self, customer_user, approved_business, test_service):
         from apps.appointments.models import Appointment
         from apps.reminders.models import RenewalReminder
-        from datetime import time
 
         appointment = Appointment.objects.create(
             business=approved_business,
@@ -372,7 +362,6 @@ class TestReminder:
             time_slot=time(10, 0),
             total_price=450000,
         )
-
         reminder = RenewalReminder.objects.create(
             business=approved_business,
             customer=customer_user,

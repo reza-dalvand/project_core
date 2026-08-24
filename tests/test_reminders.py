@@ -2,9 +2,6 @@
 تست‌های یادآوری تمدید
 """
 import pytest
-import jdatetime
-from django.utils import timezone
-
 from apps.reminders.models import RenewalReminder
 
 
@@ -24,7 +21,6 @@ class TestRenewalReminder:
             time_slot=time(10, 0),
             total_price=450000,
         )
-
         reminder = RenewalReminder.objects.create(
             business=approved_business,
             customer=customer_user,
@@ -41,8 +37,14 @@ class TestRenewalReminder:
 @pytest.mark.django_db
 class TestReminderTasks:
     def test_check_renewal_reminders(self, test_appointment):
+        """
+        تست تسک بررسی یادآوری‌ها
+        ✅ با .apply() صدا زده می‌شود چون تسک با @shared_task(bind=True) تعریف شده
+        """
         from apps.reminders.tasks import check_renewal_reminders
+
         test_appointment.status = 'done'
         test_appointment.save()
-        result = check_renewal_reminders()
-        assert 'created' in result
+
+        result = check_renewal_reminders.apply()
+        assert 'created' in result.result

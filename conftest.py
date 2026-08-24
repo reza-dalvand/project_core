@@ -15,7 +15,6 @@ User = get_user_model()
 # ═══════════════════════════════════════════════
 #   Clients
 # ═══════════════════════════════════════════════
-
 @pytest.fixture
 def api_client():
     """DRF API Client"""
@@ -95,7 +94,6 @@ def authenticated_admin_client(api_client, admin_user):
 # ═══════════════════════════════════════════════
 #   Mock Services
 # ═══════════════════════════════════════════════
-
 @pytest.fixture
 def mock_otp(monkeypatch):
     """Mock کردن OTP Service — نسخه کامل"""
@@ -112,14 +110,12 @@ def mock_otp(monkeypatch):
 
         @classmethod
         def send_otp(cls, phone, purpose=None, user=None):
-            # ✅ اصلاح: برگرداندن یک آبجکت mock
             otp = MockOtpCode(phone)
             cls._sent_codes[phone] = otp.code
             return otp
 
         @classmethod
         def verify_otp(cls, phone, code, purpose=None):
-            # ✅ اصلاح: برگرداندن یک آبجکت mock
             return MockOtpCode(phone, code)
 
     from apps.accounts.services import otp_service
@@ -129,7 +125,6 @@ def mock_otp(monkeypatch):
     monkeypatch.setattr(otp_service, 'OTPService', MockOTPService)
     monkeypatch.setattr(auth_views, 'OTPService', MockOTPService)
     monkeypatch.setattr(profile_views, 'OTPService', MockOTPService)
-
     return MockOTPService
 
 
@@ -147,18 +142,16 @@ def mock_shahkar(monkeypatch):
             }
 
     from apps.accounts.services import shahkar_service
-    # ✅ اصلاح: patch کردن auth_views هم
     from apps.accounts.views import auth as auth_views
 
     monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
     monkeypatch.setattr(auth_views, 'ShahkarService', MockShahkar)
-
     return MockShahkar
+
 
 # ═══════════════════════════════════════════════
 #   Lookup Data
 # ═══════════════════════════════════════════════
-
 @pytest.fixture
 def service_category(db):
     """دسته‌بندی خدمات"""
@@ -208,7 +201,6 @@ def city(province):
 # ═══════════════════════════════════════════════
 #   Business & Service
 # ═══════════════════════════════════════════════
-
 @pytest.fixture
 def approved_business(
     business_owner_user, business_category, province, city
@@ -247,16 +239,11 @@ def test_service(approved_business, service_category, sub_service):
 # ═══════════════════════════════════════════════
 #   Schedule & Appointment
 # ═══════════════════════════════════════════════
-
 @pytest.fixture
 def test_schedule(approved_business, test_service):
     """زمان‌بندی تست - با تاریخ پویا (۳۰ روز آینده)"""
     from apps.schedules.models import ServiceSchedule
-    from datetime import time
-    import jdatetime
-    
     future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
-    
     return ServiceSchedule.objects.create(
         business=approved_business,
         service=test_service,
@@ -269,15 +256,12 @@ def test_schedule(approved_business, test_service):
         breaks=[{'start': '13:00', 'end': '14:00'}],
     )
 
+
 @pytest.fixture
 def test_appointment(customer_user, approved_business, test_service):
     """نوبت تست - با تاریخ پویا (۳۰ روز آینده)"""
     from apps.appointments.models import Appointment
-    from datetime import time
-    import jdatetime
-    
     future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
-    
     return Appointment.objects.create(
         business=approved_business,
         service=test_service,

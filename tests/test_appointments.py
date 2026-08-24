@@ -10,14 +10,13 @@ from apps.appointments.models import Appointment
 
 @pytest.mark.django_db
 class TestCreateAppointment:
-
     def test_create_appointment_api(
         self, authenticated_customer_client, test_service, test_schedule
     ):
         url = reverse('appointments:create-appointment')
         response = authenticated_customer_client.post(url, {
             'service_id': test_service.id,
-            'jy': test_schedule.jy,      # ✅ پویا
+            'jy': test_schedule.jy,
             'jm': test_schedule.jm,
             'jd': test_schedule.jd,
             'time_slot': '10:00',
@@ -45,7 +44,6 @@ class TestCreateAppointment:
 
 @pytest.mark.django_db
 class TestCustomerAppointments:
-
     def test_my_appointments(
         self, authenticated_customer_client, customer_user,
         approved_business, test_service, test_schedule,
@@ -68,7 +66,6 @@ class TestCustomerAppointments:
 
 @pytest.mark.django_db
 class TestBusinessAppointments:
-
     def test_business_appointments(
         self, authenticated_business_client, customer_user,
         approved_business, test_service, test_schedule,
@@ -90,10 +87,7 @@ class TestBusinessAppointments:
 
 @pytest.mark.django_db
 class TestCancelAppointment:
-
-    def test_cancel_by_customer(
-        self, authenticated_customer_client, test_appointment
-    ):
+    def test_cancel_by_customer(self, authenticated_customer_client, test_appointment):
         url = reverse('appointments:cancel-appointment', kwargs={'pk': test_appointment.id})
         response = authenticated_customer_client.post(url, {
             'reason_text': 'تغییر برنامه',
@@ -102,9 +96,7 @@ class TestCancelAppointment:
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'cancelled_by_customer'
 
-    def test_cancel_by_business(
-        self, authenticated_business_client, test_appointment
-    ):
+    def test_cancel_by_business(self, authenticated_business_client, test_appointment):
         url = reverse('appointments:cancel-by-business', kwargs={'pk': test_appointment.id})
         response = authenticated_business_client.post(url, {
             'reason_text': 'تعطیلی سالن',
@@ -116,10 +108,7 @@ class TestCancelAppointment:
 
 @pytest.mark.django_db
 class TestVerifyCode:
-
-    def test_verify_service_code(
-        self, authenticated_business_client, test_appointment
-    ):
+    def test_verify_service_code(self, authenticated_business_client, test_appointment):
         test_appointment.status = Appointment.Status.RESERVED
         test_appointment.save()
         code = test_appointment.verification_code
@@ -129,9 +118,7 @@ class TestVerifyCode:
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'done'
 
-    def test_verify_invalid_code(
-        self, authenticated_business_client, test_appointment
-    ):
+    def test_verify_invalid_code(self, authenticated_business_client, test_appointment):
         url = reverse('appointments:verify-code', kwargs={'pk': test_appointment.id})
         response = authenticated_business_client.post(url, {'code': '0000'})
         assert response.status_code == 400
@@ -139,7 +126,6 @@ class TestVerifyCode:
 
 @pytest.mark.django_db
 class TestAppointmentStats:
-
     def test_stats(self, authenticated_business_client, test_appointment):
         url = reverse('appointments:business-stats')
         response = authenticated_business_client.get(url)

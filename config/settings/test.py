@@ -5,18 +5,21 @@
 from .base import *  # noqa
 
 DEBUG = True
-
 SECRET_KEY = 'test-secret-key-not-for-production-only'
 
-# ─── Database: PostGIS (برای تست‌های GIS) ───
+# ─── Database: PostGIS (برای تست‌ها) ───
+# هاست مستقیم 'localhost' گذاشته شده تا از .env مقدار 'postgres' نخواند
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': env('TEST_DB_NAME', default='test_beau'),
-        'USER': env('DB_USER', default='postgres'),
-        'PASSWORD': env('DB_PASSWORD', default='postgres'),
-        'HOST': env('DB_HOST', default='localhost'),
-        'PORT': env('DB_PORT', default='5432'),
+        'USER': env('TEST_DB_USER', default='postgres'),
+        'PASSWORD': env('TEST_DB_PASSWORD', default='postgres'),
+        'HOST': 'localhost',
+        'PORT': '5432',
+        'TEST': {
+            'NAME': env('TEST_DB_NAME', default='test_beau'),
+        },
     }
 }
 

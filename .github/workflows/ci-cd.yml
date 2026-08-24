@@ -5,10 +5,10 @@ on:
     branches: [main]
 
 env:
-  # ✅ اصلاح: استفاده از تنظیمات تست
   DJANGO_SETTINGS_MODULE: config.settings.test
   SECRET_KEY: ci-test-secret-key-not-for-production
   DB_ENGINE: django.contrib.gis.db.backends.postgis
+  TEST_DB_NAME: test_beau
   DB_NAME: test_beau
   DB_USER: postgres
   DB_PASSWORD: postgres
@@ -26,7 +26,7 @@ jobs:
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
-    continue-on-error: true   # فعلاً خطای lint جلوی deploy رو نگیره
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -52,7 +52,6 @@ jobs:
     name: 🧪 Test
     runs-on: ubuntu-latest
     needs: lint
-
     services:
       postgis:
         image: postgis/postgis:16-3.4-alpine
@@ -104,9 +103,7 @@ jobs:
             -d test_beau -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
       - name: Install Python Dependencies
-        run: |
-          pip install -r requirements/base.txt
-          pip install pytest pytest-django pytest-cov factory-boy faker
+        run: pip install -r requirements/test.txt
 
       - name: Run Migrations
         run: python manage.py migrate --noinput
@@ -115,10 +112,9 @@ jobs:
         run: python manage.py create_initial_data || true
 
       - name: Run Tests
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --no-header
 
   # ═══════════ Deploy ═══════════
-
   deploy:
     name: 🚀 Deploy to Server
     runs-on: ubuntu-latest
@@ -140,7 +136,6 @@ jobs:
             echo "User: $(whoami)"
             echo "Docker: $(docker --version 2>/dev/null || echo 'NOT FOUND')"
 
-            # تشخیص docker compose
             if docker compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker compose"
               echo "✅ docker compose (plugin)"
@@ -166,11 +161,9 @@ jobs:
             echo "📥 Pull latest code"
             echo "══════════════════════════════════════"
             echo "Before: $(git log --oneline -1)"
-
             git checkout main
             git stash || true
             git pull origin main
-
             echo "After:  $(git log --oneline -1)"
 
             echo "══════════════════════════════════════"

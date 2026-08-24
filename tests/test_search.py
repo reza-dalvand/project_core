@@ -2,18 +2,14 @@
 تست‌های جستجو
 """
 import pytest
-
 from apps.search.models import SearchHistory
 from apps.search.services.search_service import SearchService
 
 
 @pytest.mark.django_db
 class TestSearchService:
-
     def test_save_history(self, customer_user):
-        SearchService._save_history(
-            customer_user, 'فیشیال', 5
-        )
+        SearchService._save_history(customer_user, 'فیشیال', 5)
         assert SearchHistory.objects.filter(
             user=customer_user
         ).count() == 1
@@ -24,9 +20,7 @@ class TestSearchService:
                 user=customer_user,
                 query=f'جستجو {i}',
             )
-        SearchService._save_history(
-            customer_user, 'جستجوی جدید', 1
-        )
+        SearchService._save_history(customer_user, 'جستجوی جدید', 1)
         count = SearchHistory.objects.filter(
             user=customer_user
         ).count()
@@ -52,17 +46,14 @@ class TestSearchService:
             user=customer_user
         ).count() == 0
 
-    def test_search_businesses(
-        self, approved_business
-    ):
-        results = SearchService.search_businesses(
-            query='سالن'
-        )
+    def test_search_businesses(self, approved_business):
+        results = SearchService.search_businesses(query='سالن')
         assert len(results) >= 1
 
     def test_search_businesses_empty_query(self):
+        """جستجو با کوئری خالی نباید خطا بدهد"""
         results = SearchService.search_businesses(query='')
-        assert isinstance(results, list) or len(results) >= 0
+        assert results is not None
 
     def test_global_search(
         self, customer_user, approved_business, test_service

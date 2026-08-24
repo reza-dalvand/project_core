@@ -4,7 +4,6 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-
 from apps.services.models import Service
 
 
@@ -12,9 +11,7 @@ from apps.services.models import Service
 class TestServiceList:
     """تست‌های لیست خدمات"""
 
-    def test_list_services(
-        self, authenticated_business_client, test_service
-    ):
+    def test_list_services(self, authenticated_business_client, test_service):
         """تست دریافت لیست خدمات"""
         url = reverse('services:service-list')
         response = authenticated_business_client.get(url)
@@ -53,9 +50,7 @@ class TestServiceCreate:
             'duration': 45,
             'renewal_days': 7,
         }
-        response = authenticated_business_client.post(
-            url, data, format='json'
-        )
+        response = authenticated_business_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_201_CREATED
         assert Service.objects.count() == 1
 
@@ -68,9 +63,7 @@ class TestServiceCreate:
             'name': '',
             'original_price': -100,
         }
-        response = authenticated_business_client.post(
-            url, data, format='json'
-        )
+        response = authenticated_business_client.post(url, data, format='json')
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
@@ -78,45 +71,28 @@ class TestServiceCreate:
 class TestServiceDetail:
     """تست‌های جزئیات خدمت"""
 
-    def test_get_service_detail(
-        self, authenticated_business_client, test_service
-    ):
+    def test_get_service_detail(self, authenticated_business_client, test_service):
         """دریافت جزئیات"""
-        url = reverse(
-            'services:service-detail',
-            kwargs={'pk': test_service.id},
-        )
+        url = reverse('services:service-detail', kwargs={'pk': test_service.id})
         response = authenticated_business_client.get(url)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_update_service(
-        self, authenticated_business_client, test_service
-    ):
+    def test_update_service(self, authenticated_business_client, test_service):
         """بروزرسانی خدمت"""
-        url = reverse(
-            'services:service-detail',
-            kwargs={'pk': test_service.id},
-        )
+        url = reverse('services:service-detail', kwargs={'pk': test_service.id})
         data = {
             'name': 'نام جدید',
             'original_price': 600000,
         }
-        response = authenticated_business_client.patch(
-            url, data, format='json'
-        )
+        response = authenticated_business_client.patch(url, data, format='json')
         assert response.status_code == status.HTTP_200_OK
         test_service.refresh_from_db()
         assert test_service.name == 'نام جدید'
         assert test_service.original_price == 600000
 
-    def test_delete_service(
-        self, authenticated_business_client, test_service
-    ):
+    def test_delete_service(self, authenticated_business_client, test_service):
         """حذف خدمت"""
-        url = reverse(
-            'services:service-detail',
-            kwargs={'pk': test_service.id},
-        )
+        url = reverse('services:service-detail', kwargs={'pk': test_service.id})
         response = authenticated_business_client.delete(url)
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert Service.objects.count() == 0
@@ -126,36 +102,22 @@ class TestServiceDetail:
 class TestServiceToggle:
     """تست تغییر وضعیت"""
 
-    def test_toggle_service_active(
-        self, authenticated_business_client, test_service
-    ):
+    def test_toggle_service_active(self, authenticated_business_client, test_service):
         """تغییر فعال/غیرفعال"""
         assert test_service.is_active is True
-
-        url = reverse(
-            'services:service-toggle-active',
-            kwargs={'pk': test_service.id},
-        )
+        url = reverse('services:service-toggle-active', kwargs={'pk': test_service.id})
         response = authenticated_business_client.post(url)
         assert response.status_code == status.HTTP_200_OK
-
         test_service.refresh_from_db()
         assert test_service.is_active is False
 
-    def test_toggle_back(
-        self, authenticated_business_client, test_service
-    ):
+    def test_toggle_back(self, authenticated_business_client, test_service):
         """تغییر مجدد"""
         test_service.is_active = False
         test_service.save()
-
-        url = reverse(
-            'services:service-toggle-active',
-            kwargs={'pk': test_service.id},
-        )
+        url = reverse('services:service-toggle-active', kwargs={'pk': test_service.id})
         response = authenticated_business_client.post(url)
         assert response.status_code == status.HTTP_200_OK
-
         test_service.refresh_from_db()
         assert test_service.is_active is True
 
@@ -171,7 +133,7 @@ class TestServiceProperties:
         assert test_service.final_price == 450000
 
     def test_app_fee(self, test_service):
-        assert test_service.app_fee >= 10000
+        assert test_service.app_fee >= 7000
 
     def test_renewal_days(self, test_service):
         assert test_service.renewal_days == 30

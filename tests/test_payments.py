@@ -3,7 +3,6 @@
 """
 import pytest
 from django.urls import reverse
-
 from apps.payments.models import Transaction, Settlement
 
 
@@ -17,7 +16,18 @@ class TestPaymentService:
     def test_calculate_app_fee_small(self):
         from apps.payments.services.payment_service import PaymentService
         fee = PaymentService.calculate_app_fee(50000)
-        assert fee == 7000  # حداقل
+        assert fee == 7000
+
+    def test_calculate_app_fee_zero(self):
+        from apps.payments.services.payment_service import PaymentService
+        fee = PaymentService.calculate_app_fee(0)
+        assert fee == 0
+
+    def test_calculate_app_fee_cap(self):
+        """سقف کمیسیون ۵۰,۰۰۰ تومان"""
+        from apps.payments.services.payment_service import PaymentService
+        fee = PaymentService.calculate_app_fee(5000000)
+        assert fee == 50000
 
     def test_business_pending_balance(self, approved_business, customer_user):
         from apps.payments.services.payment_service import PaymentService
@@ -48,9 +58,16 @@ class TestTransactionModel:
         assert tx.ref_number.startswith('REF-')
         assert tx.status == 'blocked'
 
-    def test_no_wallet(self):
+    def test_transaction_statuses(self):
+        statuses = [c[0] for c in Transaction.Status.choices]
+        assert 'blocked' in statuses
+        assert 'settling' in statuses
+        assert 'settled' in statuses
+        assert 'refunded' in statuses
+        assert 'failed' in statuses
+
+    def test_no_wallet_type(self):
         """Wallet دیگر وجود ندارد"""
-        from apps.payments.models import Transaction
         types = [c[0] for c in Transaction.Type.choices]
         assert 'wallet_topup' not in types
 
@@ -69,7 +86,9 @@ class TestSettlementModel:
 
 @pytest.mark.django_db
 class TestPaymentAPI:
-    def test_payment_history(self, authenticated_customer_client, customer_user, approved_business):
+    def test_payment_history(
+        self, authenticated_customer_client, customer_user, approved_business
+    ):
         Transaction.objects.create(
             business=approved_business,
             customer=customer_user,
