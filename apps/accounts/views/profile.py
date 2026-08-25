@@ -22,10 +22,6 @@ from apps.accounts.serializers.auth import (
 
 logger = logging.getLogger(__name__)
 
-
-# apps/accounts/views/profile.py
-# فقط کلاس ProfileView را پیدا و جایگزین کنید:
-
 class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
     """مشاهده و بروزرسانی پروفایل"""
     permission_classes = [permissions.IsAuthenticated]

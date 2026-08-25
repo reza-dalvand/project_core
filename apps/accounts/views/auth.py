@@ -2,7 +2,6 @@
 Views مربوط به احراز هویت — بدون role
 """
 import logging
-from datetime import timedelta
 import uuid
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -14,7 +13,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken, OutstandingToken,
 )
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema
 
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import get_client_ip, get_device_info, mask_phone
@@ -67,15 +66,13 @@ class SendOTPView(APIView, StandardResponseMixin):
 
         try:
             otp = OTPService.send_otp(phone)
-
-            # ✅ جدید: بررسی اینکه شماره قبلاً ثبت شده یا نه
             is_registered = User.objects.filter(phone=phone).exists()
 
             return self.success_response(
                 data={
                     'expires_in': 300,
-                    'resend_after': 60,
-                    'is_registered': is_registered,  # ✅ جدید
+                    'resend_after': 120,
+                    'is_registered': is_registered,
                 },
                 message=f'کد تایید به شماره {mask_phone(phone)} ارسال شد',
             )
@@ -417,7 +414,6 @@ class DeleteAccountView(APIView, StandardResponseMixin):
             )
 
 # apps/accounts/views/auth.py
-# این کلاس جدید را به انتهای فایل اضافه کنید:
 
 class SendDeleteAccountOTPView(APIView, StandardResponseMixin):
     """ارسال کد تایید برای حذف حساب"""

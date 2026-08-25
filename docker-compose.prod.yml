@@ -75,10 +75,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # ✅ حذف migrate و collectstatic تکراری — فقط gunicorn
     command: >
       sh -c "
         python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput &&
         gunicorn config.wsgi:application
           --bind 0.0.0.0:8000
           --workers 3
@@ -179,9 +179,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # ✅ اصلاح cron syntax با escaping صحیح
     entrypoint: >
       sh -c '
-        echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\\%Y\\%m\\%d_\\%H\\%M\\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
+        mkdir -p /backups &&
+        echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
         crond -f -l 2
       '
     logging:
@@ -190,12 +192,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # ❌ Nginx container حذف شد — host Nginx این کار رو می‌کنه
-
 volumes:
   postgres_data:
   redis_data:
-  # static_volume:   ← حذف شد (bind mount جایگزین شد)
-  # media_volume:    ← حذف شد
-  # logs_volume:     ← حذف شد
-  # backup_volume:   ← حذف شد

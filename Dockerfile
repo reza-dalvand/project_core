@@ -34,20 +34,27 @@ RUN pip install --upgrade pip && \
 
 # ─── Stage 3: Production ───
 FROM dependencies as production
-COPY . .
 
-# Collect static files — با خطایابی واقعی
+# Create non-root user BEFORE copying files
+RUN useradd -m -r appuser
+
+# Create necessary directories with correct permissions
+RUN mkdir -p /app/logs /app/staticfiles /app/media /app/backups && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Collect static files with build-time secret
 RUN DJANGO_SETTINGS_MODULE=config.settings.production \
     SECRET_KEY=build-time-secret-key-not-for-production \
     python manage.py collectstatic --noinput
 
-# Create non-root user
-RUN useradd -m -r appuser && \
-    chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
 
+# ✅ حذف CMD از اینجا — docker-compose command را override می‌کند
 CMD ["gunicorn", \
     "--bind", "0.0.0.0:8000", \
     "--workers", "3", \

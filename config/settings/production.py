@@ -101,9 +101,6 @@ if SENTRY_DSN:
         profiles_sample_rate=0.1,
     )
 
-# ─── Storage: فایل سیستم محلی (Arvan S3 فعلاً فعال نیست) ───
-# ✅ اگر Arvan S3 فعال شد، مقادیر ARVAN_ACCESS_KEY و ARVAN_SECRET_KEY را در .env تنظیم کنید
-# در غیر این صورت فایل‌ها روی دیسک سرور ذخیره می‌شوند
 # ─── Storage: فایل سیستم محلی (اگر مقادیر ابر آروان تنظیم نشده باشد) ───
 _storage_access = env('ARVAN_ACCESS_KEY', default='')
 _storage_secret = env('ARVAN_SECRET_KEY', default='')
@@ -131,7 +128,8 @@ if _storage_access and _storage_secret:
         },
     }
 
-    # Storage برای فایل‌های استاتیک
+    # ✅ اصلاح: Static files را فقط وقتی S3 فعال است override کن
+    # در غیر این صورت whitenoise استفاده می‌شود
     STORAGES["staticfiles"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
@@ -163,14 +161,10 @@ CORS_ALLOWED_ORIGINS = [
     'https://www.buclub.ir',
     env('FRONTEND_URL', default='https://beauclub.ir'),
     # ═══ 🆕 فاز ۵: اپلیکیشن موبایل (Capacitor) ═══
-    # وقتی اپ با Capacitor روی اندروید/آیفون اجرا می‌شود،
-    # مرورگر داخلی درخواست‌ها را با این اورجین ارسال می‌کند
     'capacitor://localhost',
 ]
 
 # ═══ 🆕 فاز ۵: پشتیبان با Regex ═══
-# در صورتی که نسخه خاصی از مرورگر یا کاستوم دامین
-# با فرمت متفاوتی ارسال شود، این ریجکس پوشش می‌دهد
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^capacitor://localhost$',
     r'^https://beauclub\.ir$',
@@ -186,10 +180,6 @@ CORS_ALLOW_HEADERS = [
     'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
     'x-app-version', 'x-device-name', 'x-os-version',
 ]
-
-# ─── SMS: فعلاً Mock (Kavenegar API Key هنوز نیست) ───
-# ✅ وقتی API Key گرفتید، فقط KAVENEGAR_API_KEY را در .env تنظیم کنید
-# و در shared/sms/__init__.py منطق Mock را حذف کنید
 
 # ─── Logging به فایل ───
 LOG_DIR = BASE_DIR / 'logs'
