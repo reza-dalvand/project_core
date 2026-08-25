@@ -199,46 +199,46 @@ LOGGING = {
         },
     },
     'handlers': {
-        'file_app': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_DIR / 'app.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10MB
-            'backupCount': 5,
-            'formatter': 'simple',
-        },
-        'file_error': {
-            'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_DIR / 'error.log'),
-            'maxBytes': 10 * 1024 * 1024,
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
+        # 'file_app': {
+        #     'level': 'INFO',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': str(LOG_DIR / 'app.log'),
+        #     'maxBytes': 10 * 1024 * 1024,  # 10MB
+        #     'backupCount': 5,
+        #     'formatter': 'simple',
+        # },
+        # 'file_error': {
+        #     'level': 'ERROR',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': str(LOG_DIR / 'error.log'),
+        #     'maxBytes': 10 * 1024 * 1024,
+        #     'backupCount': 10,
+        #     'formatter': 'verbose',
+        # },
         'console': {
-            'level': 'WARNING',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file_app', 'console'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['file_error'],
+            'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,
         },
         'apps': {
-            'handlers': ['file_app', 'file_error'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'celery': {
-            'handlers': ['file_app', 'console'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
