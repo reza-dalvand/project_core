@@ -1,18 +1,17 @@
 {% if stats_section %}
-<!-- ═══════════ Stats ═══════════ -->
-<section class="section stats reveal">
-    <div class="container">
-        <div class="stats-grid">
-            {% for item in stat_items %}
-            <div class="stat-item">
-                <div class="icon">
-                    <span class="material-icons" style="font-size:32px">{{ item.icon }}</span>
-                </div>
-                <span class="num" data-count="{{ item.value }}">{{ item.display_text }}</span>
-                <span class="lbl">{{ item.label }}</span>
-            </div>
-            {% endfor %}
+<section class="section stats">
+  <div class="container stats-wrap">
+    <div class="stats-grid">
+      {% for item in stat_items %}
+      <div class="stat-item reveal">
+        <div class="icon">
+          <span class="material-icons">{{ item.icon }}</span>
         </div>
+        <span class="num" data-count="{{ item.value }}">{{ item.display_text }}</span>
+        <span class="lbl">{{ item.label }}</span>
+      </div>
+      {% endfor %}
     </div>
+  </div>
 </section>
 {% endif %}

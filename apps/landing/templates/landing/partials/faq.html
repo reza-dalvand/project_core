@@ -1,28 +1,27 @@
 {% if faq_section %}
-<!-- ═══════════ FAQ ═══════════ -->
-<section class="section faq reveal" id="faq">
-    <div class="container">
-        <div class="section-head">
-            <span class="badge">
-                <span class="material-icons" style="font-size:14px">{{ faq_section.badge_icon }}</span>
-                {{ faq_section.badge_text }}
-            </span>
-            <h2>{{ faq_section.title }}</h2>
-            <p>{{ faq_section.subtitle }}</p>
-        </div>
-        <div class="faq-list">
-            {% for item in faq_items %}
-            <div class="faq-item">
-                <div class="faq-q">
-                    <span>{{ item.question }}</span>
-                    <span class="material-icons">expand_more</span>
-                </div>
-                <div class="faq-a">
-                    <div class="faq-a-inner">{{ item.answer | safe }}</div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+<section class="section faq" id="faq">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="badge">
+        <span class="material-icons" style="font-size:14px">{{ faq_section.badge_icon }}</span>
+        {{ faq_section.badge_text }}
+      </span>
+      <h2>{{ faq_section.title }}</h2>
+      <p>{{ faq_section.subtitle }}</p>
     </div>
+    <div class="faq-list">
+      {% for item in faq_items %}
+      <div class="faq-item">
+        <div class="faq-q">
+          <span>{{ item.question }}</span>
+          <span class="material-icons">expand_more</span>
+        </div>
+        <div class="faq-a">
+          <div class="faq-a-inner">{{ item.answer | safe }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </section>
 {% endif %}
