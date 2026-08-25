@@ -14,7 +14,7 @@ class TestSendOTP:
         data = response.json()
         assert data['success'] is True
         assert data['data']['expires_in'] == 300
-        assert data['data']['resend_after'] == 60
+        assert data['data']['resend_after'] == 120
 
     def test_send_otp_invalid_phone(self, api_client):
         url = reverse('accounts:otp-send')
