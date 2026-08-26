@@ -14,6 +14,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     'beuclub.ir',
     'buclub.ir',
     'api.beauclub.ir',
+    'develop.beauclub.ir',
     'localhost',
     '127.0.0.1',
 ])
@@ -156,6 +157,7 @@ CORS_ALLOWED_ORIGINS = [
     'https://beuclub.ir',
     'https://buclub.ir',
     'https://api.beauclub.ir',
+    'https://develop.beauclub.ir',
     'https://www.beauclub.ir',
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
@@ -168,6 +170,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^capacitor://localhost$',
     r'^https://beauclub\.ir$',
+    r'^https://.*\.beauclub\.ir$',
     r'^https://www\.beauclub\.ir$',
     r'^https://beuclub\.ir$',
     r'^https://buclub\.ir$',
