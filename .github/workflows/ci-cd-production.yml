@@ -182,6 +182,10 @@ jobs:
             touch .env
             chmod 600 .env
 
+
+            export COMPOSE_PROJECT_NAME
+            export BACKEND_PORT
+
             python3 - <<'PY'
             import os
             from pathlib import Path
@@ -240,9 +244,6 @@ jobs:
                     result.append(f"{key}={value}")
 
             env_file.write_text("\n".join(result) + "\n")
-
-            export COMPOSE_PROJECT_NAME
-            export BACKEND_PORT
 
             PY
 
