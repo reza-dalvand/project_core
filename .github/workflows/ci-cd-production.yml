@@ -1,8 +1,8 @@
-name: 🚀 CI/CD Pipeline
+name: 🚀 CI/CD - Production
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings.test
@@ -22,59 +22,40 @@ env:
   ZARINPAL_SANDBOX: "True"
 
 jobs:
-  # ═══════════ Setup: تعیین محیط ═══════════
-  setup:
-    name: 🎯 Setup Environment
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.env.outputs.environment }}
-      project_dir: ${{ steps.env.outputs.project_dir }}
-      compose_project_name: ${{ steps.env.outputs.compose_project_name }}
-      backend_port: ${{ steps.env.outputs.backend_port }}
-      branch: ${{ steps.env.outputs.branch }}
-    steps:
-      - id: env
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-            echo "project_dir=beau" >> $GITHUB_OUTPUT
-            echo "compose_project_name=beau_prod" >> $GITHUB_OUTPUT
-            echo "backend_port=8000" >> $GITHUB_OUTPUT
-            echo "branch=main" >> $GITHUB_OUTPUT
-          else
-            echo "environment=develop" >> $GITHUB_OUTPUT
-            echo "project_dir=beau-develop" >> $GITHUB_OUTPUT
-            echo "compose_project_name=beau_dev" >> $GITHUB_OUTPUT
-            echo "backend_port=8001" >> $GITHUB_OUTPUT
-            echo "branch=develop" >> $GITHUB_OUTPUT
-          fi
 
   # ═══════════ Lint ═══════════
   lint:
     name: 🔍 Lint
     runs-on: ubuntu-latest
     continue-on-error: true
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: "requirements/*.txt"
+
       - name: Install Dependencies
         run: |
           pip install -r requirements/base.txt
           pip install ruff
+
       - name: Ruff Check
         run: ruff check apps/ config/ shared/ tests/ || true
+
       - name: Ruff Format Check
         run: ruff format --check apps/ config/ shared/ tests/ || true
+
 
   # ═══════════ Tests ═══════════
   test:
     name: 🧪 Test
     runs-on: ubuntu-latest
-    needs: [setup, lint]
+    needs: [lint]
+
     services:
       postgis:
         image: postgis/postgis:16-3.4-alpine
@@ -89,6 +70,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -98,13 +80,16 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: "requirements/*.txt"
+
       - name: Install GDAL / GEOS / PROJ
         run: |
           sudo apt-get update -qq
@@ -113,56 +98,68 @@ jobs:
             libgeos-dev libgeos++-dev \
             proj-bin libproj-dev \
             postgresql-client
+
       - name: Enable PostGIS & pg_trgm Extensions
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres \
             -d test_beau -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+
           PGPASSWORD=postgres psql -h localhost -U postgres \
             -d test_beau -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+
       - name: Install Python Dependencies
         run: pip install -r requirements/test.txt
+
       - name: Run Migrations
         run: python manage.py migrate --noinput
+
       - name: Create Initial Data
         run: python manage.py create_initial_data || true
+
       - name: Run Tests
         run: pytest tests/ -v --tb=short --no-header
 
-  # ═══════════ Deploy ═══════════
+
+  # ═══════════ Deploy Production ═══════════
   deploy:
-    name: 🚀 Deploy to ${{ needs.setup.outputs.environment }}
+    name: 🚀 Deploy to Production
     runs-on: ubuntu-latest
-    needs: [setup, test]
-    environment: ${{ needs.setup.outputs.environment }}
+    needs: [test]
+
+    environment: production
+
     steps:
       - name: SSH & Deploy
         uses: appleboy/ssh-action@v1.0.3
+
         env:
           ARVAN_ACCESS_KEY: ${{ secrets.ARVAN_ACCESS_KEY }}
           ARVAN_SECRET_KEY: ${{ secrets.ARVAN_SECRET_KEY }}
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}
+
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+
           envs: ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,KAVENEGAR_API_KEY,SHAHKAR_API_KEY
+
           script: |
             set -e
 
-            PROJECT_DIR="/home/deploy/${{ needs.setup.outputs.project_dir }}"
-            COMPOSE_PROJECT_NAME="${{ needs.setup.outputs.compose_project_name }}"
-            BACKEND_PORT="${{ needs.setup.outputs.backend_port }}"
-            BRANCH="${{ needs.setup.outputs.branch }}"
+            PROJECT_DIR="/home/deploy/beau"
+            COMPOSE_PROJECT_NAME="beau_prod"
+            BACKEND_PORT="8000"
+            BRANCH="main"
 
             echo "══════════════════════════════════════"
-            echo "🎯 Environment: ${{ needs.setup.outputs.environment }}"
+            echo "🎯 Environment: production"
             echo "📂 Project Dir: $PROJECT_DIR"
             echo "🔢 Port: $BACKEND_PORT"
             echo "🌿 Branch: $BRANCH"
             echo "══════════════════════════════════════"
 
-            # بررسی دایرکتوری پروژه
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "❌ Directory $PROJECT_DIR not found!"
               exit 1
@@ -175,22 +172,26 @@ jobs:
               exit 1
             fi
 
-            # انتخاب برنچ مناسب
             git fetch origin
             git checkout "$BRANCH"
             git pull origin "$BRANCH"
+
             echo "Current commit:"
             git log --oneline -1
 
-            # به‌روزرسانی .env (فقط مقادیر مدیریت‌شده)
             touch .env
             chmod 600 .env
+
+
+            export COMPOSE_PROJECT_NAME
+            export BACKEND_PORT
 
             python3 - <<'PY'
             import os
             from pathlib import Path
 
             env_file = Path(".env")
+
             managed = {
                 "ARVAN_ACCESS_KEY": os.environ["ARVAN_ACCESS_KEY"],
                 "ARVAN_SECRET_KEY": os.environ["ARVAN_SECRET_KEY"],
@@ -199,6 +200,7 @@ jobs:
             }
 
             lines = env_file.read_text().splitlines()
+
             result = []
             existing_keys = set()
 
@@ -206,39 +208,47 @@ jobs:
                 if not line or line.startswith("#") or "=" not in line:
                     result.append(line)
                     continue
+
                 key = line.split("=", 1)[0].strip()
                 existing_keys.add(key)
+
                 if key in managed:
                     result.append(f"{key}={managed[key]}")
                 else:
                     result.append(line)
 
-            # اضافه کردن مقادیر گم‌شده
             for key, value in managed.items():
                 if key not in existing_keys:
                     result.append(f"{key}={value}")
 
-            # تنظیم مقادیر محیطی داکر
             env_vars = {
-                "COMPOSE_PROJECT_NAME": os.environ.get("COMPOSE_PROJECT_NAME", "beau"),
-                "BACKEND_PORT": os.environ.get("BACKEND_PORT", "8000"),
+                "COMPOSE_PROJECT_NAME": os.environ.get(
+                    "COMPOSE_PROJECT_NAME",
+                    "beau_prod"
+                ),
+                "BACKEND_PORT": os.environ.get(
+                    "BACKEND_PORT",
+                    "8000"
+                ),
             }
+
             for key, value in env_vars.items():
                 if key in existing_keys:
-                    result = [f"{key}={value}" if line.startswith(f"{key}=") else line for line in result]
+                    result = [
+                        f"{key}={value}"
+                        if line.startswith(f"{key}=")
+                        else line
+                        for line in result
+                    ]
                 else:
                     result.append(f"{key}={value}")
 
             env_file.write_text("\n".join(result) + "\n")
-            PY
 
-            # متغیرهای داکر را به اسکریپت پایتون منتقل کن
-            export COMPOSE_PROJECT_NAME
-            export BACKEND_PORT
+            PY
 
             echo "✅ Secrets and env vars updated"
 
-            # تعیین دستور داکر کامپوز
             if docker compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker compose"
             elif docker-compose version > /dev/null 2>&1; then
@@ -248,18 +258,41 @@ jobs:
               exit 1
             fi
 
-            # Build & Deploy
-            $COMPOSE_CMD -f docker-compose.prod.yml build --no-cache
+            # Build بدون --no-cache (خیلی سریع‌تر)
+            $COMPOSE_CMD -f docker-compose.prod.yml build
+
+            # Down اول — تضمین آزاد شدن پورت‌ها
+            $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
+
+            # Up
             $COMPOSE_CMD -f docker-compose.prod.yml up -d
 
-            # Health Check
-            sleep 15
+            # Health Check واقعی
+            echo "🏥 Running health check..."
+            MAX_RETRIES=12
+            RETRY_COUNT=0
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if curl -sf "http://127.0.0.1:${BACKEND_PORT}/api/v1/config/app-version/" > /dev/null 2>&1; then
+                echo "✅ Backend is healthy!"
+                break
+              fi
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ Waiting for backend... ($RETRY_COUNT/$MAX_RETRIES)"
+              sleep 5
+            done
+
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "❌ Backend failed to start!"
+              $COMPOSE_CMD -f docker-compose.prod.yml logs backend --tail=50
+              exit 1
+            fi
+
             $COMPOSE_CMD -f docker-compose.prod.yml ps
 
-            # Cleanup
-            docker image prune -f
+            # Cleanup ایمن (فقط image های قدیمی)
+            docker image prune -f --filter "until=168h"
 
             echo ""
-            echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "Environment: ${{ needs.setup.outputs.environment }}"
+            echo "✅ Production deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
             echo "Commit: $(git log --oneline -1)"
