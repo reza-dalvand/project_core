@@ -19,6 +19,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     '127.0.0.1',
 ])
 
+###
+
 
 # ─── CSRF Trusted Origins (Django 4+) ───
 CSRF_TRUSTED_ORIGINS = [
