@@ -14,7 +14,7 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     'beuclub.ir',
     'buclub.ir',
     'api.beauclub.ir',
-    'develop.beauclub.ir',
+    'develop.beauclub.ir', 
     'localhost',
     '127.0.0.1',
 ])
@@ -22,17 +22,16 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
 
 # ─── CSRF Trusted Origins (Django 4+) ───
 CSRF_TRUSTED_ORIGINS = [
-'https://beauclub.ir',
-'https://beuclub.ir',
-'https://buclub.ir',
-'https://api.beauclub.ir',
-'https://www.beauclub.ir',
-'https://www.beuclub.ir',
-'https://www.buclub.ir',
-env('FRONTEND_URL', default='https://beauclub.ir'),
-# 🆕 فاز ۵: برای اپ موبایل نیاز نیست (از JWT استفاده می‌شود)
-# ولی برای اطمینان در برخی فرم‌ها اضافه می‌کنیم
-'capacitor://localhost',
+    'https://beauclub.ir',
+    'https://beuclub.ir',
+    'https://buclub.ir',
+    'https://api.beauclub.ir',
+    'https://develop.beauclub.ir',  # ✅ اضافه شد
+    'https://www.beauclub.ir',
+    'https://www.beuclub.ir',
+    'https://www.buclub.ir',
+    env('FRONTEND_URL', default='https://beauclub.ir'),
+    'capacitor://localhost',
 ]
 
 # ─── Security Headers ───
@@ -157,12 +156,11 @@ CORS_ALLOWED_ORIGINS = [
     'https://beuclub.ir',
     'https://buclub.ir',
     'https://api.beauclub.ir',
-    'https://develop.beauclub.ir',
+    'https://develop.beauclub.ir', 
     'https://www.beauclub.ir',
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
     env('FRONTEND_URL', default='https://beauclub.ir'),
-    # ═══ 🆕 فاز ۵: اپلیکیشن موبایل (Capacitor) ═══
     'capacitor://localhost',
 ]
 
