@@ -63,7 +63,6 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - ./staticfiles:/app/staticfiles
       - ./media:/app/media
       - ./logs:/app/logs
     ports:
