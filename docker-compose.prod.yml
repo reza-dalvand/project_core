@@ -2,7 +2,7 @@ services:
   # ═══════════ PostgreSQL + PostGIS ═══════════
   postgres:
     image: postgis/postgis:16-3.4-alpine
-    container_name: beau_postgres
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_postgres
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME:-beau}
@@ -28,7 +28,7 @@ services:
   # ═══════════ Redis ═══════════
   redis:
     image: redis:7-alpine
-    container_name: beau_redis
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_redis
     restart: always
     volumes:
       - redis_data:/data
@@ -52,7 +52,7 @@ services:
     build:
       context: .
       target: production
-    container_name: beau_backend
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_backend
     restart: always
     env_file:
       - .env
@@ -63,23 +63,20 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      # ✅ Bind mount به جای named volume — تا host Nginx دسترسی داشته باشه
       - ./staticfiles:/app/staticfiles
       - ./media:/app/media
       - ./logs:/app/logs
     ports:
-      # ✅ فقط روی localhost — host Nginx proxy می‌کنه
-      - "127.0.0.1:8000:8000"
+      # ✅ پورت داینامیک: پروداکشن 8000، دولوپمنت 8001
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # ✅ حذف migrate و collectstatic تکراری — فقط gunicorn
     command: >
-      sh -c "python manage.py migrate --noinput && 
+      sh -c "python manage.py migrate --noinput &&
       gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120 --access-logfile - --error-logfile - config.wsgi:application"
-      
     deploy:
       resources:
         limits:
@@ -95,7 +92,7 @@ services:
     build:
       context: .
       target: production
-    container_name: beau_celery_worker
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_celery_worker
     restart: always
     env_file:
       - .env
@@ -129,7 +126,7 @@ services:
     build:
       context: .
       target: production
-    container_name: beau_celery_beat
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_celery_beat
     restart: always
     env_file:
       - .env
@@ -160,7 +157,7 @@ services:
   # ═══════════ Daily Database Backup ═══════════
   db_backup:
     image: postgis/postgis:16-3.4-alpine
-    container_name: beau_db_backup
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_db_backup
     restart: always
     environment:
       PGHOST: postgres
@@ -168,16 +165,16 @@ services:
       PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       PGDATABASE: ${DB_NAME:-beau}
     volumes:
+      # ✅ مسیر بکاپ در هر دایرکتوری پروژه جداست
       - ./backups:/backups
     depends_on:
       postgres:
         condition: service_healthy
-    # ✅ اصلاح cron syntax با escaping صحیح
     entrypoint: >
       sh -c '
-        mkdir -p /backups &&
-        echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
-        crond -f -l 2
+      mkdir -p /backups &&
+      echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
+      crond -f -l 2
       '
     logging:
       driver: "json-file"
