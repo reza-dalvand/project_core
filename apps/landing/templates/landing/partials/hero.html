@@ -1,0 +1,109 @@
+{% if hero %}
+<section class="hero">
+  <div class="container">
+    <div class="hero-wrap">
+      <div class="hero-text">
+        <span class="badge">{{ hero.badge_text }}</span>
+        <h1>{{ hero.title.replace(hero.title_highlight, '<span>' ~ hero.title_highlight ~ '</span>') | safe }}</h1>
+        <p>{{ hero.description }}</p>
+        <div class="hero-actions">
+          <a href="#download" class="btn btn-primary">
+            <span class="material-icons">{{ hero.primary_btn_icon }}</span>
+            {{ hero.primary_btn_text }}
+          </a>
+          <a href="#howto" class="btn btn-outline">
+            <span class="material-icons">{{ hero.secondary_btn_icon }}</span>
+            {{ hero.secondary_btn_text }}
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-icon"><span class="material-icons">{{ hero.stat1_icon }}</span></div>
+            <div>
+              <div class="num">{{ hero.stat1_value }}</div>
+              <div class="lbl">{{ hero.stat1_label }}</div>
+            </div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-icon"><span class="material-icons">{{ hero.stat2_icon }}</span></div>
+            <div>
+              <div class="num">{{ hero.stat2_value }}</div>
+              <div class="lbl">{{ hero.stat2_label }}</div>
+            </div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-icon"><span class="material-icons">{{ hero.stat3_icon }}</span></div>
+            <div>
+              <div class="num">{{ hero.stat3_value }}</div>
+              <div class="lbl">{{ hero.stat3_label }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone Mockup -->
+      <div class="phone-mock">
+        <div class="phone-screen">
+          <div class="phone-header">
+            <h3>سلام، مریم 👋</h3>
+            <p>امروز چی رزرو می‌کنی؟</p>
+          </div>
+          <div class="phone-search">
+            <span class="material-icons">search</span>
+            <span>جستجوی خدمات و سالن‌ها...</span>
+          </div>
+          <div class="phone-body">
+            <div class="phone-section-title">
+              <span class="material-icons">category</span>
+              دسته‌بندی خدمات
+            </div>
+            <div class="cat-grid">
+              <div class="cat-item"><span class="material-icons">face</span><span>میکاپ</span></div>
+              <div class="cat-item"><span class="material-icons">brush</span><span>ناخن</span></div>
+              <div class="cat-item"><span class="material-icons">flash_on</span><span>لیزر</span></div>
+              <div class="cat-item"><span class="material-icons">spa</span><span>پوست</span></div>
+            </div>
+            <div class="phone-section-title">
+              <span class="material-icons">local_fire_department</span>
+              پیشنهادات ویژه
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-row">
+                <div class="phone-card-avatar"><span class="material-icons" style="font-size:22px">spa</span></div>
+                <div class="phone-card-info">
+                  <h4>سالن زیبایی نیلارام</h4>
+                  <p>فیشیال VIP • ۳۰٪ تخفیف</p>
+                </div>
+                <div class="phone-card-rating">
+                  <span class="material-icons" style="font-size:14px">star</span>
+                  ۴.۹
+                </div>
+              </div>
+            </div>
+            <div class="phone-card">
+              <div class="phone-card-row">
+                <div class="phone-card-avatar" style="background:linear-gradient(135deg,#B2EBF2,#26C6DA)"><span class="material-icons" style="font-size:22px">flash_on</span></div>
+                <div class="phone-card-info">
+                  <h4>مرکز لیزر رویال</h4>
+                  <p>لیزر فول بادی • ۲۵٪ تخفیف</p>
+                </div>
+                <div class="phone-card-rating">
+                  <span class="material-icons" style="font-size:14px">star</span>
+                  ۴.۸
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-fab">
+            <div class="phone-fab-price">
+              شروع از
+              <strong>۳۵۰,۰۰۰ ت</strong>
+            </div>
+            <div class="phone-fab-btn">رزرو نوبت</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}

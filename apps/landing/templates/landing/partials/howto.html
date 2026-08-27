@@ -1,0 +1,24 @@
+{% if howto_section %}
+<section class="section howto" id="howto">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="badge">
+        <span class="material-icons" style="font-size:14px">{{ howto_section.badge_icon }}</span>
+        {{ howto_section.badge_text }}
+      </span>
+      <h2>{{ howto_section.title }}</h2>
+      <p>{{ howto_section.subtitle }}</p>
+    </div>
+    <div class="howto-grid">
+      {% for step in howto_steps %}
+      <div class="howto-step reveal">
+        <div class="step-num">{{ step.step_number | to_persian_digit }}</div>
+        <span class="material-icons">{{ step.icon }}</span>
+        <h3>{{ step.title }}</h3>
+        <p>{{ step.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

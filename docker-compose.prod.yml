@@ -1,0 +1,187 @@
+services:
+  # ═══════════ PostgreSQL + PostGIS ═══════════
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-beau}
+      POSTGRES_USER: ${DB_USER:-beau}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-beau}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════ Redis ═══════════
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════ Backend (Django + Gunicorn) ═══════════
+  backend:
+    build:
+      context: .
+      target: production
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./logs:/app/logs
+    ports:
+      # ✅ پورت داینامیک: پروداکشن 8000، دولوپمنت 8001
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+      gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120 --access-logfile - --error-logfile - config.wsgi:application"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════ Celery Worker ═══════════
+  celery_worker:
+    build:
+      context: .
+      target: production
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_celery_worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./media:/app/media
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config worker -l info -c 2 --logfile /app/logs/celery_worker.log
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════ Celery Beat ═══════════
+  celery_beat:
+    build:
+      context: .
+      target: production
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_celery_beat
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile /app/logs/celery_beat.log
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ═══════════ Daily Database Backup ═══════════
+  db_backup:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-beau}_db_backup
+    restart: always
+    environment:
+      PGHOST: postgres
+      PGUSER: ${DB_USER:-beau}
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      PGDATABASE: ${DB_NAME:-beau}
+    volumes:
+      # ✅ مسیر بکاپ در هر دایرکتوری پروژه جداست
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: >
+      sh -c '
+      mkdir -p /backups &&
+      echo "0 2 * * * pg_dump -Fc $$PGDATABASE > /backups/beau_$$(date +\%Y\%m\%d_\%H\%M\%S).dump && find /backups -name \"*.dump\" -mtime +7 -delete" > /etc/crontabs/root &&
+      crond -f -l 2
+      '
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  redis_data:

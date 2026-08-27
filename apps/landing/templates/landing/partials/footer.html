@@ -1,0 +1,74 @@
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="logo" style="color:#fff">
+          <div class="logo-icon">
+            <span class="material-icons">{{ site.logo_icon | default('spa') }}</span>
+          </div>
+          <span>{{ site.name | default('زیبانو') }}</span>
+        </a>
+        <p>{{ site.slogan | default('رزرو آنلاین خدمات زیبایی و سلامت') }}</p>
+        <div class="footer-socials">
+          {% if site.instagram_url and site.instagram_url != '#' %}
+          <a href="{{ site.instagram_url }}" title="اینستاگرام">
+            <span class="material-icons">photo_camera</span>
+          </a>
+          {% endif %}
+          {% if site.telegram_url and site.telegram_url != '#' %}
+          <a href="{{ site.telegram_url }}" title="تلگرام">
+            <span class="material-icons">send</span>
+          </a>
+          {% endif %}
+          {% if site.whatsapp_url and site.whatsapp_url != '#' %}
+          <a href="{{ site.whatsapp_url }}" title="واتساپ">
+            <span class="material-icons">chat</span>
+          </a>
+          {% endif %}
+          {% if site.twitter_url and site.twitter_url != '#' %}
+          <a href="{{ site.twitter_url }}" title="توییتر">
+            <span class="material-icons">tag</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% for group in footer_groups %}
+      <div class="footer-col">
+        <h4>{{ group.title }}</h4>
+        <ul>
+          {% for link in group.links.all() %}
+          {% if link.is_active %}
+          <li><a href="{{ link.url }}">{{ link.label }}</a></li>
+          {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Trust Badges -->
+    {% if trust_badges | length > 0 %}
+    <div class="trust-badges">
+      {% for badge in trust_badges %}
+      <div class="trust-badge">
+        {% if badge.image %}
+        <img src="{{ badge.image.url }}" alt="{{ badge.name }}" style="width:48px;height:48px;object-fit:contain;" />
+        {% else %}
+        <div class="icon-wrap">
+          <span class="material-icons">{{ badge.icon }}</span>
+        </div>
+        {% endif %}
+        <span>{{ badge.name }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="footer-bottom">
+      <p>
+        {{ site.copyright_year }} {{ site.footer_text }} |
+        <strong>{{ site.name }}</strong>
+      </p>
+    </div>
+  </div>
+</footer>

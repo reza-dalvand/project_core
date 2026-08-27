@@ -1,0 +1,17 @@
+{% if stats_section %}
+<section class="section stats">
+  <div class="container stats-wrap">
+    <div class="stats-grid">
+      {% for item in stat_items %}
+      <div class="stat-item reveal">
+        <div class="icon">
+          <span class="material-icons">{{ item.icon }}</span>
+        </div>
+        <span class="num" data-count="{{ item.value }}">{{ item.display_text }}</span>
+        <span class="lbl">{{ item.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

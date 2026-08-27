@@ -1,0 +1,49 @@
+{% if download_section %}
+<section class="download" id="download">
+  <div class="container">
+    <div class="download-card reveal">
+      <h2>{{ download_section.title }}</h2>
+      <p>{{ download_section.description }}</p>
+      <div class="download-btns">
+        {% if download_section.show_cafebazaar %}
+        <a href="{{ site.cafebazaar_url }}" class="store-btn">
+          <span class="material-icons">shopping_bag</span>
+          <div>
+            <small>دانلود از</small>
+            <strong>کافه‌بازار</strong>
+          </div>
+        </a>
+        {% endif %}
+        {% if download_section.show_myket %}
+        <a href="{{ site.myket_url }}" class="store-btn">
+          <span class="material-icons">storefront</span>
+          <div>
+            <small>دانلود از</small>
+            <strong>مایکت</strong>
+          </div>
+        </a>
+        {% endif %}
+        {% if download_section.show_google_play and site.google_play_url %}
+        <a href="{{ site.google_play_url }}" class="store-btn">
+          <span class="material-icons">android</span>
+          <div>
+            <small>دانلود از</small>
+            <strong>گوگل‌پلی</strong>
+          </div>
+        </a>
+        {% endif %}
+        {% if download_section.show_app_store and site.app_store_url %}
+        <a href="{{ site.app_store_url }}" class="store-btn">
+          <span class="material-icons">apple</span>
+          <div>
+            <small>دانلود از</small>
+            <strong>App Store</strong>
+          </div>
+        </a>
+        {% endif %}
+      </div>
+      <p class="download-hint">{{ download_section.hint_text }}</p>
+    </div>
+  </div>
+</section>
+{% endif %}

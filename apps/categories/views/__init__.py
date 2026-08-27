@@ -1,0 +1,49 @@
+"""
+Views برای دسته‌بندی‌ها
+"""
+from rest_framework.views import APIView
+from rest_framework import permissions
+from drf_spectacular.utils import extend_schema
+
+from apps.core.mixins import StandardResponseMixin
+from apps.categories.models import ServiceCategory, BusinessCategory
+from apps.categories.serializers import ServiceCategorySerializer, BusinessCategorySerializer
+
+
+class ServiceCategoryListView(APIView, StandardResponseMixin):
+    """لیست دسته‌بندی‌های خدمات"""
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        responses=ServiceCategorySerializer(many=True),
+        tags=['Categories'],
+        summary='لیست دسته‌بندی‌های خدمات',
+    )
+    def get(self, request):
+        categories = ServiceCategory.objects.filter(
+            is_active=True
+        ).prefetch_related('sub_services').order_by('sort_order')
+
+        serializer = ServiceCategorySerializer(categories, many=True)
+        return self.success_response(
+            data=serializer.data,
+            meta={'count': categories.count()},
+        )
+
+
+class BusinessCategoryListView(APIView, StandardResponseMixin):
+    """لیست انواع کسب‌وکار"""
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        responses=BusinessCategorySerializer(many=True),
+        tags=['Categories'],
+        summary='لیست انواع کسب‌وکار',
+    )
+    def get(self, request):
+        categories = BusinessCategory.objects.filter(is_active=True)
+        serializer = BusinessCategorySerializer(categories, many=True)
+        return self.success_response(
+            data=serializer.data,
+            meta={'count': categories.count()},
+        )

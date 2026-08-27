@@ -1,0 +1,265 @@
+name: 🚀 CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+
+env:
+  DJANGO_SETTINGS_MODULE: config.settings.test
+  SECRET_KEY: ci-test-secret-key-not-for-production
+  DB_ENGINE: django.contrib.gis.db.backends.postgis
+  TEST_DB_NAME: test_beau
+  DB_NAME: test_beau
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  DB_HOST: localhost
+  DB_PORT: "5432"
+  REDIS_URL: redis://localhost:6379/0
+  KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
+  SHAHKAR_API_URL: "https://s.api.ir/api/sw1/ShahkarLite"
+  SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}
+  ZARINPAL_MERCHANT_ID: "fake-merchant-id-for-ci"
+  ZARINPAL_SANDBOX: "True"
+
+jobs:
+  # ═══════════ Setup: تعیین محیط ═══════════
+  setup:
+    name: 🎯 Setup Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      project_dir: ${{ steps.env.outputs.project_dir }}
+      compose_project_name: ${{ steps.env.outputs.compose_project_name }}
+      backend_port: ${{ steps.env.outputs.backend_port }}
+      branch: ${{ steps.env.outputs.branch }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "project_dir=beau" >> $GITHUB_OUTPUT
+            echo "compose_project_name=beau_prod" >> $GITHUB_OUTPUT
+            echo "backend_port=8000" >> $GITHUB_OUTPUT
+            echo "branch=main" >> $GITHUB_OUTPUT
+          else
+            echo "environment=develop" >> $GITHUB_OUTPUT
+            echo "project_dir=beau-develop" >> $GITHUB_OUTPUT
+            echo "compose_project_name=beau_dev" >> $GITHUB_OUTPUT
+            echo "backend_port=8001" >> $GITHUB_OUTPUT
+            echo "branch=develop" >> $GITHUB_OUTPUT
+          fi
+
+  # ═══════════ Lint ═══════════
+  lint:
+    name: 🔍 Lint
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "requirements/*.txt"
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements/base.txt
+          pip install ruff
+      - name: Ruff Check
+        run: ruff check apps/ config/ shared/ tests/ || true
+      - name: Ruff Format Check
+        run: ruff format --check apps/ config/ shared/ tests/ || true
+
+  # ═══════════ Tests ═══════════
+  test:
+    name: 🧪 Test
+    runs-on: ubuntu-latest
+    needs: [setup, lint]
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_DB: test_beau
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "requirements/*.txt"
+      - name: Install GDAL / GEOS / PROJ
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            gdal-bin libgdal-dev \
+            libgeos-dev libgeos++-dev \
+            proj-bin libproj-dev \
+            postgresql-client
+      - name: Enable PostGIS & pg_trgm Extensions
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres \
+            -d test_beau -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+          PGPASSWORD=postgres psql -h localhost -U postgres \
+            -d test_beau -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+      - name: Install Python Dependencies
+        run: pip install -r requirements/test.txt
+      - name: Run Migrations
+        run: python manage.py migrate --noinput
+      - name: Create Initial Data
+        run: python manage.py create_initial_data || true
+      - name: Run Tests
+        run: pytest tests/ -v --tb=short --no-header
+
+  # ═══════════ Deploy ═══════════
+  deploy:
+    name: 🚀 Deploy to ${{ needs.setup.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [setup, test]
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: SSH & Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          ARVAN_ACCESS_KEY: ${{ secrets.ARVAN_ACCESS_KEY }}
+          ARVAN_SECRET_KEY: ${{ secrets.ARVAN_SECRET_KEY }}
+          KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
+          SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,KAVENEGAR_API_KEY,SHAHKAR_API_KEY
+          script: |
+            set -e
+
+            PROJECT_DIR="/home/deploy/${{ needs.setup.outputs.project_dir }}"
+            COMPOSE_PROJECT_NAME="${{ needs.setup.outputs.compose_project_name }}"
+            BACKEND_PORT="${{ needs.setup.outputs.backend_port }}"
+            BRANCH="${{ needs.setup.outputs.branch }}"
+
+            echo "══════════════════════════════════════"
+            echo "🎯 Environment: ${{ needs.setup.outputs.environment }}"
+            echo "📂 Project Dir: $PROJECT_DIR"
+            echo "🔢 Port: $BACKEND_PORT"
+            echo "🌿 Branch: $BRANCH"
+            echo "══════════════════════════════════════"
+
+            # بررسی دایرکتوری پروژه
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "❌ Directory $PROJECT_DIR not found!"
+              exit 1
+            fi
+
+            cd "$PROJECT_DIR"
+
+            if [ ! -d ".git" ]; then
+              echo "❌ Not a git repository!"
+              exit 1
+            fi
+
+            # انتخاب برنچ مناسب
+            git fetch origin
+            git checkout "$BRANCH"
+            git pull origin "$BRANCH"
+            echo "Current commit:"
+            git log --oneline -1
+
+            # به‌روزرسانی .env (فقط مقادیر مدیریت‌شده)
+            touch .env
+            chmod 600 .env
+
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+
+            env_file = Path(".env")
+            managed = {
+                "ARVAN_ACCESS_KEY": os.environ["ARVAN_ACCESS_KEY"],
+                "ARVAN_SECRET_KEY": os.environ["ARVAN_SECRET_KEY"],
+                "KAVENEGAR_API_KEY": os.environ["KAVENEGAR_API_KEY"],
+                "SHAHKAR_API_KEY": os.environ["SHAHKAR_API_KEY"],
+            }
+
+            lines = env_file.read_text().splitlines()
+            result = []
+            existing_keys = set()
+
+            for line in lines:
+                if not line or line.startswith("#") or "=" not in line:
+                    result.append(line)
+                    continue
+                key = line.split("=", 1)[0].strip()
+                existing_keys.add(key)
+                if key in managed:
+                    result.append(f"{key}={managed[key]}")
+                else:
+                    result.append(line)
+
+            # اضافه کردن مقادیر گم‌شده
+            for key, value in managed.items():
+                if key not in existing_keys:
+                    result.append(f"{key}={value}")
+
+            # تنظیم مقادیر محیطی داکر
+            env_vars = {
+                "COMPOSE_PROJECT_NAME": os.environ.get("COMPOSE_PROJECT_NAME", "beau"),
+                "BACKEND_PORT": os.environ.get("BACKEND_PORT", "8000"),
+            }
+            for key, value in env_vars.items():
+                if key in existing_keys:
+                    result = [f"{key}={value}" if line.startswith(f"{key}=") else line for line in result]
+                else:
+                    result.append(f"{key}={value}")
+
+            env_file.write_text("\n".join(result) + "\n")
+            PY
+
+            # متغیرهای داکر را به اسکریپت پایتون منتقل کن
+            export COMPOSE_PROJECT_NAME
+            export BACKEND_PORT
+
+            echo "✅ Secrets and env vars updated"
+
+            # تعیین دستور داکر کامپوز
+            if docker compose version > /dev/null 2>&1; then
+              COMPOSE_CMD="docker compose"
+            elif docker-compose version > /dev/null 2>&1; then
+              COMPOSE_CMD="docker-compose"
+            else
+              echo "❌ Docker Compose not found!"
+              exit 1
+            fi
+
+            # Build & Deploy
+            $COMPOSE_CMD -f docker-compose.prod.yml build --no-cache
+            $COMPOSE_CMD -f docker-compose.prod.yml up -d
+
+            # Health Check
+            sleep 15
+            $COMPOSE_CMD -f docker-compose.prod.yml ps
+
+            # Cleanup
+            docker image prune -f
+
+            echo ""
+            echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
+            echo "Environment: ${{ needs.setup.outputs.environment }}"
+            echo "Commit: $(git log --oneline -1)"
