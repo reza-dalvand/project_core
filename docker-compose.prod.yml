@@ -130,6 +130,7 @@ services:
     env_file:
       - .env
     environment:
+      - DJANGO_ENV=production
       - DJANGO_SETTINGS_MODULE=config.settings.production
       - DB_ENGINE=django.contrib.gis.db.backends.postgis
       - DB_HOST=postgres

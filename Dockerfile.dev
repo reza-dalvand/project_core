@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════
+#   BEAU CLUB Backend Dockerfile — Development
+#   Hot-reload + Debug + No optimization
+# ═══════════════════════════════════════════════
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /app
+
+# ─── System Dependencies + PostGIS ───
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    libjpeg62-turbo-dev \
+    zlib1g-dev \
+    libwebp-dev \
+    curl \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    postgresql-client \
+    # ✅ برای watchmedo (auto-reload celery)
+    && pip install --no-cache-dir watchdog[watchmedo] \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN pip install --no-cache-dir \
+    django-debug-toolbar \
+    django-extensions \
+    Werkzeug \
+    ipython \
+    pdbpp \
+    watchdog[watchmedo]
+    
+# ─── Python Dependencies (base only — no gunicorn/sentry) ───
+COPY requirements/base.txt requirements/base.txt
+RUN pip install --upgrade pip && \
+    pip install -r requirements/base.txt
+
+
+
+# ─── Directories ───
+RUN mkdir -p /app/logs /app/staticfiles /app/media /app/backups
+
+# ✅ در dev کد را mount می‌کنیم، COPY نمی‌کنیم
+# اما requirements و config اولیه را کپی می‌کنیم
+# تا image بدون mount هم قابل build باشد
+COPY . /app/
+
+EXPOSE 8000
+
+# ✅ Default command — قابل override در docker-compose
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

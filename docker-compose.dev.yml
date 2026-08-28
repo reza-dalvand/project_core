@@ -1,0 +1,222 @@
+# ═══════════════════════════════════════════════
+#   BEAU CLUB — Docker Compose Development
+#
+#   Usage:
+#     docker compose -f docker-compose.dev.yml up -d --build
+#     docker compose -f docker-compose.dev.yml logs -f backend
+#     docker compose -f docker-compose.dev.yml down
+#
+#   Access:
+#     Backend:    http://localhost:8000
+#     API Docs:   http://localhost:8000/api/docs/
+#     Admin:      http://localhost:8000/admin/
+#     PostgreSQL: localhost:5433
+#     Redis:      localhost:6380
+# ═══════════════════════════════════════════════
+
+services:
+
+  # ═══════════ PostgreSQL + PostGIS ═══════════
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: beau_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: beau_dev
+      POSTGRES_USER: beau_dev
+      POSTGRES_PASSWORD: beau_dev_pass
+    ports:
+      # ✅ Exposed برای دسترسی از DBeaver/pgAdmin روی هاست
+      # پورت ۵۴۳۳ برای جلوگیری از تداخل با PostgreSQL لوکال
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beau_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Redis ═══════════
+  redis:
+    image: redis:7-alpine
+    container_name: beau_dev_redis
+    restart: unless-stopped
+    ports:
+      # ✅ Exposed برای دسترسی از RedisInsight روی هاست
+      # پورت ۶۳۸۰ برای جلوگیری از تداخل با Redis لوکال
+      - "6380:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Backend (Django Dev Server) ═══════════
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+    ports:
+      # ✅ مستقیم روی 0.0.0.0 برای دسترسی از شبکه LAN
+      - "8000:8000"
+    volumes:
+      # ✅ Hot-reload: تغییرات کد فوراً اعمال می‌شوند
+      - .:/app
+      # ✅ Named volumes برای جلوگیری از overwrite توسط mount
+      - dev_media:/app/media
+      - dev_static:/app/staticfiles
+      # ✅ عدم overwrite node_modules و __pycache__
+      - /app/__pycache__
+      - /app/.pytest_cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '═══════════════════════════════════════'
+        echo '🚀 BEAU CLUB — Development Server'
+        echo '═══════════════════════════════════════'
+        echo ''
+        echo '⏳ Waiting for PostgreSQL...'
+        python -c \"
+        import time, psycopg2
+        while True:
+            try:
+                psycopg2.connect(dbname='beau_dev', user='beau_dev', password='beau_dev_pass', host='postgres', port=5432)
+                break
+            except:
+                time.sleep(1)
+        print('✅ PostgreSQL is ready!')
+        \"
+        echo '⏳ Running migrations...'
+        python manage.py migrate --noinput
+        echo ''
+        echo '🌐 Starting Django dev server on http://0.0.0.0:8000'
+        echo '📚 API Docs: http://localhost:8000/api/docs/'
+        echo '🔧 Admin:    http://localhost:8000/admin/'
+        echo '═══════════════════════════════════════'
+        python manage.py runserver 0.0.0.0:8000
+      "
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Celery Worker (with auto-reload) ═══════════
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_celery_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+      # ✅ Celery در dev به صورت eager اجرا شود (بدون worker واقعی)
+      # اگر worker واقعی می‌خواهید، این خط را حذف کنید
+      - CELERY_TASK_ALWAYS_EAGER=False
+    volumes:
+      - .:/app
+      - dev_media:/app/media
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ✅ Auto-reload با watchmedo — تغییرات .py فوراً اعمال می‌شوند
+    command: >
+      watchmedo auto-restart
+      --directory=./
+      --pattern=*.py
+      --recursive
+      --ignore-pattern=*/migrations/*
+      --
+      celery -A config worker
+      -l info
+      -c 2
+      --logfile=/app/logs/celery_worker.log
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Celery Beat ═══════════
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_celery_beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A config beat
+      -l info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+      --logfile=/app/logs/celery_beat.log
+    networks:
+      - beau_dev_net
+
+# ═══════════ Volumes ═══════════
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  dev_media:
+    driver: local
+  dev_static:
+    driver: local
+
+# ═══════════ Networks ═══════════
+networks:
+  beau_dev_net:
+    driver: bridge
+    name: beau_dev_network
