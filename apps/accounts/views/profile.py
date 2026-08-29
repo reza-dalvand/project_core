@@ -4,7 +4,7 @@ Views مربوط به پروفایل کاربر
 import logging
 from rest_framework import generics, permissions
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
 from apps.accounts.serializers.profile import UserBankInfoSerializer, UserBankInfoUpdateSerializer
@@ -26,7 +26,7 @@ class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
     """مشاهده و بروزرسانی پروفایل"""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserProfileSerializer
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
         return self.request.user
