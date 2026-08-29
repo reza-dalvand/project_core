@@ -8,6 +8,11 @@ from .base import *  # noqa
 # ─── Debug ───
 DEBUG = True
 
+
+IS_PRODUCTION = False
+IS_DEVELOPMENT = True
+
+
 # ─── Allowed Hosts ───
 ALLOWED_HOSTS = [
     'localhost',

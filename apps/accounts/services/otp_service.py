@@ -1,13 +1,22 @@
 """
 OTP Service — هماهنگ با مدل OtpCode و shared/sms
+
+در دولوپمنت:
+    پیامک چاپ می‌شود.
+
+در پروداکشن:
+    پیامک از طریق کاوه‌نگار ارسال می‌شود.
 """
 import logging
 from datetime import timedelta
+
 from django.conf import settings
 from django.utils import timezone
+
 from apps.accounts.models import OtpCode
 from apps.core.utils import generate_otp, normalize_phone
 from apps.core.exceptions import (
+    OTPException,
     OTPExpiredException,
     OTPInvalidException,
     OTPRateLimitException,
@@ -21,33 +30,40 @@ class OTPService:
 
     OTP_LENGTH = 5
     OTP_EXPIRY_MINUTES = 5
-    RESEND_COOLDOWN_SECONDS = 60
+    RESEND_COOLDOWN_SECONDS = 120
 
     @classmethod
     def send_otp(cls, phone: str, purpose: str = OtpCode.Purpose.LOGIN, user=None):
         """ارسال کد تایید به شماره موبایل"""
         phone = normalize_phone(phone)
 
-        # Rate limiting: جلوگیری از ارسال مجدد زیر ۶۰ ثانیه
+        # Rate limiting: جلوگیری از ارسال مجدد زیر ۱۲۰ ثانیه
         recent_otp = OtpCode.objects.filter(
             phone=phone,
             purpose=purpose,
             created_at__gte=timezone.now() - timedelta(seconds=cls.RESEND_COOLDOWN_SECONDS),
         ).first()
+
         if recent_otp:
             remaining = cls.RESEND_COOLDOWN_SECONDS - int(
                 (timezone.now() - recent_otp.created_at).total_seconds()
             )
+
             raise OTPRateLimitException(
                 message=f'لطفاً {remaining} ثانیه صبر کنید و دوباره تلاش کنید',
                 details={'remaining_seconds': remaining},
             )
 
         # غیرفعال کردن OTP های قبلی استفاده‌نشده
-        OtpCode.objects.filter(phone=phone, purpose=purpose, is_used=False).update(is_used=True)
+        OtpCode.objects.filter(
+            phone=phone,
+            purpose=purpose,
+            is_used=False,
+        ).update(is_used=True)
 
         # تولید OTP جدید
         code = generate_otp(cls.OTP_LENGTH)
+
         otp = OtpCode.objects.create(
             phone=phone,
             code=code,
@@ -55,9 +71,10 @@ class OTPService:
             expires_at=timezone.now() + timedelta(minutes=cls.OTP_EXPIRY_MINUTES),
         )
 
-        # ارسال پیامک (در dev از MockSmsProvider استفاده می‌شه)
         cls._send_sms(phone, code)
+
         logger.info(f"OTP sent to {phone} for {purpose}")
+
         return otp
 
     @classmethod
@@ -84,14 +101,30 @@ class OTPService:
 
     @classmethod
     def _send_sms(cls, phone: str, code: str):
-        """ارسال پیامک از طریق provider (shared/sms)"""
+        """ارسال پیامک از طریق سرویس انتخاب‌شده بر اساس محیط"""
+        from shared.sms import get_sms_provider
+
         try:
-            from shared.sms import get_sms_provider
             provider = get_sms_provider()
-            # ✅ اصلاح: اضافه کردن پارامتر template_name
-            provider.send_otp(phone, template_name='beau-otp', token=code)
         except Exception as e:
-            logger.error(f"Failed to send OTP SMS to {phone}: {e}")
-            # در پروداکشن خطا را بالا بده، در dev فقط لاگ کن
-            if not settings.DEBUG:
-                raise
+            logger.error(f"SMS provider init failed: {e}")
+            raise OTPException(
+                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
+                code='SMS_PROVIDER_UNAVAILABLE',
+            )
+
+        message = (
+            f'کد تایید بیو کلاب: {code}\n'
+            f'این کد را با کسی به اشتراک نگذارید.'
+        )
+
+        result = provider.send_otp(phone, message=message)
+
+        if not result.success:
+            logger.error(f"OTP SMS failed for {phone}: {result.error_message}")
+            raise OTPException(
+                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
+                code='SMS_SEND_FAILED',
+            )
+
+        logger.info(f"OTP SMS sent successfully to {phone}")

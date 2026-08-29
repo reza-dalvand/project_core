@@ -19,45 +19,21 @@ class MockSmsProvider(AbstractSmsProvider):
         self._sent_messages = []
         self._credit = 100000
 
-    def send_otp(self, phone: str, template_name: str, token: str) -> SmsResult:
+    # ✅ تغییر: امضای جدید
+    def send_otp(self, phone: str, message: str) -> SmsResult:
         phone = self.validate_phone(phone)
+
         message_id = f'MOCK-{len(self._sent_messages) + 1}'
 
         self._sent_messages.append({
             'phone': phone,
-            'template': template_name,
-            'token': token,
+            'message': message,
             'type': 'otp',
         })
 
         logger.info(
             f"🔑 [MOCK OTP] → {phone}\n"
-            f"   قالب: {template_name}\n"
-            f"   کد: {token}\n"
-            f"   شناسه: {message_id}"
-        )
-
-        return SmsResult(
-            success=True,
-            message_id=message_id,
-            cost=250,
-        )
-
-    def send_pattern(self, phone: str, template_name: str, **kwargs) -> SmsResult:
-        phone = self.validate_phone(phone)
-        message_id = f'MOCK-{len(self._sent_messages) + 1}'
-
-        self._sent_messages.append({
-            'phone': phone,
-            'template': template_name,
-            'variables': kwargs,
-            'type': 'pattern',
-        })
-
-        logger.info(
-            f"📱 [MOCK SMS Pattern] → {phone}\n"
-            f"   قالب: {template_name}\n"
-            f"   متغیرها: {kwargs}\n"
+            f"   متن: {message}\n"
             f"   شناسه: {message_id}"
         )
 
@@ -69,6 +45,7 @@ class MockSmsProvider(AbstractSmsProvider):
 
     def send(self, phone: str, message: str, sender: str = '') -> SmsResult:
         phone = self.validate_phone(phone)
+
         message_id = f'MOCK-{len(self._sent_messages) + 1}'
 
         self._sent_messages.append({
@@ -143,6 +120,32 @@ class MockSmsProvider(AbstractSmsProvider):
             message_ids=message_ids,
         )
 
+
+    def send_pattern(self, phone: str, template_name: str, **variables) -> SmsResult:
+        phone = self.validate_phone(phone)
+        message_id = f'MOCK-PATTERN-{len(self._sent_messages) + 1}'
+
+        if variables.get('token'):
+            message = f'کد تایید: {variables["token"]}'
+        elif variables.get('code'):
+            message = f'کد تایید: {variables["code"]}'
+        else:
+            message = f'قالب: {template_name} | متغیرها: {variables}'
+
+        self._sent_messages.append({
+            'phone': phone,
+            'message': message,
+            'template': template_name,
+            'variables': variables,
+            'type': 'pattern',
+        })
+
+        return SmsResult(
+            success=True,
+            message_id=message_id,
+            cost=250,
+        )
+    
     def get_credit(self) -> int:
         return self._credit
 
@@ -153,7 +156,7 @@ class MockSmsProvider(AbstractSmsProvider):
     def get_last_otp(self, phone: str) -> Optional[str]:
         for msg in reversed(self._sent_messages):
             if msg.get('phone') == phone and msg.get('type') == 'otp':
-                return msg.get('token')
+                return msg.get('message', '')
         return None
 
     def clear(self):

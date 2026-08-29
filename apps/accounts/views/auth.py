@@ -61,7 +61,6 @@ class SendOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         phone = serializer.validated_data['phone']
 
         try:
@@ -77,11 +76,12 @@ class SendOTPView(APIView, StandardResponseMixin):
                 message=f'کد تایید به شماره {mask_phone(phone)} ارسال شد',
             )
         except OTPException as e:
+            # ✅ FIX: خطاهای ارسال پیامک هم اینجا هندل می‌شوند
             return e.as_response()
         except Exception as e:
             logger.exception(f"Send OTP error: {e}")
             return self.error_response(
-                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید',
+                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
                 code='OTP_SEND_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

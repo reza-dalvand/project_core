@@ -8,6 +8,15 @@ from .base import *  # noqa
 
 DEBUG = False
 
+
+# ─── App Environment ───
+# APP_ENV از .env خوانده می‌شود تا به صورت گلوبال برای سرویس‌ها قابل استفاده باشد.
+# نکته امنیتی: در محیط پروداکشن نباید کدهای پیامکی در کنسول/لاگ چاپ شوند.
+APP_ENV = env('APP_ENV', default='production').lower()
+IS_PRODUCTION = APP_ENV == 'production'
+IS_DEVELOPMENT = APP_ENV == 'development'
+
+
 # ─── Allowed Hosts ───
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     'beauclub.ir',

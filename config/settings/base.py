@@ -27,6 +27,15 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 SITE_NAME = env('SITE_NAME', default='بیو کلاب')
 SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 
+
+# ─── Global App Environment ───
+# development | production | test
+# این متغیر برای کنترل رفتار سرویس‌های خارجی مثل پیامک، پرداخت و استعلام استفاده می‌شود.
+APP_ENV = env('APP_ENV', default='development').lower()
+IS_PRODUCTION = APP_ENV == 'production'
+IS_DEVELOPMENT = APP_ENV == 'development'
+
+
 # ═══════════════════════════════════════════════
 #   Application Definition
 # ═══════════════════════════════════════════════
