@@ -102,15 +102,15 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'address', 'phone', 'working_hours', 'about',
             'latitude', 'longitude',
             'cover_image', 'owner_photo', 'logo',
-            'status', 'is_vip', 'vip_expires_at',
+            'status', 'is_active', 'is_vip', 'vip_expires_at',
             'rating', 'reviews_count',
             'booking_slug', 'booking_link_clicks',
             'gallery',
-            'services',  # ✅ جدید
+            'services',
             'owner_name', 'created_at',
             'bank_info_registered', 'bank_info_verified',
             'verified_name',
-            'national_id',  # ✅ جدید
+            'national_id',
         ]
         # ✅ حذف owner_name تکراری
 
