@@ -1,26 +1,34 @@
 """
 Serializers برای نمونه‌کارها
 """
+import os
+import requests
+import tempfile
+from django.core.files.base import ContentFile
 from rest_framework import serializers
 from apps.portfolios.models import Portfolio, PortfolioImage
 
 
 class PortfolioImageSerializer(serializers.ModelSerializer):
-    """Serializer تصاویر نمونه‌کار"""
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = PortfolioImage
-        fields = ['id', 'image', 'sort_order']
-        read_only_fields = ['id', 'image', 'sort_order']
+        fields = ['id', 'image', 'image_url', 'sort_order']
+        read_only_fields = ['image_url']
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return None
 
 
 class PortfolioListSerializer(serializers.ModelSerializer):
-    """Serializer لیست نمونه‌کارها"""
     business_name = serializers.CharField(source='business.name', read_only=True)
     business_logo = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True)
-    sub_service_name = serializers.CharField(
-        source='sub_service.name', read_only=True
-    )
+    sub_service_name = serializers.CharField(source='sub_service.name', read_only=True)
     images = PortfolioImageSerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
 
@@ -28,11 +36,11 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         model = Portfolio
         fields = [
             'id', 'title', 'description',
+            'business', 'business_name', 'business_logo',
             'category', 'category_name',
             'sub_service', 'sub_service_name',
-            'business', 'business_name', 'business_logo',
-            'cover_image_url', 'images',
-            'created_at',
+            'cover_image', 'cover_image_url',
+            'images', 'created_at',
         ]
         read_only_fields = fields
 
@@ -50,129 +58,185 @@ class PortfolioListSerializer(serializers.ModelSerializer):
 
 
 class PortfolioDetailSerializer(PortfolioListSerializer):
-    """Serializer جزئیات نمونه‌کار"""
-    business_booking_slug = serializers.CharField(
-        source='business.booking_slug', read_only=True
-    )
+    business_address = serializers.CharField(source='business.address', read_only=True)
+    business_city = serializers.CharField(source='business.city.name', read_only=True)
 
     class Meta(PortfolioListSerializer.Meta):
         fields = PortfolioListSerializer.Meta.fields + [
-            'business_booking_slug',
+            'business_address', 'business_city',
         ]
 
 
-class PortfolioCreateSerializer(serializers.ModelSerializer):
-    """Serializer ایجاد نمونه‌کار"""
+class PortfolioCreateSerializer(serializers.Serializer):
+    """
+    Serializer ایجاد نمونه‌کار — فقط آپلود فایل
+    حداقل یک تصویر اجباری است.
+    """
+    title = serializers.CharField(max_length=100)
+    description = serializers.CharField(
+        max_length=300, required=False, allow_blank=True, default=''
+    )
+    category = serializers.IntegerField(required=True)
+    sub_service = serializers.IntegerField(required=True)
+
+    # ✅ تصویر کاور — اجباری
+    cover_image = serializers.ImageField(required=True)
+
+    # ✅ تصاویر گالری — حداقل ۱ فایل، حداکثر ۳
     images = serializers.ListField(
         child=serializers.ImageField(),
-        write_only=True,
-        required=False,
+        required=True,
+        allow_empty=False,
+        min_length=1,
         max_length=3,
     )
 
-    class Meta:
-        model = Portfolio
-        fields = [
-            'title', 'description',
-            'category', 'sub_service',
-            'cover_image', 'images',
-        ]
-
     def validate_title(self, value):
         if not value or not value.strip():
-            raise serializers.ValidationError('عنوان الزامی است')
+            raise serializers.ValidationError('عنوان نمونه‌کار الزامی است')
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('عنوان باید حداقل ۳ کاراکتر باشد')
         return value.strip()
 
-    def validate_description(self, value):
-        if value and len(value) > 300:
-            raise serializers.ValidationError(
-                'توضیحات نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد'
-            )
-        return value
+    def validate(self, data):
+        from apps.categories.models import ServiceCategory, SubService
 
-    def validate_images(self, value):
-        if value and len(value) > 3:
-            raise serializers.ValidationError('حداکثر ۳ تصویر مجاز است')
-        return value
+        cat_id = data.get('category')
+        sub_id = data.get('sub_service')
+
+        if not cat_id:
+            raise serializers.ValidationError({
+                'category': 'دسته‌بندی خدمات را انتخاب کنید'
+            })
+        if not sub_id:
+            raise serializers.ValidationError({
+                'sub_service': 'نوع خدمت را انتخاب کنید'
+            })
+
+        try:
+            category = ServiceCategory.objects.get(id=cat_id, is_active=True)
+        except ServiceCategory.DoesNotExist:
+            raise serializers.ValidationError({
+                'category': 'دسته‌بندی یافت نشد'
+            })
+
+        try:
+            sub_service = SubService.objects.get(
+                id=sub_id, category=category, is_active=True
+            )
+        except SubService.DoesNotExist:
+            raise serializers.ValidationError({
+                'sub_service': 'زیرخدمت یافت نشد یا با دسته‌بندی مطابقت ندارد'
+            })
+
+        data['_category'] = category
+        data['_sub_service'] = sub_service
+        return data
 
     def create(self, validated_data):
-        images = validated_data.pop('images', [])
         request = self.context.get('request')
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
-
         if not business:
             raise serializers.ValidationError(
                 'کسب‌وکار تایید شده‌ای یافت نشد'
             )
 
-        validated_data['business'] = business
-        portfolio = Portfolio.objects.create(**validated_data)
+        category = validated_data.pop('_category')
+        sub_service = validated_data.pop('_sub_service')
+        cover_image = validated_data.pop('cover_image')
+        image_files = validated_data.pop('images', [])
 
-        # ذخیره تصاویر
-        for i, image in enumerate(images):
+        portfolio = Portfolio.objects.create(
+            business=business,
+            category=category,
+            sub_service=sub_service,
+            title=validated_data.get('title', ''),
+            description=validated_data.get('description', ''),
+            cover_image=cover_image,  # ✅ فایل واقعی
+        )
+
+        # ذخیره تصاویر گالری
+        for i, img_file in enumerate(image_files):
             PortfolioImage.objects.create(
                 portfolio=portfolio,
-                image=image,
+                image=img_file,  # ✅ فایل واقعی
                 sort_order=i,
             )
 
         return portfolio
 
 
-class PortfolioUpdateSerializer(serializers.ModelSerializer):
-    """Serializer ویرایش نمونه‌کار"""
+class PortfolioUpdateSerializer(serializers.Serializer):
+    """Serializer ویرایش نمونه‌کار — با پشتیبانی از فایل"""
+    title = serializers.CharField(max_length=100, required=False)
+    description = serializers.CharField(
+        max_length=300, required=False, allow_blank=True
+    )
+    category = serializers.IntegerField(required=False)
+    sub_service = serializers.IntegerField(required=False)
+    cover_image = serializers.ImageField(required=False)
     images = serializers.ListField(
         child=serializers.ImageField(),
-        write_only=True,
         required=False,
+        allow_empty=True,
         max_length=3,
     )
-    
-    class Meta:
-        model = Portfolio
-        fields = [
-            'title', 'description',
-            'category', 'sub_service',
-            'cover_image', 'images',
-        ]
-    
+
     def validate_title(self, value):
-        if not value or not value.strip():
-            raise serializers.ValidationError('عنوان الزامی است')
-        return value.strip()
-    
-    def validate_description(self, value):
-        if value and len(value) > 300:
-            raise serializers.ValidationError(
-                'توضیحات نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد'
-            )
+        if value is not None:
+            if not value.strip():
+                raise serializers.ValidationError('عنوان نمی‌تواند خالی باشد')
+            if len(value.strip()) < 3:
+                raise serializers.ValidationError(
+                    'عنوان باید حداقل ۳ کاراکتر باشد'
+                )
+            return value.strip()
         return value
-    
-    def validate_images(self, value):
-        if value and len(value) > 3:
-            raise serializers.ValidationError('حداکثر ۳ تصویر مجاز است')
-        return value
-    
+
     def update(self, instance, validated_data):
-        images = validated_data.pop('images', None)
-        
-        # بروزرسانی فیلدهای ساده
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        from apps.categories.models import ServiceCategory, SubService
+
+        cat_id = validated_data.pop('category', None)
+        sub_id = validated_data.pop('sub_service', None)
+
+        if cat_id:
+            try:
+                instance.category = ServiceCategory.objects.get(
+                    id=cat_id, is_active=True
+                )
+            except ServiceCategory.DoesNotExist:
+                pass
+
+        if sub_id:
+            try:
+                instance.sub_service = SubService.objects.get(
+                    id=sub_id, is_active=True
+                )
+            except SubService.DoesNotExist:
+                pass
+
+        for attr in ['title', 'description']:
+            if attr in validated_data:
+                setattr(instance, attr, validated_data[attr])
+
+        # ✅ بروزرسانی کاور
+        cover_image = validated_data.pop('cover_image', None)
+        if cover_image:
+            instance.cover_image = cover_image
+
         instance.save()
-        
-        # بروزرسانی تصاویر (اگر ارسال شده باشند)
-        if images is not None:
-            # حذف تصاویر قبلی
+
+        # ✅ بروزرسانی تصاویر
+        image_files = validated_data.pop('images', None)
+        if image_files is not None:
             instance.images.all().delete()
-            # افزودن تصاویر جدید
-            for i, image in enumerate(images):
+            for i, img_file in enumerate(image_files):
                 PortfolioImage.objects.create(
                     portfolio=instance,
-                    image=image,
+                    image=img_file,
                     sort_order=i,
                 )
-        
+
         return instance
