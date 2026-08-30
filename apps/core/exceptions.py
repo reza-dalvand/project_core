@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.core.exceptions import PermissionDenied, ValidationError as DjangoValidationError
 from django.http import Http404
+from django.db import IntegrityError 
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +19,16 @@ def custom_exception_handler(exc, context):
     view = context.get('view', None)
     view_name = view.__class__.__name__ if view else 'Unknown'
 
-    error_response = {
-        'success': False,
-        'error': {
-            'code': 'UNKNOWN_ERROR',
-            'message': 'خطای ناشناخته‌ای رخ داد',
-            'details': {},
+    if isinstance(exc, IntegrityError):
+        error_response = {
+            'success': False,
+            'error': {
+                'code': 'DUPLICATE_ENTRY',
+                'message': 'این رکورد قبلاً ثبت شده است یا اطلاعات تکراری است.',
+                'details': {'raw_error': str(exc)}
+            }
         }
-    }
+        return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
     if isinstance(exc, DjangoValidationError):
         error_response['error']['code'] = 'VALIDATION_ERROR'
