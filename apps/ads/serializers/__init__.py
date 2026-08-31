@@ -27,8 +27,8 @@ class ModelRequestListSerializer(serializers.ModelSerializer):
             'service', 'service_name',
             'created_jalali', 'expires_jalali',
             'created_at',
-            # ═══ 🆕 فاز ۳ ═══
             'distance',
+            'is_active',  
         ]
         read_only_fields = fields
 
@@ -140,8 +140,8 @@ class LineRentalListSerializer(serializers.ModelSerializer):
             'sub_service', 'sub_service_name',
             'created_jalali', 'expires_jalali',
             'created_at',
-            # ═══ 🆕 فاز ۳ ═══
             'distance',
+            'is_active', 
         ]
         read_only_fields = fields
 
