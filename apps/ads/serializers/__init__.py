@@ -67,7 +67,8 @@ class ModelRequestDetailSerializer(ModelRequestListSerializer):
 
 
 class ModelRequestCreateSerializer(serializers.ModelSerializer):
-    """Serializer ایجاد درخواست مدل"""
+    service_image = serializers.ImageField(required=False, allow_null=True)
+    
     class Meta:
         model = ModelRequest
         fields = [
@@ -171,6 +172,7 @@ class LineRentalDetailSerializer(LineRentalListSerializer):
 
 class LineRentalCreateSerializer(serializers.ModelSerializer):
     """Serializer ایجاد آگهی اجاره لاین"""
+    line_image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = LineRental
         fields = [
@@ -213,23 +215,19 @@ class LineRentalCreateSerializer(serializers.ModelSerializer):
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
-
         if not business:
             raise serializers.ValidationError('کسب‌وکار تایید شده یافت نشد')
-
         validated_data['business'] = business
-
         today = jdatetime.date.today()
         validated_data['created_jalali'] = f'{today.year}/{today.month:02d}/{today.day:02d}'
         expires = today + jdatetime.timedelta(days=30)
         validated_data['expires_jalali'] = f'{expires.year}/{expires.month:02d}/{expires.day:02d}'
-
         return super().create(validated_data)
 
 
 class ModelRequestUpdateSerializer(serializers.ModelSerializer):
     """Serializer ویرایش درخواست مدل"""
-    
+    service_image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = ModelRequest
         fields = [
@@ -251,6 +249,7 @@ class ModelRequestUpdateSerializer(serializers.ModelSerializer):
 
 class LineRentalUpdateSerializer(serializers.ModelSerializer):
     """Serializer ویرایش آگهی اجاره لاین"""
+    line_image = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
         model = LineRental
@@ -264,26 +263,30 @@ class LineRentalUpdateSerializer(serializers.ModelSerializer):
         ]
     
     def validate(self, data):
-        collab_type = data.get('collab_type')
+        # ✅ اصلاح اساسی: ترکیب داده‌های جدید با مقادیر فعلی برای پشتیبانی از PATCH
+        collab_type = data.get('collab_type', getattr(self.instance, 'collab_type', None))
         
+        percent_salon = data.get('percent_salon', getattr(self.instance, 'percent_salon', None))
+        percent_partner = data.get('percent_partner', getattr(self.instance, 'percent_partner', None))
+        fixed_amount = data.get('fixed_amount', getattr(self.instance, 'fixed_amount', None))
+        hourly_rate = data.get('hourly_rate', getattr(self.instance, 'hourly_rate', None))
+        
+        # ✅ اعتبارسنجی جدید: تطابق زیرخدمت با دسته‌بندی
+        category = data.get('service_category', getattr(self.instance, 'service_category', None))
+        sub_service = data.get('sub_service', getattr(self.instance, 'sub_service', None))
+        if category and sub_service and sub_service.category_id != category.id:
+            raise serializers.ValidationError('زیرخدمت انتخابی با دسته‌بندی مطابقت ندارد')
+
         if collab_type == LineRental.CollabType.PERCENT:
-            if not data.get('percent_salon') or not data.get('percent_partner'):
-                raise serializers.ValidationError(
-                    'در نوع همکاری درصدی، درصدها الزامی هستند'
-                )
-            if data['percent_salon'] + data['percent_partner'] != 100:
-                raise serializers.ValidationError(
-                    'مجموع درصدها باید ۱۰۰٪ باشد'
-                )
+            if percent_salon is None or percent_partner is None:
+                raise serializers.ValidationError('در نوع همکاری درصدی، درصدها الزامی هستند')
+            if percent_salon + percent_partner != 100:
+                raise serializers.ValidationError('مجموع درصدها باید ۱۰۰٪ باشد')
         elif collab_type == LineRental.CollabType.FIXED:
-            if not data.get('fixed_amount'):
-                raise serializers.ValidationError(
-                    'در اجاره ثابت، مبلغ الزامی است'
-                )
+            if fixed_amount is None:
+                raise serializers.ValidationError('در اجاره ثابت، مبلغ الزامی است')
         elif collab_type == LineRental.CollabType.HOURLY:
-            if not data.get('hourly_rate'):
-                raise serializers.ValidationError(
-                    'در اجاره ساعتی، نرخ ساعتی الزامی است'
-                )
+            if hourly_rate is None:
+                raise serializers.ValidationError('در اجاره ساعتی، نرخ ساعتی الزامی است')
         
         return data

@@ -4,7 +4,7 @@ Views برای نمونه‌کارها
 import logging
 from rest_framework import permissions, status
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 
@@ -153,7 +153,7 @@ class BusinessPortfolioListView(APIView, StandardResponseMixin):
 class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
     """ویرایش نمونه‌کار"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser] 
 
     @extend_schema(
         request=PortfolioUpdateSerializer,
@@ -165,6 +165,13 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
+        if not business:
+            return self.error_response(
+                message='کسب‌وکار تایید شده یافت نشد',
+                code='NO_BUSINESS',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         try:
             portfolio = Portfolio.objects.prefetch_related('images').get(
                 id=pk, business=business
@@ -182,7 +189,15 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
             partial=True,
             context={'request': request},
         )
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            return self.error_response(
+                message='خطا در اعتبارسنجی داده‌ها',
+                code='VALIDATION_ERROR',
+                details=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             updated = serializer.save()
             return self.success_response(
@@ -196,6 +211,7 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
             return self.error_response(
                 message='خطا در ویرایش نمونه‌کار',
                 code='UPDATE_ERROR',
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 

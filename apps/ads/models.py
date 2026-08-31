@@ -32,6 +32,8 @@ class ModelRequest(BaseModel):
     service_image = models.ImageField(
         'تصویر خدمت',
         upload_to='ads/model_requests/',
+        blank=True,
+        null=True,    
     )
     cost_type = models.CharField(
         'نوع هزینه',
@@ -65,9 +67,13 @@ class ModelRequest(BaseModel):
         return f'{self.business.name} - {self.title}'
 
     def save(self, *args, **kwargs):
-        # کپی location از کسب‌وکار
+        # ✅ بهینه‌سازی: جلوگیری از کوئری اضافی
         if not self.location and self.business_id:
-            self.location = self.business.location
+            if hasattr(self, 'business') and self.business and self.business.location:
+                self.location = self.business.location
+            else:
+                from apps.businesses.models import Business
+                self.location = Business.objects.filter(id=self.business_id).values_list('location', flat=True).first()
         super().save(*args, **kwargs)
 
 
@@ -89,6 +95,8 @@ class LineRental(BaseModel):
     line_image = models.ImageField(
         'تصویر لاین',
         upload_to='ads/line_rentals/',
+        blank=True,  
+        null=True,    
     )
     service_category = models.ForeignKey(
         'categories.ServiceCategory',
@@ -142,7 +150,11 @@ class LineRental(BaseModel):
                     raise ValidationError('مجموع درصدها باید ۱۰۰٪ باشد')
 
     def save(self, *args, **kwargs):
-        # کپی location از کسب‌وکار
+        # ✅ بهینه‌سازی: جلوگیری از کوئری اضافی
         if not self.location and self.business_id:
-            self.location = self.business.location
+            if hasattr(self, 'business') and self.business and self.business.location:
+                self.location = self.business.location
+            else:
+                from apps.businesses.models import Business
+                self.location = Business.objects.filter(id=self.business_id).values_list('location', flat=True).first()
         super().save(*args, **kwargs)

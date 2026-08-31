@@ -16,18 +16,24 @@ logger = logging.getLogger(__name__)
 def custom_exception_handler(exc, context):
     """هندلر سفارشی برای تمام exceptions"""
     response = exception_handler(exc, context)
+
     view = context.get('view', None)
     view_name = view.__class__.__name__ if view else 'Unknown'
 
-    if isinstance(exc, IntegrityError):
-        error_response = {
-            'success': False,
-            'error': {
-                'code': 'DUPLICATE_ENTRY',
-                'message': 'این رکورد قبلاً ثبت شده است یا اطلاعات تکراری است.',
-                'details': {'raw_error': str(exc)}
-            }
+    # ✅ FIX: ساختار پایه همیشه قبل از هر شاخه‌ای تعریف شود
+    error_response = {
+        'success': False,
+        'error': {
+            'code': 'ERROR',
+            'message': 'خطایی رخ داده است',
+            'details': {},
         }
+    }
+
+    if isinstance(exc, IntegrityError):
+        error_response['error']['code'] = 'DUPLICATE_ENTRY'
+        error_response['error']['message'] = 'این رکورد قبلاً ثبت شده است یا اطلاعات تکراری است.'
+        error_response['error']['details'] = {'raw_error': str(exc)}
         return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
 
     if isinstance(exc, DjangoValidationError):
@@ -55,6 +61,7 @@ def custom_exception_handler(exc, context):
             403: 'FORBIDDEN',
             404: 'NOT_FOUND',
             405: 'METHOD_NOT_ALLOWED',
+            415: 'UNSUPPORTED_MEDIA_TYPE',   # ✅ اضافه شد
             429: 'TOO_MANY_REQUESTS',
             500: 'SERVER_ERROR',
         }
@@ -80,13 +87,13 @@ def custom_exception_handler(exc, context):
             error_response['error']['message'] = 'تعداد درخواست‌ها بیش از حد مجاز است'
 
         response.data = error_response
-        return response
+        return response   # ✅ حتماً برگردانده شود
 
+    # خطای غیرمنتظره
     logger.exception(f"Unhandled exception in {view_name}: {exc}")
     error_response['error']['code'] = 'INTERNAL_SERVER_ERROR'
     error_response['error']['message'] = 'خطای داخلی سرور. لطفاً بعداً تلاش کنید'
     return Response(error_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 # ═══════════════════════════════════════════════
 #   Custom Exceptions

@@ -168,6 +168,8 @@ class PortfolioCreateSerializer(serializers.Serializer):
         return portfolio
 
 
+
+
 class PortfolioUpdateSerializer(serializers.Serializer):
     """Serializer ویرایش نمونه‌کار — با پشتیبانی از فایل"""
     title = serializers.CharField(max_length=100, required=False)
@@ -184,24 +186,28 @@ class PortfolioUpdateSerializer(serializers.Serializer):
         max_length=3,
     )
 
-    def validate_title(self, value):
+    def validate_category(self, value):
         if value is not None:
-            if not value.strip():
-                raise serializers.ValidationError('عنوان نمی‌تواند خالی باشد')
-            if len(value.strip()) < 3:
-                raise serializers.ValidationError(
-                    'عنوان باید حداقل ۳ کاراکتر باشد'
-                )
-            return value.strip()
+            from apps.categories.models import ServiceCategory
+            if not ServiceCategory.objects.filter(id=value, is_active=True).exists():
+                raise serializers.ValidationError('دسته‌بندی یافت نشد')
+        return value
+
+    def validate_sub_service(self, value):
+        if value is not None:
+            from apps.categories.models import SubService
+            if not SubService.objects.filter(id=value, is_active=True).exists():
+                raise serializers.ValidationError('زیرخدمت یافت نشد')
         return value
 
     def update(self, instance, validated_data):
         from apps.categories.models import ServiceCategory, SubService
 
+        # ─── بروزرسانی فیلدهای ساده ───
         cat_id = validated_data.pop('category', None)
         sub_id = validated_data.pop('sub_service', None)
 
-        if cat_id:
+        if cat_id is not None:
             try:
                 instance.category = ServiceCategory.objects.get(
                     id=cat_id, is_active=True
@@ -209,7 +215,7 @@ class PortfolioUpdateSerializer(serializers.Serializer):
             except ServiceCategory.DoesNotExist:
                 pass
 
-        if sub_id:
+        if sub_id is not None:
             try:
                 instance.sub_service = SubService.objects.get(
                     id=sub_id, is_active=True
@@ -217,26 +223,36 @@ class PortfolioUpdateSerializer(serializers.Serializer):
             except SubService.DoesNotExist:
                 pass
 
-        for attr in ['title', 'description']:
-            if attr in validated_data:
-                setattr(instance, attr, validated_data[attr])
+        if 'title' in validated_data:
+            instance.title = validated_data['title']
+        if 'description' in validated_data:
+            instance.description = validated_data['description']
 
-        # ✅ بروزرسانی کاور
+        # ─── بروزرسانی کاور ───
         cover_image = validated_data.pop('cover_image', None)
         if cover_image:
+            # حذف فایل قبلی از دیسک
+            if instance.cover_image:
+                instance.cover_image.delete(save=False)
             instance.cover_image = cover_image
 
         instance.save()
 
-        # ✅ بروزرسانی تصاویر
+        # ─── بروزرسانی تصاویر گالری ───
+        # ✅ فقط اگر تصاویر جدید ارسال شده باشند
         image_files = validated_data.pop('images', None)
-        if image_files is not None:
+        if image_files is not None and len(image_files) > 0:
+            # حذف تصاویر قبلی از دیسک
+            for old_img in instance.images.all():
+                old_img.image.delete(save=False)
             instance.images.all().delete()
+            # ایجاد تصاویر جدید
             for i, img_file in enumerate(image_files):
                 PortfolioImage.objects.create(
                     portfolio=instance,
                     image=img_file,
                     sort_order=i,
                 )
+        # ✅ اگر images ارسال نشده یا خالی باشد، تصاویر قبلی حفظ می‌شوند
 
         return instance
