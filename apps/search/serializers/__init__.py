@@ -20,7 +20,7 @@ class SearchResultBusinessSerializer(serializers.Serializer):
     """نتیجه جستجوی کسب‌وکار"""
     id = serializers.IntegerField()
     name = serializers.CharField()
-    # ✅ اصلاح: اضافه کردن source برای فیلدهای FK
+    
     category_name = serializers.CharField(source='category.name')
     city_name = serializers.CharField(source='city.name')
     address = serializers.CharField()
@@ -33,16 +33,19 @@ class SearchResultBusinessSerializer(serializers.Serializer):
 
     def get_logo(self, obj):
         request = self.context.get('request')
-        if obj.logo and request:
+        if getattr(obj, 'logo', None) and obj.logo.name and request:
             return request.build_absolute_uri(obj.logo.url)
         return None
+
 
 class SearchResultServiceSerializer(serializers.Serializer):
     """نتیجه جستجوی خدمت"""
     id = serializers.IntegerField()
     name = serializers.CharField()
-    business_name = serializers.CharField()
-    business_id = serializers.IntegerField()
+    
+    business_name = serializers.CharField(source='business.name')
+    business_id = serializers.IntegerField(source='business.id')
+    
     original_price = serializers.IntegerField()
     discount_percent = serializers.IntegerField()
     final_price = serializers.IntegerField()

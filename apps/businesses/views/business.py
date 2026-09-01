@@ -102,7 +102,10 @@ class BusinessListView(APIView, StandardResponseMixin):
 
         category_id = request.query_params.get('category_id')
         if category_id:
-            qs = qs.filter(category_id=category_id)
+            qs = qs.filter(
+                services__category_id=category_id,
+                services__is_active=True,
+            ).distinct()
 
         search = request.query_params.get('search')
         if search:
