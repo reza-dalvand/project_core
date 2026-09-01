@@ -1,14 +1,13 @@
 """
-Views برای علاقه‌مندی‌ها — نسخه نهایی (فاز ۸)
+Views برای علاقه‌مندی‌ها — نسخه نهایی
 """
 from rest_framework import permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 from apps.core.mixins import StandardResponseMixin
-from apps.favorites.models import FavoriteBusiness, FavoritePost
+from apps.favorites.models import FavoriteBusiness
 from apps.favorites.serializers import (
     FavoriteBusinessSerializer,
-    FavoritePostSerializer,
     FavoriteToggleSerializer,
 )
 
@@ -55,31 +54,13 @@ class FavoriteToggleView(APIView, StandardResponseMixin):
                 message='به علاقه‌مندی‌ها اضافه شد',
             )
 
-        elif favorite_type == 'post':
-            from apps.explore.models import ExplorePost
-            try:
-                post = ExplorePost.objects.get(id=object_id)
-            except ExplorePost.DoesNotExist:
-                return self.error_response(
-                    message='پست یافت نشد',
-                    code='POST_NOT_FOUND',
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+        # ❌ بخش 'post' حذف شد
 
-            fav, created = FavoritePost.objects.get_or_create(
-                user=request.user,
-                post=post,
-            )
-            if not created:
-                fav.delete()
-                return self.success_response(
-                    data={'is_favorited': False},
-                    message='از علاقه‌مندی‌ها حذف شد',
-                )
-            return self.success_response(
-                data={'is_favorited': True},
-                message='به علاقه‌مندی‌ها اضافه شد',
-            )
+        return self.error_response(
+            message='نوع علاقه‌مندی نامعتبر است',
+            code='INVALID_FAVORITE_TYPE',
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class FavoriteListView(APIView, StandardResponseMixin):
@@ -93,45 +74,23 @@ class FavoriteListView(APIView, StandardResponseMixin):
     def get(self, request):
         favorite_type = request.query_params.get('type')
 
-        if favorite_type == 'business':
+        if favorite_type == 'business' or favorite_type is None:
             favorites = FavoriteBusiness.objects.filter(
                 user=request.user
             ).select_related('business', 'business__category', 'business__city')
-            # ✅ فاز ۸: اضافه کردن context
+
             serializer = FavoriteBusinessSerializer(
                 favorites, many=True, context={'request': request}
             )
-        elif favorite_type == 'post':
-            favorites = FavoritePost.objects.filter(
-                user=request.user
-            ).select_related('post', 'post__business').prefetch_related('post__images')
-            # ✅ فاز ۸: اضافه کردن context
-            serializer = FavoritePostSerializer(
-                favorites, many=True, context={'request': request}
-            )
-        else:
-            # همه
-            business_favs = FavoriteBusiness.objects.filter(
-                user=request.user
-            ).select_related('business', 'business__category', 'business__city')
-            post_favs = FavoritePost.objects.filter(
-                user=request.user
-            ).select_related('post', 'post__business').prefetch_related('post__images')
 
             return self.success_response(
-                data={
-                    'businesses': FavoriteBusinessSerializer(
-                        business_favs, many=True, context={'request': request}
-                    ).data,
-                    'posts': FavoritePostSerializer(
-                        post_favs, many=True, context={'request': request}
-                    ).data,
-                }
+                data=serializer.data,
+                meta={'count': len(serializer.data)},
             )
 
         return self.success_response(
-            data=serializer.data,
-            meta={'count': len(serializer.data)},
+            data=[],
+            meta={'count': 0},
         )
 
 
@@ -145,12 +104,10 @@ class FavoriteCountView(APIView, StandardResponseMixin):
     )
     def get(self, request):
         business_count = FavoriteBusiness.objects.filter(user=request.user).count()
-        post_count = FavoritePost.objects.filter(user=request.user).count()
 
         return self.success_response(
             data={
                 'business': business_count,
-                'post': post_count,
-                'total': business_count + post_count,
+                'total': business_count,
             }
         )

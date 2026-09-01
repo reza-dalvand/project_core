@@ -36,7 +36,6 @@ urlpatterns = [
         path('favorites/', include('apps.favorites.urls')),
         path('notifications/', include('apps.notifications.urls')),
         path('search/', include('apps.search.urls')),
-        path('explore/', include('apps.explore.urls')),
         path('portfolios/', include('apps.portfolios.urls')),
         path('ads/', include('apps.ads.urls')),
         path('reminders/', include('apps.reminders.urls')),

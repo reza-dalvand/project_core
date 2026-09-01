@@ -2,9 +2,7 @@
 سرویس مدیریت علاقه‌مندی‌ها
 """
 from django.db import transaction
-from django.contrib.contenttypes.models import ContentType
-
-from apps.favorites.models import FavoriteBusiness, FavoritePost
+from apps.favorites.models import FavoriteBusiness
 
 
 class FavoriteService:
@@ -38,29 +36,6 @@ class FavoriteService:
                     'message': 'به علاقه‌مندی‌ها اضافه شد',
                 }
 
-        elif favorite_type == 'post':
-            from apps.explore.models import ExplorePost
-            try:
-                post = ExplorePost.objects.get(id=object_id)
-            except ExplorePost.DoesNotExist:
-                return {'is_favorited': False, 'message': 'پست یافت نشد'}
-
-            with transaction.atomic():
-                fav, created = FavoritePost.objects.get_or_create(
-                    user=user,
-                    post=post,
-                )
-                if not created:
-                    fav.delete()
-                    return {
-                        'is_favorited': False,
-                        'message': 'از علاقه‌مندی‌ها حذف شد',
-                    }
-                return {
-                    'is_favorited': True,
-                    'message': 'به علاقه‌مندی‌ها اضافه شد',
-                }
-
         return {'is_favorited': False, 'message': 'نوع نامعتبر'}
 
     @classmethod
@@ -71,24 +46,15 @@ class FavoriteService:
                 user=user,
                 business_id=object_id,
             ).exists()
-        elif favorite_type == 'post':
-            return FavoritePost.objects.filter(
-                user=user,
-                post_id=object_id,
-            ).exists()
         return False
 
     @classmethod
     def get_user_favorites(cls, user, favorite_type=None, limit=50):
         """دریافت علاقه‌مندی‌های کاربر"""
-        if favorite_type == 'business':
+        if favorite_type == 'business' or favorite_type is None:
             return FavoriteBusiness.objects.filter(
                 user=user
             ).select_related('business')[:limit]
-        elif favorite_type == 'post':
-            return FavoritePost.objects.filter(
-                user=user
-            ).select_related('post')[:limit]
         return []
 
     @classmethod
@@ -96,9 +62,4 @@ class FavoriteService:
         """تعداد علاقه‌مندی‌ها"""
         if favorite_type == 'business':
             return FavoriteBusiness.objects.filter(user=user).count()
-        elif favorite_type == 'post':
-            return FavoritePost.objects.filter(user=user).count()
-
-        business_count = FavoriteBusiness.objects.filter(user=user).count()
-        post_count = FavoritePost.objects.filter(user=user).count()
-        return business_count + post_count
+        return FavoriteBusiness.objects.filter(user=user).count()

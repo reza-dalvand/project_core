@@ -22,47 +22,61 @@ from apps.portfolios.serializers import (
 logger = logging.getLogger(__name__)
 
 
+# apps/portfolios/views/__init__.py — فقط متد get
+
 class PortfolioListView(APIView, StandardResponseMixin):
-    """لیست عمومی نمونه‌کارها"""
+    """لیست عمومی نمونه‌کارها — برای ویترین"""
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
         responses={200: PortfolioListSerializer(many=True)},
         tags=['Portfolios'],
-        summary='لیست نمونه‌کارها',
+        summary='لیست نمونه‌کارها (ویترین)',
     )
     def get(self, request):
+        import random
+
         queryset = Portfolio.objects.filter(
             business__status='approved',
             business__is_active=True,
-        ).select_related('business', 'category', 'sub_service').prefetch_related(
-            'images'
-        ).order_by('-created_at')
+            is_active=True,
+        ).select_related(
+            'business', 'business__city',
+            'category', 'sub_service',
+        ).prefetch_related('images').order_by('-created_at')
 
+        # فیلتر دسته‌بندی
         category_id = request.query_params.get('category_id')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
 
+        # فیلتر کسب‌وکار خاص
         business_id = request.query_params.get('business_id')
         if business_id:
             queryset = queryset.filter(business_id=business_id)
 
+        # Pagination
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
+
+        # ✅ شافل رندوم
         if page is not None:
+            shuffled = list(page)
+            random.shuffle(shuffled)
             serializer = PortfolioListSerializer(
-                page, many=True, context={'request': request}
+                shuffled, many=True, context={'request': request}
             )
             return pagination.get_paginated_response(serializer.data)
 
+        shuffled = list(queryset)
+        random.shuffle(shuffled)
         serializer = PortfolioListSerializer(
-            queryset, many=True, context={'request': request}
+            shuffled, many=True, context={'request': request}
         )
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
         )
-
 
 class PortfolioDetailView(APIView, StandardResponseMixin):
     """جزئیات نمونه‌کار"""

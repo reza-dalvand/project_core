@@ -24,11 +24,23 @@ class PortfolioImageSerializer(serializers.ModelSerializer):
         return None
 
 
+# apps/portfolios/serializers/__init__.py — فقط لیست‌سریالایزر
+
 class PortfolioListSerializer(serializers.ModelSerializer):
-    business_name = serializers.CharField(source='business.name', read_only=True)
+    """Serializer لیست نمونه‌کارها برای ویترین"""
+    business_name = serializers.CharField(
+        source='business.name', read_only=True
+    )
     business_logo = serializers.SerializerMethodField()
-    category_name = serializers.CharField(source='category.name', read_only=True)
-    sub_service_name = serializers.CharField(source='sub_service.name', read_only=True)
+    business_booking_slug = serializers.CharField(
+        source='business.booking_slug', read_only=True
+    )
+    category_name = serializers.CharField(
+        source='category.name', read_only=True
+    )
+    sub_service_name = serializers.CharField(
+        source='sub_service.name', read_only=True
+    )
     images = PortfolioImageSerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
 
@@ -37,6 +49,7 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description',
             'business', 'business_name', 'business_logo',
+            'business_booking_slug',
             'category', 'category_name',
             'sub_service', 'sub_service_name',
             'cover_image', 'cover_image_url',
@@ -55,8 +68,7 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         if obj.cover_image and request:
             return request.build_absolute_uri(obj.cover_image.url)
         return None
-
-
+    
 class PortfolioDetailSerializer(PortfolioListSerializer):
     business_address = serializers.CharField(source='business.address', read_only=True)
     business_city = serializers.CharField(source='business.city.name', read_only=True)
