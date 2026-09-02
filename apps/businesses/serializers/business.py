@@ -210,9 +210,9 @@ class BusinessStatusSerializer(serializers.Serializer):
 
 
 class BusinessListSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
-    city_name = serializers.CharField(source='city.name', read_only=True)
-    # ✅ FIX فاز ۴: فیلد فاصله (از .distance() روی queryset)
+    # ✅ FIX 3: استفاده از SerializerMethodField برای جلوگیری از AttributeError در صورت null بودن روابط
+    category_name = serializers.SerializerMethodField()
+    city_name = serializers.SerializerMethodField()
     distance = serializers.SerializerMethodField()
 
     class Meta:
@@ -223,18 +223,21 @@ class BusinessListSerializer(serializers.ModelSerializer):
             'rating', 'reviews_count',
             'booking_slug', 'is_vip',
             'created_at',
-            'distance',  # ✅ اضافه شد
+            'distance',
         ]
 
-    # ✅ FIX فاز ۴: متد محاسبه فاصله
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else ''
+
+    def get_city_name(self, obj):
+        return obj.city.name if obj.city else ''
+
     def get_distance(self, obj):
-        """
-        فاصله به کیلومتر — فقط وقتی در queryset با .distance() annotate شده باشد
-        """
+        """فاصله به کیلومتر — فقط وقتی در queryset با .distance() annotate شده باشد"""
         if hasattr(obj, 'distance') and obj.distance is not None:
             return round(obj.distance.m / 1000, 2)
         return None
-
+    
 
 class BusinessGalleryUploadSerializer(serializers.Serializer):
     """Serializer آپلود تصویر گالری"""

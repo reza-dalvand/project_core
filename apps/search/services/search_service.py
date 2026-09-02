@@ -39,8 +39,8 @@ class SearchService:
 
     @classmethod
     def search_businesses(cls, query, province_id=None, city_id=None,
-                          category_id=None, min_rating=0, has_discount=False,
-                          limit=20):
+                      category_id=None, min_rating=0, has_discount=False,
+                      limit=20, lat=None, lng=None, radius=10):
         """
         جستجو در کسب‌وکارها
         
@@ -98,8 +98,8 @@ class SearchService:
         )[:limit]
 
     @classmethod
-    def search_services(cls, query, business_id=None, category_id=None,
-                        min_price=0, max_price=None, has_discount=False,
+    def search_services(cls, query, business_id=None, category_id=None, province_id=None, city_id=None,
+                        min_price=0, max_price=None, has_discount=False, lat=None, lng=None,
                         limit=20):
         """
         جستجو در خدمات

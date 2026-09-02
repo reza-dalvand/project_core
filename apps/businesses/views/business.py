@@ -21,6 +21,11 @@ from apps.businesses.serializers.business import (
     BusinessGallerySerializer,
     BusinessGalleryUploadSerializer,
 )
+from apps.services.models import Service 
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,12 +65,12 @@ class BusinessCreateView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
+    
 
 class BusinessListView(APIView, StandardResponseMixin):
     """لیست عمومی کسب‌وکارها با فیلترهای مختلف + nearby"""
     permission_classes = [permissions.AllowAny]
-
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(name='province_id', type=int, required=False),
@@ -73,11 +78,11 @@ class BusinessListView(APIView, StandardResponseMixin):
             OpenApiParameter(name='category_id', type=int, required=False),
             OpenApiParameter(name='search', type=str, required=False),
             OpenApiParameter(name='lat', type=float, required=False,
-                           description='عرض جغرافیایی کاربر'),
+                             description='عرض جغرافیایی کاربر'),
             OpenApiParameter(name='lng', type=float, required=False,
-                           description='طول جغرافیایی کاربر'),
+                             description='طول جغرافیایی کاربر'),
             OpenApiParameter(name='radius', type=float, required=False,
-                           description='شعاع جستجو (کیلومتر، پیش‌فرض ۱۰)'),
+                             description='شعاع جستجو (کیلومتر، پیش‌فرض ۱۰)'),
             OpenApiParameter(name='page', type=int, required=False),
             OpenApiParameter(name='page_size', type=int, required=False),
         ],
@@ -102,10 +107,15 @@ class BusinessListView(APIView, StandardResponseMixin):
 
         category_id = request.query_params.get('category_id')
         if category_id:
-            qs = qs.filter(
-                services__category_id=category_id,
-                services__is_active=True,
-            ).distinct()
+            # Materialize the subquery to avoid PostgreSQL DISTINCT + ORDER BY conflict
+            # when combined with PostGIS .distance() annotation
+            business_ids = list(
+                Service.objects.filter(
+                    category_id=category_id,
+                    is_active=True
+                ).values_list('business_id', flat=True).distinct()
+            )
+            qs = qs.filter(id__in=business_ids)
 
         search = request.query_params.get('search')
         if search:
@@ -123,9 +133,14 @@ class BusinessListView(APIView, StandardResponseMixin):
                 lat, lng = float(lat), float(lng)
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
+                
                 qs = qs.filter(
+                    location__isnull=False,  # فقط کسب‌وکارهایی که موقعیت مکانی دارند
                     location__distance_lte=(point, D(km=radius))
-                ).distance(point).order_by('distance')
+                ).annotate(
+                    distance=Distance('location', point) 
+                ).order_by('distance')                   
+                
             except (ValueError, TypeError):
                 pass
         else:

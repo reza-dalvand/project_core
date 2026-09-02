@@ -82,6 +82,14 @@ class ModelRequestListView(APIView, StandardResponseMixin):
             except (ValueError, TypeError):
                 pass
 
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+
+        if province_id:
+            queryset = queryset.filter(business__province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(business__city_id=city_id)
+
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
         if page is not None:
@@ -93,6 +101,7 @@ class ModelRequestListView(APIView, StandardResponseMixin):
         serializer = ModelRequestListSerializer(
             queryset, many=True, context={'request': request}
         )
+
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
@@ -261,6 +270,15 @@ class LineRentalListView(APIView, StandardResponseMixin):
             except (ValueError, TypeError):
                 pass
 
+        # بعد از فیلترهای موجود اضافه کنید:
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+
+        if province_id:
+            queryset = queryset.filter(business__province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(business__city_id=city_id)
+
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
         if page is not None:
@@ -272,6 +290,7 @@ class LineRentalListView(APIView, StandardResponseMixin):
         serializer = LineRentalListSerializer(
             queryset, many=True, context={'request': request}
         )
+        
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
