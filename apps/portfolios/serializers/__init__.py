@@ -32,6 +32,8 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         source='business.name', read_only=True
     )
     business_logo = serializers.SerializerMethodField()
+    # ✅ فیلد جدید: عکس صاحب کسب‌وکار
+    business_owner_photo = serializers.SerializerMethodField()
     business_booking_slug = serializers.CharField(
         source='business.booking_slug', read_only=True
     )
@@ -49,6 +51,7 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description',
             'business', 'business_name', 'business_logo',
+            'business_owner_photo',  # ✅ اضافه شد
             'business_booking_slug',
             'category', 'category_name',
             'sub_service', 'sub_service_name',
@@ -61,6 +64,13 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.business.logo and request:
             return request.build_absolute_uri(obj.business.logo.url)
+        return None
+
+    # ✅ متد جدید
+    def get_business_owner_photo(self, obj):
+        request = self.context.get('request')
+        if obj.business.owner_photo and request:
+            return request.build_absolute_uri(obj.business.owner_photo.url)
         return None
 
     def get_cover_image_url(self, obj):
