@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site_title|default:"پنل مدیریت" }}</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Vazirmatn, Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f0ec 0%, #efe7e1 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #2c2521;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 36px 30px;
+            box-shadow: 0 16px 48px rgba(44, 37, 33, 0.12);
+            border: 1px solid #eee5df;
+        }
+
+        .login-box h1 {
+            font-size: 24px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #2c2521;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7c716a;
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .alert-error,
+        .alert-success {
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-size: 13px;
+            margin-bottom: 18px;
+            line-height: 1.8;
+        }
+
+        .alert-error {
+            background: #fff1f1;
+            color: #b42318;
+            border: 1px solid #ffd6d6;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #4b423d;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1.5px solid #ddd2cb;
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #2c2521;
+            background: #fff;
+            transition: all .2s ease;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #a88b7d;
+            box-shadow: 0 0 0 4px rgba(168, 139, 125, 0.12);
+        }
+
+        button {
+            width: 100%;
+            margin-top: 18px;
+            padding: 14px 18px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #a88b7d 0%, #8d7468 100%);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 800;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all .2s ease;
+            box-shadow: 0 8px 22px rgba(168, 139, 125, 0.28);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(168, 139, 125, 0.36);
+        }
+
+        .link-button {
+            width: auto;
+            margin: 18px auto 0;
+            display: block;
+            background: transparent;
+            color: #8d7468;
+            box-shadow: none;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .link-button:hover {
+            background: transparent;
+            transform: none;
+            box-shadow: none;
+            color: #6f5a50;
+            text-decoration: underline;
+        }
+
+        .hint {
+            margin-top: 20px;
+            text-align: center;
+            color: #8b7f78;
+            font-size: 12px;
+            line-height: 1.9;
+        }
+
+        .otp-code {
+            direction: ltr;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 8px;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee3dc;
+            margin: 22px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>{{ site_header|default:"پنل مدیریت" }}</h1>
+        <div class="subtitle">
+            {{ index_title|default:"ورود امن با کد پیامکی" }}
+        </div>
+
+        {% if error %}
+            <div class="alert-error">{{ error }}</div>
+        {% endif %}
+
+        {% if message %}
+            <div class="alert-success">{{ message }}</div>
+        {% endif %}
+
+        {% if step == 'otp' %}
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="verify">
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <label>کد تایید پیامکی</label>
+                <input
+                    type="text"
+                    name="code"
+                    class="otp-code"
+                    maxlength="5"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="-----"
+                    required
+                    autofocus
+                >
+
+                <button type="submit">
+                    ورود به پنل مدیریت
+                </button>
+            </form>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send">
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <button type="submit" class="link-button">
+                    ارسال مجدد کد
+                </button>
+            </form>
+
+            <div class="divider"></div>
+
+            <div class="hint">
+                کد ورود به شماره
+                <strong>{{ masked_phone }}</strong>
+                ارسال شد.
+            </div>
+
+        {% else %}
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send">
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <label>شماره موبایل</label>
+                <input
+                    type="tel"
+                    name="phone"
+                    value="{{ phone }}"
+                    placeholder="09123456789"
+                    autocomplete="tel"
+                    inputmode="tel"
+                    required
+                    autofocus
+                >
+
+                <button type="submit">
+                    دریافت کد ورود
+                </button>
+            </form>
+
+            <div class="hint">
+                فقط شماره‌هایی که دسترسی مدیریت دارند می‌توانند وارد شوند.
+            </div>
+
+        {% endif %}
+    </div>
+</body>
+</html>

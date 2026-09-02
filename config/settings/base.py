@@ -426,48 +426,90 @@ JAZZMIN_SETTINGS = {
     "show_sidebar": True,
     "navigation_expanded": True,
     "icons": {
+        # ─── Auth ───
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
         "auth.Group": "fas fa-users",
+        # ─── Accounts ───
         "accounts": "fas fa-user-shield",
-        "accounts.CustomUser": "fas fa-users",
+        "accounts.User": "fas fa-users",                          # ✅ FIX: CustomUser → User
         "accounts.OtpCode": "fas fa-key",
         "accounts.UserDevice": "fas fa-mobile-alt",
+        "accounts.UserReferral": "fas fa-ticket-alt",             # ✅ NEW
+        "accounts.UserBankInfo": "fas fa-university",             # ✅ NEW
+        # ─── Categories ───
         "categories": "fas fa-layer-group",
         "categories.ServiceCategory": "fas fa-spa",
         "categories.SubService": "fas fa-list",
         "categories.BusinessCategory": "fas fa-store",
+        # ─── Locations ───
         "locations": "fas fa-map-marked-alt",
         "locations.Province": "fas fa-map",
         "locations.City": "fas fa-city",
+        # ─── Businesses ───
         "businesses": "fas fa-building",
         "businesses.Business": "fas fa-building",
         "businesses.BusinessGallery": "fas fa-images",
+        # ─── Services ───
         "services": "fas fa-concierge-bell",
         "services.Service": "fas fa-concierge-bell",
+        "services.PriceList": "fas fa-file-invoice-dollar",       # ✅ NEW
+        "services.PriceListNote": "fas fa-sticky-note",           # ✅ NEW
+        # ─── Schedules ───
         "schedules": "fas fa-calendar-week",
         "schedules.ServiceSchedule": "fas fa-calendar-day",
+        # ─── Appointments ───
         "appointments": "fas fa-calendar-check",
         "appointments.Appointment": "fas fa-calendar-alt",
+        # ─── Payments ───
         "payments": "fas fa-credit-card",
         "payments.Transaction": "fas fa-receipt",
         "payments.Settlement": "fas fa-money-check-alt",
+        # ─── Reviews ───
         "reviews": "fas fa-star",
         "reviews.Review": "fas fa-comment-alt",
+        # ─── Portfolios ───
         "portfolios": "fas fa-images",
         "portfolios.Portfolio": "fas fa-images",
+        "portfolios.PortfolioImage": "fas fa-image",              # ✅ NEW
+        # ─── Ads ───
         "ads": "fas fa-bullhorn",
         "ads.ModelRequest": "fas fa-user-tie",
         "ads.LineRental": "fas fa-handshake",
+        # ─── Ads Management ───
+        "ads_management": "fas fa-ad",                            # ✅ NEW
+        "ads_management.AdCampaign": "fas fa-chart-line",         # ✅ NEW
+        # ─── Explore ───
         "explore": "fas fa-compass",
         "explore.ExplorePost": "fas fa-image",
+        "explore.PostImage": "fas fa-images",                     # ✅ NEW
+        # ─── Reminders ───
         "reminders": "fas fa-bell",
         "reminders.RenewalReminder": "fas fa-bell",
+        # ─── Favorites ───
         "favorites": "fas fa-heart",
+        "favorites.FavoriteBusiness": "fas fa-heart",             # ✅ NEW
+        # ─── Search ───
         "search": "fas fa-search",
+        "search.SearchHistory": "fas fa-history",                 # ✅ NEW
+        # ─── Support ───
         "support": "fas fa-headset",
+        "support.FAQ": "fas fa-question-circle",                  # ✅ NEW
+        "support.SupportTicket": "fas fa-headset",                # ✅ NEW
+        # ─── Notifications ───
         "notifications": "fas fa-bell",
+        "notifications.Notification": "fas fa-bell",              # ✅ NEW
+        "notifications.PushDevice": "fas fa-mobile-alt",          # ✅ NEW
+        "notifications.SMSTemplate": "fas fa-sms",                # ✅ NEW
+        "notifications.SMSLog": "fas fa-envelope",                # ✅ NEW
+        # ─── Core ───
+        "core": "fas fa-cog",                                     # ✅ NEW
+        "core.AppConfig": "fas fa-sliders-h",                     # ✅ NEW
+        # ─── Landing ───
         "landing": "fas fa-globe",
+        "landing.SiteSettings": "fas fa-cogs",                    # ✅ NEW
+        "landing.HeroSection": "fas fa-image",                    # ✅ NEW
+        "landing.ContactMessage": "fas fa-envelope-open-text",    # ✅ NEW
     },
     "show_ui_builder": False,
     "changeform_format": "collapsible",
@@ -483,12 +525,14 @@ JAZZMIN_SETTINGS = {
         "reviews",
         "portfolios",
         "ads",
+        "ads_management",       # ✅ NEW
         "explore",
         "reminders",
         "favorites",
         "search",
         "support",
         "notifications",
+        "core",                 # ✅ NEW
         "landing",
         "auth",
     ],
@@ -508,7 +552,6 @@ JAZZMIN_UI_TWEAKS = {
     "dark_mode_theme": None,
     "actions_sticky_top": True,
 }
-
 # ═══════════════════════════════════════════════
 #   Celery Beat Schedule
 # ═══════════════════════════════════════════════

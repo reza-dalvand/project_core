@@ -140,6 +140,7 @@ class OtpCode(models.Model):
 
     class Purpose(models.TextChoices):
         LOGIN = 'login', 'ورود'
+        ADMIN_LOGIN = 'admin_login', 'ورود پنل مدیریت' 
         CHANGE_PHONE = 'change_phone', 'تغییر شماره'
         BOOKING_VERIFY = 'booking_verify', 'تایید رزرو'
         DELETE_ACCOUNT = 'delete_account', 'حذف حساب'

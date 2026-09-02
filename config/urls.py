@@ -6,6 +6,9 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from apps.core.admin_site import OTPAdminSite
+admin.site.__class__ = OTPAdminSite
+
 # ═══════ سفارشی‌سازی Admin ═══════
 admin.site.site_header = "پنل مدیریت بیو کلاب"
 admin.site.site_title = "بیو کلاب | مدیریت"

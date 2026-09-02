@@ -1,15 +1,11 @@
 from django.contrib import admin
 from .models import Business, BusinessGallery
-# ❌ BusinessTeamMember حذف شد
 
 
 class BusinessGalleryInline(admin.TabularInline):
     model = BusinessGallery
     extra = 3
     max_num = 3
-
-
-# ❌ BusinessTeamMemberInline حذف شد
 
 
 @admin.register(Business)
@@ -20,11 +16,19 @@ class BusinessAdmin(admin.ModelAdmin):
     ]
     list_filter = ['status', 'is_vip', 'category', 'province']
     search_fields = ['name', 'owner__phone', 'owner__first_name', 'owner__last_name']
-    readonly_fields = ['booking_slug', 'rating', 'reviews_count', 'booking_link_clicks', 'booking_link_bookings']
-    inlines = [BusinessGalleryInline]  # ❌ فقط gallery
+    readonly_fields = [
+        'booking_slug', 'rating', 'reviews_count',
+        'booking_link_clicks', 'booking_link_bookings',
+    ]
+    # ✅ FIX: raw_id_fields برای پرفورمنس
+    raw_id_fields = ['owner', 'category', 'province', 'city']
+    inlines = [BusinessGalleryInline]
     fieldsets = (
         ('🏪 اطلاعات پایه', {
-            'fields': ('owner', 'name', 'category', 'province', 'city', 'address', 'phone', 'working_hours', 'about'),
+            'fields': (
+                'owner', 'name', 'category', 'province', 'city',
+                'address', 'phone', 'working_hours', 'about',
+            ),
         }),
         ('🖼️ تصاویر', {
             'fields': ('cover_image', 'owner_photo', 'logo'),
@@ -62,6 +66,4 @@ class BusinessAdmin(admin.ModelAdmin):
 class BusinessGalleryAdmin(admin.ModelAdmin):
     list_display = ['business', 'sort_order']
     list_filter = ['business']
-
-
-# ❌ BusinessTeamMemberAdmin حذف شد
+    raw_id_fields = ['business']

@@ -4,7 +4,6 @@ Admin configuration for landing app (سایت معرفی بیو کلاب)
 """
 from django.contrib import admin
 from django.utils.html import format_html
-from import_export.admin import ImportExportModelAdmin
 from apps.core.admin_mixins import LandingAdminMixin
 from .models import (
     SiteSettings,
