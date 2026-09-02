@@ -1,17 +1,29 @@
 """
 تنظیمات محیط توسعه (Development)
 بیو کلاب — Local Development
-"""
 
+✅ اصل مهم این فایل:
+در محیط توسعه، استاتیک‌ها و مدیا همیشه لوکال سرو می‌شوند
+و هرگز از آروان (Arvan Cloud) خوانده نمی‌شوند — حتی اگر
+فایل .env شامل کلیدهای واقعی آروان یا APP_ENV=production باشد.
+"""
 from .base import *  # noqa
 
 # ─── Debug ───
 DEBUG = True
 
-
+# ─── App Environment: همیشه development در دولوپمنت ───
+# حتی اگر .env مقدار production داشته باشد، اینجا خنثی می‌شود.
+APP_ENV = 'development'
 IS_PRODUCTION = False
 IS_DEVELOPMENT = True
 
+# ─── غیرفعال‌سازی کامل آروان در توسعه ───
+# با خالی کردن کلیدها، هیچ‌کدام از factory ها (storage/sms/payment)
+# در این محیط به سرویس خارجی وصل نمی‌شوند.
+ARVAN_ACCESS_KEY = ''
+ARVAN_SECRET_KEY = ''
+ARVAN_CDN_URL = ''
 
 # ─── Allowed Hosts ───
 ALLOWED_HOSTS = [
@@ -48,31 +60,44 @@ CACHES = {
     }
 }
 
-# ─── Static & Media — Django serve in dev ───
+# ═══════════════════════════════════════════════
+#   Storage: ۱۰۰٪ لوکال — هرگز از آروان نخوان
+# ═══════════════════════════════════════════════
 STORAGES = {
     "default": {
+        # فایل‌های آپلودی (media) روی دیسک محلی
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        # ✅ StaticFilesStorage یعنی سرو استاتیک با STATIC_URL
+        # از طریق staticfiles finders — بدون manifest و بدون S3.
+        # (FileSystemStorageِ خام اینجا غلط بود چون base_url ندارد)
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# ─── سرو استاتیک توسط خود Django در توسعه ───
+# WhiteNoise فقط برای پروداکشن لازم است؛ در دولوپمنت حذفش می‌کنیم
+# تا runserver مستقیماً /static/ را سرو کند و نیازی به collectstatic نباشد.
+MIDDLEWARE = [
+    m for m in MIDDLEWARE
+    if m != 'whitenoise.middleware.WhiteNoiseMiddleware'
+]
+
+# ─── Static & Media — لوکال ───
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # ─── Email: Console (print to terminal) ───
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# ─── SMS: Mock (no real SMS sent) ───
-# KAVENEGAR_API_KEY is empty → MockSmsProvider will be used
-
+# ─── SMS: Console (بدون ارسال واقعی) ───
 # ─── Shahkar: Mock ───
-# SHAHKAR_API_KEY is empty → MockNationalIdVerifier will be used
-
 # ─── Payment: Sandbox ───
-# ZARINPAL_SANDBOX=True → sandbox mode
 
 # ─── Celery: Eager mode (optional — synchronous in dev) ───
-# Set CELERY_TASK_ALWAYS_EAGER=True in .env if you want
-# tasks to run synchronously without a worker
 import os
 if os.environ.get('CELERY_TASK_ALWAYS_EAGER', 'False').lower() == 'true':
     CELERY_TASK_ALWAYS_EAGER = True
@@ -107,7 +132,7 @@ LOGGING = {
         },
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'WARNING',  # Set to DEBUG to see SQL queries
+            'level': 'WARNING',
             'propagate': False,
         },
         'django.request': {
@@ -152,14 +177,6 @@ except ImportError:
 # ─── Shell Plus (IPython) ───
 SHELL_PLUS = "ipython"
 SHELL_PLUS_PRINT_SQL = True
-
-# ─── Media URL — served by Django in dev ───
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
-# ─── Static URL ───
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # ─── Disable throttling in dev ───
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
