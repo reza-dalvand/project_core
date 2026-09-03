@@ -9,6 +9,8 @@ from .views import (
     VerifyServiceCodeView,
     RegenerateCodeView,
     AppointmentStatsView,
+    BusinessTodayAppointmentsView,
+    
 )
 
 app_name = 'appointments'
@@ -18,6 +20,7 @@ urlpatterns = [
     path('create/', CreateAppointmentView.as_view(), name='create-appointment'),
     path('my-appointments/', CustomerAppointmentsView.as_view(), name='my-appointments'),
     path('business-appointments/', BusinessAppointmentsView.as_view(), name='business-appointments'),
+    path('business-today/', BusinessTodayAppointmentsView.as_view(), name='business-today-appointments'),  # ← جدید
     path('business-stats/', AppointmentStatsView.as_view(), name='business-stats'),
     path('<int:pk>/', AppointmentDetailView.as_view(), name='appointment-detail'),
 

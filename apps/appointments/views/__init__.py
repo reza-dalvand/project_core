@@ -426,3 +426,38 @@ class AppointmentStatsView(APIView, StandardResponseMixin):
         }
 
         return self.success_response(data=stats)
+    
+
+# ═══════ در انتهای فایل، قبل از آخرین کلاس یا بعد از آن اضافه شود ═══════
+
+class BusinessTodayAppointmentsView(generics.ListAPIView, StandardResponseMixin):
+    """
+    نوبت‌های فعال امروز کسب‌وکار
+    فقط نوبت‌های با وضعیت reserved برای تاریخ امروز
+    برای ویجت داشبورد مدیریت
+    """
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    serializer_class = AppointmentListSerializer
+
+    @extend_schema(
+        tags=['Appointments - Business'],
+        summary='نوبت‌های فعال امروز',
+        description='نوبت‌های رزرو شده امروز برای نمایش در داشبورد مدیریت',
+    )
+    def get_queryset(self):
+        import jdatetime
+
+        business = self.request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+
+        today = jdatetime.date.today()
+        today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
+
+        return Appointment.objects.filter(
+            business=business,
+            status=Appointment.Status.RESERVED,
+            date_key=today_key,
+        ).select_related(
+            'service', 'customer'
+        ).order_by('time_slot')
