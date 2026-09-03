@@ -22,6 +22,7 @@ from apps.payments.serializers import (
     SettlementSerializer,
     SettlementRequestSerializer,
     BusinessFinancialStatsSerializer,
+    VerifyPaymentSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,66 @@ class InitiatePaymentView(APIView, StandardResponseMixin):
                 code='PAYMENT_ERROR',
             )
 
+
+class VerifyPaymentView(APIView, StandardResponseMixin):
+    """
+    تایید پرداخت توسط فرانت‌اند
+    فرانت‌اند پس از بازگشت از درگاه، Authority و Status را به این اندپوینت ارسال می‌کند
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=VerifyPaymentSerializer,
+        tags=['Payment'],
+        summary='تایید پرداخت (فراخوانی توسط فرانت‌اند)',
+    )
+    def post(self, request):
+        serializer = VerifyPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        authority = serializer.validated_data['authority']
+        gateway_status = serializer.validated_data.get('status', '')
+
+        try:
+            tx = Transaction.objects.select_related('appointment').get(
+                gateway_transaction_id=authority,
+                customer=request.user,
+            )
+        except Transaction.DoesNotExist:
+            return self.error_response(
+                message='تراکنش یافت نشد یا متعلق به شما نیست',
+                code='TRANSACTION_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if gateway_status == 'OK':
+            try:
+                result = PaymentService.verify_payment(
+                    track_id=authority,
+                    expected_amount=tx.amount,
+                )
+                return self.success_response(
+                    data={
+                        'tracking_code': tx.tracking_code,
+                        'amount': tx.amount,
+                        'ref_number': result.get('ref_number'),
+                    },
+                    message='پرداخت با موفقیت تایید شد',
+                )
+            except Exception as e:
+                error_code = getattr(e, 'code', 'VERIFY_ERROR')
+                return self.error_response(
+                    message=str(e),
+                    code=error_code,
+                )
+        else:
+            # Status == NOK یا هر چیز دیگر
+            tx.status = Transaction.Status.FAILED
+            tx.save(update_fields=['status'])
+            return self.error_response(
+                message='پرداخت توسط شما لغو شد یا ناموفق بود',
+                code='PAYMENT_FAILED',
+            )
 
 class CustomerPaymentHistoryView(generics.ListAPIView, StandardResponseMixin):
     """تاریخچه پرداخت‌های مشتری"""

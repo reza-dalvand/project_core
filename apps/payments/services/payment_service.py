@@ -59,7 +59,7 @@ class PaymentService:
 
         # اتصال به درگاه پرداخت
         from django.conf import settings
-        callback_url = f"{settings.SITE_DOMAIN}/api/v1/payments/callback/"
+        callback_url = f"{settings.FRONTEND_URL.rstrip('/')}/profile/payments"
 
         try:
             from shared.payment import get_payment_gateway

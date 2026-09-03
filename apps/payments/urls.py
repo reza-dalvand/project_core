@@ -8,6 +8,7 @@ from .views import (
     BusinessFinancialStatsView,
     SettlementRequestView,
     SettlementListView,
+    VerifyPaymentView,
 )
 
 app_name = 'payments'
@@ -16,6 +17,8 @@ urlpatterns = [
     # ═══════════ Gateway ═══════════
     path('initiate/', InitiatePaymentView.as_view(), name='initiate-payment'),
     path('callback/', PaymentCallbackView.as_view(), name='payment-callback'), 
+    path('verify/', VerifyPaymentView.as_view(), name='verify-payment'), 
+
 
     # ═══════════ Customer History ═══════════
     path('history/', CustomerPaymentHistoryView.as_view(), name='payment-history'),

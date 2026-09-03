@@ -304,11 +304,15 @@ SHAHKAR_API_URL = env(
     default='https://s.api.ir/api/sw1/ShahkarLite',
 )
 SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='fake-api-key-for-dev')
+# config/settings/base.py
 ZARINPAL_MERCHANT_ID = env(
     'ZARINPAL_MERCHANT_ID',
-    default='fake-merchant-id-for-dev',
+    default='11111111-1111-1111-1111-111111111111', # ✅ UUID ثابت برای Sandbox
 )
+
+ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True) 
 ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True)
+
 ZARINPAL_CALLBACK_URL = env(
     'ZARINPAL_CALLBACK_URL',
     default='http://localhost:8000/api/v1/payments/callback/',
