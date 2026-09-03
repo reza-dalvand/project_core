@@ -97,7 +97,7 @@ class Appointment(BaseModel):
         if (
             not self.verification_code
             and self.status == self.Status.RESERVED
-            and not self.is_trust_based  # ✅ شرط جدید
+            and not self.is_trust_based 
         ):
             self.verification_code = self.generate_verification_code()
         self.remaining_amount = self.total_price - self.deposit_amount
