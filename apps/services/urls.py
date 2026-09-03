@@ -5,7 +5,7 @@ from .views import (
     ServiceDetailView,
     ServiceToggleActiveView,
 )
-from apps.services.views.price_list import PriceListView
+from apps.services.views.price_list import PriceListView, PublicPriceListView  # ← اضافه شد
 
 app_name = 'services'
 
@@ -14,4 +14,5 @@ urlpatterns = [
     path('<int:pk>/', ServiceDetailView.as_view(), name='service-detail'),
     path('<int:pk>/toggle-active/', ServiceToggleActiveView.as_view(), name='service-toggle-active'),
     path('price-list/', PriceListView.as_view(), name='price-list'),
+    path('price-list/public/', PublicPriceListView.as_view(), name='price-list-public'),  # ← جدید
 ]
