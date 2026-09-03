@@ -1,0 +1,299 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}پشتیبانی{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-2);
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-open { background: #D1ECF1; color: #0C5460; }
+    .status-in_progress { background: #FFF3CD; color: #856404; }
+    .status-resolved { background: #D4EDDA; color: #155724; }
+    .status-closed { background: #F8D7DA; color: #721C24; }
+    .priority-low { background: #E9ECEF; color: #495057; }
+    .priority-medium { background: #D1ECF1; color: #0C5460; }
+    .priority-high { background: #FFF3CD; color: #856404; }
+    .priority-urgent { background: #F8D7DA; color: #721C24; }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .quick-link:hover {
+        background: rgba(168, 139, 125, 0.1);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .quick-link .icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ─── هدر ─── -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">🎧 پشتیبانی</h2>
+        <p class="text-muted mb-0">تیکت‌ها، پیام‌های تماس و اعلان‌ها</p>
+    </div>
+</div>
+
+<!-- ─── آمار کلی ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎧</div>
+            <div class="stat-value">{{ ticket_stats.total|default:"0" }}</div>
+            <div class="stat-label">کل تیکت‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">📥</div>
+            <div class="stat-value">{{ ticket_stats.open|default:"0" }}</div>
+            <div class="stat-label">تیکت‌های باز</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">⏳</div>
+            <div class="stat-value">{{ message_stats.unread|default:"0" }}</div>
+            <div class="stat-label">پیام‌های خوانده‌نشده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">✅</div>
+            <div class="stat-value">{{ message_stats.replied|default:"0" }}</div>
+            <div class="stat-label">پاسخ داده شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🔔</div>
+            <div class="stat-value">{{ notification_stats.total|default:"0" }}</div>
+            <div class="stat-label">اعلان‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">📨</div>
+            <div class="stat-value">{{ sms_stats.total|default:"0" }}</div>
+            <div class="stat-label">پیامک‌ها</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── لینک‌های سریع ─── -->
+<div class="section-title">🔗 دسترسی سریع</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:tickets_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎧</div>
+            <div>
+                <strong>تیکت‌ها</strong>
+                <br><small class="text-muted">مدیریت تیکت‌ها</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:messages_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">📨</div>
+            <div>
+                <strong>پیام‌های تماس</strong>
+                <br><small class="text-muted">فرم تماس سایت</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:notifications_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🔔</div>
+            <div>
+                <strong>اعلان‌ها</strong>
+                <br><small class="text-muted">اعلان‌های کاربران</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:sms_logs' %}" class="quick-link">
+            <div class="icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">📱</div>
+            <div>
+                <strong>لاگ پیامک‌ها</strong>
+                <br><small class="text-muted">پیامک‌های ارسال شده</small>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- ─── تیکت‌های در انتظار ─── -->
+{% if pending_tickets %}
+<div class="section-title">⏳ تیکت‌های در انتظار پاسخ</div>
+<div class="table-card mb-4">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>موضوع</th>
+                <th>کاربر</th>
+                <th>اولویت</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in pending_tickets %}
+            <tr>
+                <td><strong>{{ ticket.subject }}</strong></td>
+                <td>
+                    {{ ticket.user.full_name|default:"-" }}
+                    <br>
+                    <small class="text-muted"><code>{{ ticket.user.phone }}</code></small>
+                </td>
+                <td>
+                    {% if ticket.priority == 'urgent' %}
+                    <span class="status-badge priority-urgent">🔥 فوری</span>
+                    {% elif ticket.priority == 'high' %}
+                    <span class="status-badge priority-high">بالا</span>
+                    {% elif ticket.priority == 'medium' %}
+                    <span class="status-badge priority-medium">متوسط</span>
+                    {% else %}
+                    <span class="status-badge priority-low">کم</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ticket.status == 'open' %}
+                    <span class="status-badge status-open">باز</span>
+                    {% else %}
+                    <span class="status-badge status-in_progress">در حال بررسی</span>
+                    {% endif %}
+                </td>
+                <td>{{ ticket.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">
+                        پاسخ
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ─── پیام‌های اخیر ─── -->
+{% if recent_messages %}
+<div class="section-title">📨 پیام‌های تماس اخیر</div>
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>نام</th>
+                <th>موضوع</th>
+                <th>شماره تماس</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in recent_messages %}
+            <tr>
+                <td>{{ msg.full_name }}</td>
+                <td>{{ msg.subject }}</td>
+                <td><code>{{ msg.phone }}</code></td>
+                <td>
+                    {% if msg.is_read %}
+                    <span class="status-badge" style="background:#D4EDDA;color:#155724;">خوانده شده</span>
+                    {% else %}
+                    <span class="status-badge" style="background:#FFF3CD;color:#856404;">خوانده نشده</span>
+                    {% endif %}
+                </td>
+                <td>{{ msg.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:message_detail' msg.id %}" class="btn btn-sm btn-outline-primary">
+                        مشاهده
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

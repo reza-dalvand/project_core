@@ -1,0 +1,212 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}لاگ پیامک‌ها{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-pending { background: #FFF3CD; color: #856404; }
+    .status-sent { background: #D1ECF1; color: #0C5460; }
+    .status-delivered { background: #D4EDDA; color: #155724; }
+    .status-failed { background: #F8D7DA; color: #721C24; }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📱 لاگ پیامک‌ها</h2>
+        <p class="text-muted mb-0">پیامک‌های ارسال شده به کاربران</p>
+    </div>
+    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد پشتیبانی
+    </a>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.sent }}</div>
+            <div class="label">ارسال شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.delivered }}</div>
+            <div class="label">تحویل شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.failed }}</div>
+            <div class="label">ناموفق</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="شماره تلفن، متن پیام..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">🔍 جستجو</button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>شماره</th>
+                <th>قالب</th>
+                <th>پیام</th>
+                <th>وضعیت</th>
+                <th>هزینه</th>
+                <th>تاریخ ارسال</th>
+                <th>خطا</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sms in page_obj %}
+            <tr>
+                <td><code>{{ sms.phone }}</code></td>
+                <td>{{ sms.template.name|default:"-" }}</td>
+                <td>{{ sms.message|truncatechars:50 }}</td>
+                <td>
+                    {% if sms.status == 'pending' %}
+                    <span class="status-badge status-pending">در انتظار</span>
+                    {% elif sms.status == 'sent' %}
+                    <span class="status-badge status-sent">ارسال شده</span>
+                    {% elif sms.status == 'delivered' %}
+                    <span class="status-badge status-delivered">تحویل شده</span>
+                    {% else %}
+                    <span class="status-badge status-failed">ناموفق</span>
+                    {% endif %}
+                </td>
+                <td>{{ sms.cost|default:"0"|floatformat:0 }}</td>
+                <td>{{ sms.sent_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    {% if sms.error_message %}
+                    <span class="text-danger small">{{ sms.error_message|truncatechars:30 }}</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    لاگ پیامکی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ status_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ status_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

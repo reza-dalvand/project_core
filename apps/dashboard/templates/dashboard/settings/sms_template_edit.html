@@ -1,0 +1,35 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}ویرایش قالب{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">✏️ ویرایش قالب: {{ template.name }}</h4>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">نام قالب</label>
+                    <input type="text" class="form-control" name="name" value="{{ template.name }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن قالب</label>
+                    <textarea class="form-control" name="pattern" rows="4">{{ template.pattern }}</textarea>
+                    <small class="text-muted">متغیرها: {% for var in template.variables %}<code>{{ var }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}</small>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                               {% if template.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="isActive">فعال</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

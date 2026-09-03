@@ -1,0 +1,244 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}تراکنش‌ها{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-blocked { background: #FFF3CD; color: #856404; }
+    .status-settling { background: #D1ECF1; color: #0C5460; }
+    .status-settled { background: #D4EDDA; color: #155724; }
+    .status-refunded { background: #F8D7DA; color: #721C24; }
+    .status-failed { background: #F8D7DA; color: #721C24; }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📋 تراکنش‌ها</h2>
+        <p class="text-muted mb-0">لیست تمام تراکنش‌های مالی</p>
+    </div>
+    <a href="{% url 'dashboard:financial' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد مالی
+    </a>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.blocked }}</div>
+            <div class="label">بلوکه</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.settling }}</div>
+            <div class="label">در حال تسویه</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.settled }}</div>
+            <div class="label">تسویه شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.refunded }}</div>
+            <div class="label">مسترد شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="stat-mini">
+            <div class="value">{{ stats.failed }}</div>
+            <div class="label">ناموفق</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="کد پیگیری، شماره مشتری، نام کسب‌وکار..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">نوع</label>
+            <select name="type" class="form-select">
+                <option value="all" {% if type_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in type_choices %}
+                <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">🔍 فیلتر</button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کد پیگیری</th>
+                <th>مشتری</th>
+                <th>کسب‌وکار</th>
+                <th>مبلغ</th>
+                <th>کمیسیون</th>
+                <th>نوع</th>
+                <th>وضعیت</th>
+                <th>درگاه</th>
+                <th>تاریخ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in page_obj %}
+            <tr>
+                <td><code>{{ tx.tracking_code }}</code></td>
+                <td>
+                    {{ tx.customer.full_name|default:"-" }}
+                    <br>
+                    <small class="text-muted"><code>{{ tx.customer.phone }}</code></small>
+                </td>
+                <td>{{ tx.business.name }}</td>
+                <td><strong>{{ tx.amount|floatformat:0 }}</strong> تومان</td>
+                <td>{{ tx.app_fee|floatformat:0 }} تومان</td>
+                <td>{{ tx.get_type_display }}</td>
+                <td>
+                    {% if tx.status == 'blocked' %}
+                    <span class="status-badge status-blocked">بلوکه</span>
+                    {% elif tx.status == 'settling' %}
+                    <span class="status-badge status-settling">در حال تسویه</span>
+                    {% elif tx.status == 'settled' %}
+                    <span class="status-badge status-settled">تسویه شده</span>
+                    {% elif tx.status == 'refunded' %}
+                    <span class="status-badge status-refunded">مسترد شده</span>
+                    {% else %}
+                    <span class="status-badge status-failed">ناموفق</span>
+                    {% endif %}
+                </td>
+                <td>{{ tx.gateway }}</td>
+                <td>{{ tx.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:transaction_detail' tx.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10" class="text-center py-4 text-muted">
+                    تراکنشی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ status_filter }}&type={{ type_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ status_filter }}&type={{ type_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

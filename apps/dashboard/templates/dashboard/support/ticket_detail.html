@@ -1,0 +1,122 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}جزئیات تیکت{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">🎧 جزئیات تیکت</h4>
+
+            <div class="mb-3">
+                <label class="small text-muted">موضوع</label>
+                <div class="fw-bold">{{ ticket.subject }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">کاربر</label>
+                <div class="fw-semibold">{{ ticket.user.full_name|default:"-" }}</div>
+                <small class="text-muted"><code>{{ ticket.user.phone }}</code></small>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">اولویت</label>
+                <div>
+                    {% if ticket.priority == 'urgent' %}
+                    <span class="status-badge" style="background:#F8D7DA;color:#721C24;">🔥 فوری</span>
+                    {% elif ticket.priority == 'high' %}
+                    <span class="status-badge" style="background:#FFF3CD;color:#856404;">بالا</span>
+                    {% elif ticket.priority == 'medium' %}
+                    <span class="status-badge" style="background:#D1ECF1;color:#0C5460;">متوسط</span>
+                    {% else %}
+                    <span class="status-badge" style="background:#E9ECEF;color:#495057;">کم</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">وضعیت</label>
+                <div>
+                    {% if ticket.status == 'open' %}
+                    <span class="status-badge" style="background:#D1ECF1;color:#0C5460;">باز</span>
+                    {% elif ticket.status == 'in_progress' %}
+                    <span class="status-badge" style="background:#FFF3CD;color:#856404;">در حال بررسی</span>
+                    {% elif ticket.status == 'resolved' %}
+                    <span class="status-badge" style="background:#D4EDDA;color:#155724;">حل شده</span>
+                    {% else %}
+                    <span class="status-badge" style="background:#F8D7DA;color:#721C24;">بسته شده</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">تاریخ ایجاد</label>
+                <div class="fw-semibold">{{ ticket.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+
+            {% if ticket.responded_at %}
+            <div class="mb-3">
+                <label class="small text-muted">زمان پاسخ</label>
+                <div class="fw-semibold">{{ ticket.responded_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ─── پیام و پاسخ ─── -->
+    <div class="col-lg-8">
+        <!-- پیام کاربر -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📝 پیام کاربر</h5>
+            <div class="alert alert-light" style="border: 1px solid var(--border);">
+                {{ ticket.message|linebreaks }}
+            </div>
+        </div>
+
+        <!-- پاسخ فعلی -->
+        {% if ticket.response %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">💬 پاسخ پشتیبانی</h5>
+            <div class="alert alert-success">
+                {{ ticket.response|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- فرم پاسخ -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">✍️ ثبت پاسخ / بروزرسانی وضعیت</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">پاسخ</label>
+                    <textarea class="form-control" name="response" rows="4"
+                              placeholder="پاسخ خود را بنویسید...">{{ ticket.response }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">وضعیت جدید</label>
+                    <select class="form-select" name="status">
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if ticket.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ثبت پاسخ
+                </button>
+            </form>
+        </div>
+
+        <!-- لینک‌ها -->
+        <div class="mt-3">
+            <a href="{% url 'dashboard:tickets_list' %}" class="btn btn-outline-secondary btn-sm">
+                ← بازگشت به لیست تیکت‌ها
+            </a>
+            <a href="{% url 'dashboard:user_detail' ticket.user.id %}" class="btn btn-outline-primary btn-sm">
+                👤 مشاهده پروفایل کاربر
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

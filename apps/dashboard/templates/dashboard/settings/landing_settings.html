@@ -1,0 +1,97 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}تنظیمات لندینگ{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">🌐 تنظیمات لندینگ</h4>
+            <form method="post">
+                {% csrf_token %}
+
+                <h6 class="fw-bold mb-3">🏷️ برندینگ</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">نام سایت</label>
+                        <input type="text" class="form-control" name="site_name"
+                               value="{{ settings.site_name|default:'بیو کلاب' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">شعار سایت</label>
+                        <input type="text" class="form-control" name="site_slogan"
+                               value="{{ settings.site_slogan|default:'' }}">
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold mb-3">📞 اطلاعات تماس</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">شماره تلفن</label>
+                        <input type="text" class="form-control" name="phone"
+                               value="{{ settings.phone|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">ایمیل</label>
+                        <input type="email" class="form-control" name="email"
+                               value="{{ settings.email|default:'' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">آدرس</label>
+                    <input type="text" class="form-control" name="address"
+                           value="{{ settings.address|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ساعات کاری</label>
+                    <input type="text" class="form-control" name="working_hours"
+                           value="{{ settings.working_hours|default:'' }}">
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold mb-3">🌐 شبکه‌های اجتماعی</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">اینستاگرام</label>
+                        <input type="url" class="form-control" name="instagram_url"
+                               value="{{ settings.instagram_url|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">تلگرام</label>
+                        <input type="url" class="form-control" name="telegram_url"
+                               value="{{ settings.telegram_url|default:'' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">واتساپ</label>
+                    <input type="url" class="form-control" name="whatsapp_url"
+                           value="{{ settings.whatsapp_url|default:'' }}">
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold mb-3">📱 لینک‌های دانلود</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">کافه‌بازار</label>
+                        <input type="url" class="form-control" name="cafebazaar_url"
+                               value="{{ settings.cafebazaar_url|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">مایکت</label>
+                        <input type="url" class="form-control" name="myket_url"
+                               value="{{ settings.myket_url|default:'' }}">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تنظیمات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

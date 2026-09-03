@@ -1,0 +1,165 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}تنظیمات{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-2);
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .quick-link:hover {
+        background: rgba(168, 139, 125, 0.1);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .quick-link .icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ─── هدر ─── -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">⚙️ تنظیمات داشبورد</h2>
+        <p class="text-muted mb-0">مدیریت نقش‌ها، ادمین‌ها و تنظیمات سیستم</p>
+    </div>
+</div>
+
+<!-- ─── آمار کلی ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎭</div>
+            <div class="stat-value">{{ role_stats.total|default:"0" }}</div>
+            <div class="stat-label">نقش‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">👨‍💼</div>
+            <div class="stat-value">{{ admin_stats.total|default:"0" }}</div>
+            <div class="stat-label">ادمین‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">📝</div>
+            <div class="stat-value">{{ sms_stats.total|default:"0" }}</div>
+            <div class="stat-label">قالب‌های پیامک</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">🌐</div>
+            <div class="stat-value">{{ site_settings.site_name|default:"-" }}</div>
+            <div class="stat-label">نام سایت</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── لینک‌های سریع ─── -->
+<div class="section-title">🔗 دسترسی سریع</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:roles_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎭</div>
+            <div>
+                <strong>نقش‌ها</strong>
+                <br><small class="text-muted">مدیریت نقش‌های ادمین</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:admins_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">👨‍💼</div>
+            <div>
+                <strong>ادمین‌ها</strong>
+                <br><small class="text-muted">مدیریت کاربران ادمین</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:system_settings' %}" class="quick-link">
+            <div class="icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">🔧</div>
+            <div>
+                <strong>تنظیمات سیستم</strong>
+                <br><small class="text-muted">نسخه و حالت تعمیرات</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:sms_templates' %}" class="quick-link">
+            <div class="icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">📱</div>
+            <div>
+                <strong>قالب‌های پیامک</strong>
+                <br><small class="text-muted">مدیریت قالب‌ها</small>
+            </div>
+        </a>
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:landing_settings' %}" class="quick-link">
+            <div class="icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🌐</div>
+            <div>
+                <strong>تنظیمات لندینگ</strong>
+                <br><small class="text-muted">سایت معرفی</small>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

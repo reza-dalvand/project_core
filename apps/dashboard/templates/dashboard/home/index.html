@@ -1,0 +1,513 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}داشبورد{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+        height: 100%;
+    }
+    .stat-card:hover {
+        box-shadow: 0 4px 16px rgba(44, 37, 33, 0.08);
+        transform: translateY(-2px);
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    .stat-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-2);
+    }
+    .stat-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table {
+        margin-bottom: 0;
+    }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .status-pending { background: #FFF3CD; color: #856404; }
+    .status-approved { background: #D4EDDA; color: #155724; }
+    .status-rejected { background: #F8D7DA; color: #721C24; }
+    .status-reserved { background: #D1ECF1; color: #0C5460; }
+    .status-done { background: #D4EDDA; color: #155724; }
+    .status-cancelled { background: #F8D7DA; color: #721C24; }
+    .status-blocked { background: #FFF3CD; color: #856404; }
+    .status-settled { background: #D4EDDA; color: #155724; }
+    .status-settling { background: #D1ECF1; color: #0C5460; }
+    .status-refunded { background: #F8D7DA; color: #721C24; }
+    .chart-container {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        height: 300px;
+    }
+    .quick-action {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+    }
+    .quick-action:hover {
+        background: rgba(168, 139, 125, 0.1);
+        border-color: var(--primary);
+    }
+    .quick-action .icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ─── هدر داشبورد ─── -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-1">👋 خوش آمدید</h2>
+                    <p class="text-muted mb-0">
+                        نقش: <strong>سوپر ادمین</strong> | 
+                        ورود: <strong>{{ phone }}</strong> | 
+                        زمان: <strong>{{ current_time|date:"H:i" }}</strong>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'dashboard:users_list' %}" class="btn btn-outline-secondary btn-sm">👥 کاربران</a>
+                    <a href="{% url 'dashboard:businesses_list' %}" class="btn btn-outline-secondary btn-sm">🏪 کسب‌وکارها</a>
+                    <a href="{% url 'dashboard:financial' %}" class="btn btn-outline-secondary btn-sm">💰 مالی</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── کارت‌های آمار اصلی ─── -->
+<div class="row g-4 mb-4">
+    <!-- کاربران -->
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(168, 139, 125, 0.1); color: #8D7468;">👥</div>
+            <div class="stat-value">{{ users_stats.total|default:"0" }}</div>
+            <div class="stat-label">کاربران</div>
+            <div class="mt-2">
+                <span class="stat-badge" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">
+                    +{{ users_stats.new_today|default:"0" }} امروز
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- کسب‌وکارها -->
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">🏪</div>
+            <div class="stat-value">{{ businesses_stats.total|default:"0" }}</div>
+            <div class="stat-label">کسب‌وکارها</div>
+            <div class="mt-2">
+                <span class="stat-badge" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">
+                    {{ businesses_stats.pending|default:"0" }} در انتظار تایید
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- نوبت‌ها -->
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">📅</div>
+            <div class="stat-value">{{ appointments_stats.total|default:"0" }}</div>
+            <div class="stat-label">نوبت‌ها</div>
+            <div class="mt-2">
+                <span class="stat-badge" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">
+                    {{ appointments_stats.reserved|default:"0" }} فعال
+                </span>
+            </div>
+        </div>
+    </div>
+    <!-- تراکنش‌ها -->
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">💰</div>
+            <div class="stat-value">{{ transactions_stats.total|default:"0" }}</div>
+            <div class="stat-label">تراکنش‌ها</div>
+            <div class="mt-2">
+                <span class="stat-badge" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">
+                    {{ transactions_stats.total_amount|default:"0"|floatformat:0 }} تومان
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── کارت‌های آمار ثانویه ─── -->
+<div class="row g-4 mb-4">
+    <!-- نظرات -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #F57F17;">⭐</div>
+            <div class="stat-value">{{ reviews_stats.total|default:"0" }}</div>
+            <div class="stat-label">نظرات</div>
+        </div>
+    </div>
+    <!-- تیکت‌ها -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎧</div>
+            <div class="stat-value">{{ tickets_stats.total|default:"0" }}</div>
+            <div class="stat-label">تیکت‌ها</div>
+        </div>
+    </div>
+    <!-- پیام‌های تماس -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">📨</div>
+            <div class="stat-value">{{ contact_stats.total|default:"0" }}</div>
+            <div class="stat-label">پیام‌ها</div>
+        </div>
+    </div>
+    <!-- اکسپلور -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">🔍</div>
+            <div class="stat-value">{{ explore_stats.total|default:"0" }}</div>
+            <div class="stat-label">پست‌ها</div>
+        </div>
+    </div>
+    <!-- نمونه‌کارها -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">🖼️</div>
+            <div class="stat-value">{{ portfolios_stats.total|default:"0" }}</div>
+            <div class="stat-label">نمونه‌کارها</div>
+        </div>
+    </div>
+    <!-- تسویه‌ها -->
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(0, 188, 212, 0.1); color: #0097A7;">🏧</div>
+            <div class="stat-value">-</div>
+            <div class="stat-label">تسویه‌ها</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── نمودارها ─── -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="chart-container">
+            <h6 class="fw-bold mb-3">📅 نوبت‌های ۷ روز اخیر</h6>
+            <canvas id="appointmentsChart"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-container">
+            <h6 class="fw-bold mb-3">💰 تراکنش‌های ۷ روز اخیر</h6>
+            <canvas id="transactionsChart"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-container">
+            <h6 class="fw-bold mb-3">👥 کاربران جدید ۷ روز اخیر</h6>
+            <canvas id="usersChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ─── کسب‌وکارهای در انتظار تایید ─── -->
+{% if pending_businesses %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="section-title">⏳ کسب‌وکارهای در انتظار تایید</div>
+        <div class="table-card">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>نام کسب‌وکار</th>
+                        <th>مالک</th>
+                        <th>شهر</th>
+                        <th>تاریخ ثبت</th>
+                        <th>وضعیت</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for business in pending_businesses %}
+                    <tr>
+                        <td><strong>{{ business.name }}</strong></td>
+                        <td>{{ business.owner.phone }}</td>
+                        <td>{{ business.city.name }}</td>
+                        <td>{{ business.created_at|date:"Y/m/d" }}</td>
+                        <td><span class="status-badge status-pending">در انتظار</span></td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-outline-success">تایید</a>
+                            <a href="#" class="btn btn-sm btn-outline-danger">رد</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ─── لیست‌های اخیر ─── -->
+<div class="row g-4">
+    <!-- کاربران اخیر -->
+    <div class="col-lg-6">
+        <div class="section-title">👥 کاربران اخیر</div>
+        <div class="table-card">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>شماره</th>
+                        <th>نام</th>
+                        <th>تاریخ عضویت</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr>
+                        <td>{{ user.phone }}</td>
+                        <td>{{ user.full_name|default:"-" }}</td>
+                        <td>{{ user.date_joined|date:"Y/m/d" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="status-badge status-approved">فعال</span>
+                            {% else %}
+                            <span class="status-badge status-rejected">غیرفعال</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- نوبت‌های اخیر -->
+    <div class="col-lg-6">
+        <div class="section-title">📅 نوبت‌های اخیر</div>
+        <div class="table-card">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>مشتری</th>
+                        <th>خدمت</th>
+                        <th>تاریخ</th>
+                        <th>وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for apt in recent_appointments %}
+                    <tr>
+                        <td>{{ apt.customer.phone }}</td>
+                        <td>{{ apt.service.name }}</td>
+                        <td>{{ apt.date_key }}</td>
+                        <td>
+                            {% if apt.status == 'reserved' %}
+                            <span class="status-badge status-reserved">رزرو شده</span>
+                            {% elif apt.status == 'done' %}
+                            <span class="status-badge status-done">انجام شده</span>
+                            {% else %}
+                            <span class="status-badge status-cancelled">لغو شده</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ─── تراکنش‌های اخیر ─── -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="section-title">💰 تراکنش‌های اخیر</div>
+        <div class="table-card">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>کد پیگیری</th>
+                        <th>مشتری</th>
+                        <th>کسب‌وکار</th>
+                        <th>مبلغ</th>
+                        <th>نوع</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in recent_transactions %}
+                    <tr>
+                        <td><code>{{ tx.tracking_code }}</code></td>
+                        <td>{{ tx.customer.phone }}</td>
+                        <td>{{ tx.business.name }}</td>
+                        <td>{{ tx.amount|floatformat:0 }} تومان</td>
+                        <td>{{ tx.get_type_display }}</td>
+                        <td>
+                            {% if tx.status == 'blocked' %}
+                            <span class="status-badge status-blocked">بلوکه</span>
+                            {% elif tx.status == 'settling' %}
+                            <span class="status-badge status-settling">در حال تسویه</span>
+                            {% elif tx.status == 'settled' %}
+                            <span class="status-badge status-settled">تسویه شده</span>
+                            {% elif tx.status == 'refunded' %}
+                            <span class="status-badge status-refunded">مسترد شده</span>
+                            {% else %}
+                            <span class="status-badge status-rejected">ناموفق</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ tx.created_at|date:"Y/m/d H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    // ─── نمودار نوبت‌ها ───
+    const appointmentsCtx = document.getElementById('appointmentsChart').getContext('2d');
+    new Chart(appointmentsCtx, {
+        type: 'line',
+        data: {
+            labels: {{ appointments_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
+            datasets: [{
+                label: 'نوبت‌ها',
+                data: {{ appointments_7days|map(attribute='count')|list|tojson }},
+                borderColor: '#A88B7D',
+                backgroundColor: 'rgba(168, 139, 125, 0.1)',
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+
+    // ─── نمودار تراکنش‌ها ───
+    const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
+    new Chart(transactionsCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ transactions_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
+            datasets: [{
+                label: 'تراکنش‌ها',
+                data: {{ transactions_7days|map(attribute='count')|list|tojson }},
+                backgroundColor: '#4CAF50',
+                borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+        }
+    });
+
+    // ─── نمودار کاربران ───
+    const usersCtx = document.getElementById('usersChart').getContext('2d');
+    new Chart(usersCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ users_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
+            datasets: [{
+                data: {{ users_7days|map(attribute='count')|list|tojson }},
+                backgroundColor: [
+                    '#A88B7D', '#8D7468', '#C5AE9F',
+                    '#4CAF50', '#2196F3', '#FF9800', '#9C27B0'
+                ],
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+{% endblock %}

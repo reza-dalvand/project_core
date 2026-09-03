@@ -1,0 +1,16 @@
+/* استایل‌های اضافی داشبورد */
+:root {
+    --primary: #A88B7D;
+    --primary-dark: #8D7468;
+    --primary-light: #C5AE9F;
+    --bg: #F5F0EC;
+    --card: #FFFFFF;
+    --text: #2C2521;
+    --text-2: #5A504B;
+    --border: #DCD1CB;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+}

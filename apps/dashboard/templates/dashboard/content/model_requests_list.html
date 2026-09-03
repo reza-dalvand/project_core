@@ -1,0 +1,198 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}درخواست‌های مدل{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-urgent { background: #F8D7DA; color: #721C24; }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">👤 درخواست‌های مدل</h2>
+        <p class="text-muted mb-0">آگهی‌های مدلینگ کسب‌وکارها</p>
+    </div>
+    <a href="{% url 'dashboard:content' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد محتوا
+    </a>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل درخواست‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.urgent }}</div>
+            <div class="label">فوری</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="عنوان، نام کسب‌وکار..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary w-100">🔍 جستجو</button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>عنوان</th>
+                <th>کسب‌وکار</th>
+                <th>خدمت</th>
+                <th>نوع هزینه</th>
+                <th>تخفیف</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in page_obj %}
+            <tr>
+                <td><strong>{{ req.title }}</strong></td>
+                <td>{{ req.business.name }}</td>
+                <td>{{ req.service.name }}</td>
+                <td>{{ req.get_cost_type_display }}</td>
+                <td>{{ req.discount }}%</td>
+                <td>
+                    {% if req.is_urgent %}
+                    <span class="status-badge status-urgent">🔥 فوری</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ req.created_at|date:"Y/m/d" }}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="confirmDelete({{ req.id }}, '{{ req.title|escapejs }}')">
+                        🗑️ حذف
+                    </button>
+                    <form method="post" action="{% url 'dashboard:model_request_delete' req.id %}" id="deleteForm{{ req.id }}" class="d-none">
+                        {% csrf_token %}
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    درخواست مدلی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(requestId, title) {
+        if (confirm(`آیا از حذف درخواست مدل "${title}" مطمئن هستید؟`)) {
+            document.getElementById('deleteForm' + requestId).submit();
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}تیکت‌ها{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-open { background: #D1ECF1; color: #0C5460; }
+    .status-in_progress { background: #FFF3CD; color: #856404; }
+    .status-resolved { background: #D4EDDA; color: #155724; }
+    .status-closed { background: #F8D7DA; color: #721C24; }
+    .priority-low { background: #E9ECEF; color: #495057; }
+    .priority-medium { background: #D1ECF1; color: #0C5460; }
+    .priority-high { background: #FFF3CD; color: #856404; }
+    .priority-urgent { background: #F8D7DA; color: #721C24; }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">🎧 تیکت‌های پشتیبانی</h2>
+        <p class="text-muted mb-0">مدیریت تیکت‌های کاربران</p>
+    </div>
+    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد پشتیبانی
+    </a>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل</div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-mini">
+            <div class="value">{{ stats.open }}</div>
+            <div class="label">باز</div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-mini">
+            <div class="value">{{ stats.in_progress }}</div>
+            <div class="label">در حال بررسی</div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-mini">
+            <div class="value">{{ stats.resolved }}</div>
+            <div class="label">حل شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="stat-mini">
+            <div class="value">{{ stats.closed }}</div>
+            <div class="label">بسته شده</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="موضوع، پیام، شماره تلفن..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">اولویت</label>
+            <select name="priority" class="form-select">
+                <option value="all" {% if priority_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in priority_choices %}
+                <option value="{{ value }}" {% if priority_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">🔍 فیلتر</button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>موضوع</th>
+                <th>کاربر</th>
+                <th>اولویت</th>
+                <th>وضعیت</th>
+                <th>پاسخ</th>
+                <th>تاریخ ایجاد</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in page_obj %}
+            <tr>
+                <td><strong>{{ ticket.subject|truncatechars:50 }}</strong></td>
+                <td>
+                    {{ ticket.user.full_name|default:"-" }}
+                    <br>
+                    <small class="text-muted"><code>{{ ticket.user.phone }}</code></small>
+                </td>
+                <td>
+                    {% if ticket.priority == 'urgent' %}
+                    <span class="status-badge priority-urgent">🔥 فوری</span>
+                    {% elif ticket.priority == 'high' %}
+                    <span class="status-badge priority-high">بالا</span>
+                    {% elif ticket.priority == 'medium' %}
+                    <span class="status-badge priority-medium">متوسط</span>
+                    {% else %}
+                    <span class="status-badge priority-low">کم</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ticket.status == 'open' %}
+                    <span class="status-badge status-open">باز</span>
+                    {% elif ticket.status == 'in_progress' %}
+                    <span class="status-badge status-in_progress">در حال بررسی</span>
+                    {% elif ticket.status == 'resolved' %}
+                    <span class="status-badge status-resolved">حل شده</span>
+                    {% else %}
+                    <span class="status-badge status-closed">بسته شده</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ticket.response %}
+                    <span class="text-success">✅ پاسخ داده شده</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ ticket.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    تیکتی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ status_filter }}&priority={{ priority_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ status_filter }}&priority={{ priority_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

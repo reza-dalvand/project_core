@@ -40,9 +40,6 @@ IS_DEVELOPMENT = APP_ENV == 'development'
 #   Application Definition
 # ═══════════════════════════════════════════════
 THIRD_PARTY_APPS = [
-    # ═══ Jazzmin باید اول از همه باشد ═══
-    'jazzmin',
-    # ✅ فاز ۱: اضافه شد — بدون این، بک‌اند Jinja2 در TEMPLATES کار نمی‌کند
     'django_jinja',
     # REST API
     'rest_framework',
@@ -132,8 +129,8 @@ TEMPLATES = [
         'OPTIONS': {
             'environment': 'config.jinja2_env.environment',
             'match_extension': '.html',
-            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/).*\.html$',
-            'app_dirname': 'templates',
+            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/|dashboard/).*\.html$',
+            'app_dirname': 'templates', 'app_dirname': 'templates',
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -409,149 +406,6 @@ DASHBOARD_ADMIN_URL = env('DASHBOARD_ADMIN_URL', default='dashboard-admin/')
 LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 
-# ═══════════════════════════════════════════════
-#   Jazzmin Settings
-# ═══════════════════════════════════════════════
-JAZZMIN_SETTINGS = {
-    "site_title": "بیو کلاب | پنل مدیریت",
-    "site_header": "بیو کلاب",
-    "site_brand": "BEAU CLUB Admin",
-    "welcome_sign": "به پنل مدیریت بیو کلاب خوش آمدید",
-    "copyright": "beau Co. © 2024-2026",
-    "user_avatar": "avatar",
-    "topmenu_links": [
-        {"name": "🏠 سایت معرفی", "url": "/", "new_window": True},
-        {"name": "📚 مستندات API", "url": "/api/docs/", "new_window": True},
-    ],
-    "show_sidebar": True,
-    "navigation_expanded": True,
-    "icons": {
-        # ─── Auth ───
-        "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
-        # ─── Accounts ───
-        "accounts": "fas fa-user-shield",
-        "accounts.User": "fas fa-users",                          # ✅ FIX: CustomUser → User
-        "accounts.OtpCode": "fas fa-key",
-        "accounts.UserDevice": "fas fa-mobile-alt",
-        "accounts.UserReferral": "fas fa-ticket-alt",             # ✅ NEW
-        "accounts.UserBankInfo": "fas fa-university",             # ✅ NEW
-        # ─── Categories ───
-        "categories": "fas fa-layer-group",
-        "categories.ServiceCategory": "fas fa-spa",
-        "categories.SubService": "fas fa-list",
-        "categories.BusinessCategory": "fas fa-store",
-        # ─── Locations ───
-        "locations": "fas fa-map-marked-alt",
-        "locations.Province": "fas fa-map",
-        "locations.City": "fas fa-city",
-        # ─── Businesses ───
-        "businesses": "fas fa-building",
-        "businesses.Business": "fas fa-building",
-        "businesses.BusinessGallery": "fas fa-images",
-        # ─── Services ───
-        "services": "fas fa-concierge-bell",
-        "services.Service": "fas fa-concierge-bell",
-        "services.PriceList": "fas fa-file-invoice-dollar",       # ✅ NEW
-        "services.PriceListNote": "fas fa-sticky-note",           # ✅ NEW
-        # ─── Schedules ───
-        "schedules": "fas fa-calendar-week",
-        "schedules.ServiceSchedule": "fas fa-calendar-day",
-        # ─── Appointments ───
-        "appointments": "fas fa-calendar-check",
-        "appointments.Appointment": "fas fa-calendar-alt",
-        # ─── Payments ───
-        "payments": "fas fa-credit-card",
-        "payments.Transaction": "fas fa-receipt",
-        "payments.Settlement": "fas fa-money-check-alt",
-        # ─── Reviews ───
-        "reviews": "fas fa-star",
-        "reviews.Review": "fas fa-comment-alt",
-        # ─── Portfolios ───
-        "portfolios": "fas fa-images",
-        "portfolios.Portfolio": "fas fa-images",
-        "portfolios.PortfolioImage": "fas fa-image",              # ✅ NEW
-        # ─── Ads ───
-        "ads": "fas fa-bullhorn",
-        "ads.ModelRequest": "fas fa-user-tie",
-        "ads.LineRental": "fas fa-handshake",
-        # ─── Ads Management ───
-        "ads_management": "fas fa-ad",                            # ✅ NEW
-        "ads_management.AdCampaign": "fas fa-chart-line",         # ✅ NEW
-        # ─── Explore ───
-        "explore": "fas fa-compass",
-        "explore.ExplorePost": "fas fa-image",
-        "explore.PostImage": "fas fa-images",                     # ✅ NEW
-        # ─── Reminders ───
-        "reminders": "fas fa-bell",
-        "reminders.RenewalReminder": "fas fa-bell",
-        # ─── Favorites ───
-        "favorites": "fas fa-heart",
-        "favorites.FavoriteBusiness": "fas fa-heart",             # ✅ NEW
-        # ─── Search ───
-        "search": "fas fa-search",
-        "search.SearchHistory": "fas fa-history",                 # ✅ NEW
-        # ─── Support ───
-        "support": "fas fa-headset",
-        "support.FAQ": "fas fa-question-circle",                  # ✅ NEW
-        "support.SupportTicket": "fas fa-headset",                # ✅ NEW
-        # ─── Notifications ───
-        "notifications": "fas fa-bell",
-        "notifications.Notification": "fas fa-bell",              # ✅ NEW
-        "notifications.PushDevice": "fas fa-mobile-alt",          # ✅ NEW
-        "notifications.SMSTemplate": "fas fa-sms",                # ✅ NEW
-        "notifications.SMSLog": "fas fa-envelope",                # ✅ NEW
-        # ─── Core ───
-        "core": "fas fa-cog",                                     # ✅ NEW
-        "core.AppConfig": "fas fa-sliders-h",                     # ✅ NEW
-        # ─── Landing ───
-        "landing": "fas fa-globe",
-        "landing.SiteSettings": "fas fa-cogs",                    # ✅ NEW
-        "landing.HeroSection": "fas fa-image",                    # ✅ NEW
-        "landing.ContactMessage": "fas fa-envelope-open-text",    # ✅ NEW
-    },
-    "show_ui_builder": False,
-    "changeform_format": "collapsible",
-    "order_with_respect_to": [
-        "accounts",
-        "categories",
-        "locations",
-        "businesses",
-        "services",
-        "schedules",
-        "appointments",
-        "payments",
-        "reviews",
-        "portfolios",
-        "ads",
-        "ads_management",       # ✅ NEW
-        "explore",
-        "reminders",
-        "favorites",
-        "search",
-        "support",
-        "notifications",
-        "core",                 # ✅ NEW
-        "landing",
-        "auth",
-    ],
-}
-
-JAZZMIN_UI_TWEAKS = {
-    "navbar_small_text": False,
-    "footer_small_text": False,
-    "sidebar_fixed": True,
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "sidebar_nav_compact_style": False,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": False,
-    "theme": "cosmo",
-    "dark_mode_theme": None,
-    "actions_sticky_top": True,
-}
 # ═══════════════════════════════════════════════
 #   Celery Beat Schedule
 # ═══════════════════════════════════════════════

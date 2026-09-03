@@ -1,0 +1,269 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}جزئیات کسب‌وکار{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            {% if business.logo %}
+            <div class="text-center mb-3">
+                <img src="{{ business.logo.url }}" style="width: 80px; height: 80px; border-radius: 16px; object-fit: cover;">
+            </div>
+            {% endif %}
+
+            <h4 class="text-center fw-bold mb-1">
+                {{ business.name }}
+                {% if business.is_vip %}
+                <span class="vip-badge">👑 VIP</span>
+                {% endif %}
+            </h4>
+            <p class="text-center text-muted mb-3">{{ business.category.name }}</p>
+
+            <div class="text-center mb-3">
+                {% if business.status == 'pending' %}
+                <span class="status-badge status-pending">در انتظار تایید</span>
+                {% elif business.status == 'approved' %}
+                <span class="status-badge status-approved">تایید شده</span>
+                {% else %}
+                <span class="status-badge status-rejected">رد شده</span>
+                {% endif %}
+            </div>
+
+            {% if business.rating > 0 %}
+            <div class="text-center mb-3">
+                <span class="fs-4 fw-bold">{{ business.rating }}</span>
+                <span class="text-warning">⭐</span>
+                <br>
+                <small class="text-muted">{{ business.reviews_count }} نظر</small>
+            </div>
+            {% endif %}
+
+            <hr>
+
+            <!-- دکمه‌های عملیات -->
+            <div class="d-grid gap-2">
+                {% if business.status == 'pending' %}
+                <form method="post" action="{% url 'dashboard:business_approve' business.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success w-100">
+                        ✅ تایید کسب‌وکار
+                    </button>
+                </form>
+
+                <form method="post" action="{% url 'dashboard:business_reject' business.id %}" id="rejectForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="rejection_reason" id="rejectionReason" value="">
+                    <button type="button" class="btn btn-danger w-100" onclick="showRejectModal()">
+                        ❌ رد کسب‌وکار
+                    </button>
+                </form>
+                {% endif %}
+
+                <form method="post" action="{% url 'dashboard:business_toggle_vip' business.id %}">
+                    {% csrf_token %}
+                    {% if business.is_vip %}
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        خروج از VIP
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-outline-warning w-100">
+                        👑 VIP کردن
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+
+            {% if business.rejection_reason %}
+            <hr>
+            <div class="alert alert-warning small">
+                <strong>دلیل رد:</strong>
+                {{ business.rejection_reason }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ─── جزئیات و آمار ─── -->
+    <div class="col-lg-8">
+        <!-- اطلاعات -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📋 اطلاعات کسب‌وکار</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">مالک</label>
+                    <div class="fw-semibold">{{ business.owner.full_name }}</div>
+                    <small class="text-muted"><code>{{ business.owner.phone }}</code></small>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شهر</label>
+                    <div class="fw-semibold">{{ business.city.name }}، {{ business.province.name }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">آدرس</label>
+                    <div class="fw-semibold">{{ business.address }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">تلفن</label>
+                    <div class="fw-semibold">{{ business.phone|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">ساعات کاری</label>
+                    <div class="fw-semibold">{{ business.working_hours|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">لینک رزرو</label>
+                    <div class="fw-semibold"><code>{{ business.booking_slug }}</code></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">وضعیت اطلاعات بانکی</label>
+                    <div class="fw-semibold">
+                        {% if business.bank_info_verified %}
+                        <span class="text-success">✅ تایید شده</span>
+                        {% elif business.bank_info_registered %}
+                        <span class="text-warning">⚠️ ثبت شده</span>
+                        {% else %}
+                        <span class="text-muted">❌ ثبت نشده</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">تاریخ ثبت</label>
+                    <div class="fw-semibold">{{ business.created_at|date:"Y/m/d H:i" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- آمار -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-4">
+                <div class="stat-mini">
+                    <div class="value">{{ business_stats.services_count }}</div>
+                    <div class="label">خدمات فعال</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="stat-mini">
+                    <div class="value">{{ business_stats.appointments_count }}</div>
+                    <div class="label">نوبت‌ها</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="stat-mini">
+                    <div class="value">{{ business_stats.transactions_count }}</div>
+                    <div class="label">تراکنش‌ها</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- خدمات -->
+        {% if services %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">💆 خدمات</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>قیمت</th>
+                            <th>تخفیف</th>
+                            <th>بیعانه</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in services %}
+                        <tr>
+                            <td>{{ service.name }}</td>
+                            <td>{{ service.original_price|floatformat:0 }} تومان</td>
+                            <td>{{ service.discount_percent }}%</td>
+                            <td>
+                                {% if service.has_deposit %}
+                                {{ service.deposit_amount|floatformat:0 }} تومان
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if service.is_active %}
+                                <span class="status-badge status-active">فعال</span>
+                                {% else %}
+                                <span class="status-badge status-inactive">غیرفعال</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- نظرات اخیر -->
+        {% if recent_reviews %}
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">⭐ نظرات اخیر</h5>
+            {% for review in recent_reviews %}
+            <div class="border-bottom pb-3 mb-3 {% if forloop.last %}border-0 pb-0 mb-0{% endif %}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>{{ review.customer.full_name }}</strong>
+                        <span class="text-warning ms-2">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= review.rating %}⭐{% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    <small class="text-muted">{{ review.created_at|date:"Y/m/d" }}</small>
+                </div>
+                {% if review.comment %}
+                <p class="text-muted small mb-0 mt-1">{{ review.comment }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ─── مودال رد کسب‌وکار ─── -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد کسب‌وکار</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">دلیل رد (الزامی)</label>
+                <textarea class="form-control" id="rejectReasonText" rows="3"
+                          placeholder="دلیل رد کسب‌وکار را بنویسید..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="button" class="btn btn-danger" onclick="submitReject()">رد کسب‌وکار</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showRejectModal() {
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+        modal.show();
+    }
+
+    function submitReject() {
+        const reason = document.getElementById('rejectReasonText').value.trim();
+        if (!reason) {
+            alert('لطفاً دلیل رد را وارد کنید.');
+            return;
+        }
+        document.getElementById('rejectionReason').value = reason;
+        document.getElementById('rejectForm').submit();
+    }
+</script>
+{% endblock %}

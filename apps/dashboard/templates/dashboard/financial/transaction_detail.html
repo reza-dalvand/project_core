@@ -1,0 +1,148 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}جزئیات تراکنش{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">💰 تراکنش</h4>
+            
+            <div class="mb-3">
+                <label class="small text-muted">کد پیگیری</label>
+                <div class="fw-bold"><code>{{ transaction.tracking_code }}</code></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small text-muted">شماره ارجاع</label>
+                <div class="fw-bold"><code>{{ transaction.ref_number|default:"-" }}</code></div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small text-muted">مبلغ</label>
+                <div class="fs-4 fw-bold">{{ transaction.amount|floatformat:0 }} تومان</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small text-muted">کمیسیون بیو کلاب</label>
+                <div class="fw-bold">{{ transaction.app_fee|floatformat:0 }} تومان</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small text-muted">نوع</label>
+                <div class="fw-bold">{{ transaction.get_type_display }}</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="small text-muted">وضعیت</label>
+                <div>
+                    {% if transaction.status == 'blocked' %}
+                    <span class="status-badge status-blocked">بلوکه (در انتظار خدمت)</span>
+                    {% elif transaction.status == 'settling' %}
+                    <span class="status-badge status-settling">در حال تسویه</span>
+                    {% elif transaction.status == 'settled' %}
+                    <span class="status-badge status-settled">تسویه شده</span>
+                    {% elif transaction.status == 'refunded' %}
+                    <span class="status-badge status-refunded">مسترد به مشتری</span>
+                    {% else %}
+                    <span class="status-badge status-failed">ناموفق</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if transaction.settled_at %}
+            <div class="mb-3">
+                <label class="small text-muted">تاریخ تسویه</label>
+                <div class="fw-bold">{{ transaction.settled_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            {% endif %}
+            
+            {% if transaction.refund_reason %}
+            <div class="mb-3">
+                <label class="small text-muted">دلیل استرداد</label>
+                <div class="fw-bold">{{ transaction.refund_reason }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ─── جزئیات ─── -->
+    <div class="col-lg-8">
+        <!-- اطلاعات مشتری و کسب‌وکار -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">👥 طرفین تراکنش</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">مشتری</label>
+                    <div class="fw-semibold">{{ transaction.customer.full_name }}</div>
+                    <small class="text-muted"><code>{{ transaction.customer.phone }}</code></small>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">کسب‌وکار</label>
+                    <div class="fw-semibold">{{ transaction.business.name }}</div>
+                    <small class="text-muted">{{ transaction.business.owner.phone }}</small>
+                </div>
+                {% if transaction.appointment %}
+                <div class="col-md-6">
+                    <label class="small text-muted">نوبت مرتبط</label>
+                    <div class="fw-semibold">{{ transaction.appointment.service.name }}</div>
+                    <small class="text-muted">{{ transaction.appointment.date_key }} - {{ transaction.appointment.time_slot }}</small>
+                </div>
+                {% endif %}
+                <div class="col-md-6">
+                    <label class="small text-muted">تاریخ ایجاد</label>
+                    <div class="fw-semibold">{{ transaction.created_at|date:"Y/m/d H:i:s" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- اطلاعات درگاه -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">🏦 اطلاعات درگاه پرداخت</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">درگاه</label>
+                    <div class="fw-semibold">{{ transaction.gateway }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شناسه تراکنش درگاه</label>
+                    <div class="fw-semibold"><code>{{ transaction.gateway_transaction_id|default:"-" }}</code></div>
+                </div>
+                {% if transaction.card_number %}
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره کارت</label>
+                    <div class="fw-semibold"><code>{{ transaction.card_number }}</code></div>
+                </div>
+                {% endif %}
+                {% if transaction.card_bank %}
+                <div class="col-md-6">
+                    <label class="small text-muted">بانک کارت</label>
+                    <div class="fw-semibold">{{ transaction.card_bank }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- لینک‌ها -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">🔗 لینک‌های مرتبط</h5>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'dashboard:transactions_list' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت به لیست تراکنش‌ها
+                </a>
+                {% if transaction.business %}
+                <a href="{% url 'dashboard:business_detail' transaction.business.id %}" class="btn btn-outline-primary btn-sm">
+                    🏪 مشاهده کسب‌وکار
+                </a>
+                {% endif %}
+                {% if transaction.customer %}
+                <a href="{% url 'dashboard:user_detail' transaction.customer.id %}" class="btn btn-outline-primary btn-sm">
+                    👤 مشاهده مشتری
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,237 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}کسب‌وکارها{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-pending { background: #FFF3CD; color: #856404; }
+    .status-approved { background: #D4EDDA; color: #155724; }
+    .status-rejected { background: #F8D7DA; color: #721C24; }
+    .vip-badge {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: #000;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">🏪 مدیریت کسب‌وکارها</h2>
+        <p class="text-muted mb-0">تایید، رد و مدیریت کسب‌وکارهای ثبت‌نام شده</p>
+    </div>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل کسب‌وکارها</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.pending }}</div>
+            <div class="label">در انتظار تایید</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.approved }}</div>
+            <div class="label">تایید شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.rejected }}</div>
+            <div class="label">رد شده</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="نام کسب‌وکار، شماره مالک، شهر..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
+                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>در انتظار تایید</option>
+                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>تایید شده</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>رد شده</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">
+                🔍 فیلتر
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کسب‌وکار</th>
+                <th>مالک</th>
+                <th>شهر</th>
+                <th>وضعیت</th>
+                <th>امتیاز</th>
+                <th>خدمات</th>
+                <th>تاریخ ثبت</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for business in page_obj %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div>
+                            <strong>{{ business.name }}</strong>
+                            {% if business.is_vip %}
+                            <span class="vip-badge ms-1">👑 VIP</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">{{ business.category.name }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {{ business.owner.full_name }}
+                    <br>
+                    <small class="text-muted"><code>{{ business.owner.phone }}</code></small>
+                </td>
+                <td>{{ business.city.name }}</td>
+                <td>
+                    {% if business.status == 'pending' %}
+                    <span class="status-badge status-pending">در انتظار</span>
+                    {% elif business.status == 'approved' %}
+                    <span class="status-badge status-approved">تایید شده</span>
+                    {% else %}
+                    <span class="status-badge status-rejected">رد شده</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if business.rating > 0 %}
+                    {{ business.rating }} ⭐ ({{ business.reviews_count }})
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ business.services_count }}</td>
+                <td>{{ business.created_at|date:"Y/m/d" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:business_detail' business.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    کسب‌وکاری یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ status_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ status_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

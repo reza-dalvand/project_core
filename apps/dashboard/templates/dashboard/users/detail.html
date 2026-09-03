@@ -1,0 +1,199 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}جزئیات کاربر{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <div class="text-center mb-3">
+                {% if user_obj.avatar %}
+                <img src="{{ user_obj.avatar.url }}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                {% else %}
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 32px; color: var(--primary-dark);">
+                    {{ user_obj.first_name|first|default:"؟" }}
+                </div>
+                {% endif %}
+            </div>
+            <h4 class="text-center fw-bold mb-1">{{ user_obj.full_name }}</h4>
+            <p class="text-center text-muted mb-3"><code>{{ user_obj.phone }}</code></p>
+
+            <div class="d-grid gap-2">
+                {% if user_obj.is_active %}
+                <span class="status-badge status-active text-center">✅ فعال</span>
+                {% else %}
+                <span class="status-badge status-inactive text-center">❌ غیرفعال</span>
+                {% endif %}
+
+                {% if user_obj.is_verified %}
+                <span class="status-badge status-active text-center mt-2">📱 شماره تایید شده</span>
+                {% else %}
+                <span class="status-badge status-unverified text-center mt-2">⚠️ شماره تایید نشده</span>
+                {% endif %}
+            </div>
+
+            <hr>
+
+            <form method="post" action="{% url 'dashboard:user_toggle_active' user_obj.id %}">
+                {% csrf_token %}
+                {% if user_obj.is_active %}
+                <button type="submit" class="btn btn-danger w-100">
+                    🚫 غیرفعال کردن کاربر
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-success w-100">
+                    ✅ فعال کردن کاربر
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- ─── جزئیات و آمار ─── -->
+    <div class="col-lg-8">
+        <!-- اطلاعات شخصی -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📋 اطلاعات شخصی</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">نام</label>
+                    <div class="fw-semibold">{{ user_obj.first_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">نام خانوادگی</label>
+                    <div class="fw-semibold">{{ user_obj.last_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">کد ملی</label>
+                    <div class="fw-semibold">{{ user_obj.national_id|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">وضعیت کد ملی</label>
+                    <div class="fw-semibold">
+                        {% if user_obj.is_national_id_verified %}
+                        <span class="text-success">✅ تایید شده</span>
+                        {% else %}
+                        <span class="text-warning">⚠️ تایید نشده</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">تاریخ عضویت</label>
+                    <div class="fw-semibold">{{ user_obj.date_joined|date:"Y/m/d H:i" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">آخرین ورود</label>
+                    <div class="fw-semibold">{{ user_obj.last_login|date:"Y/m/d H:i"|default:"-" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- آمار -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-mini">
+                    <div class="value">{{ user_stats.businesses_count }}</div>
+                    <div class="label">کسب‌وکارها</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-mini">
+                    <div class="value">{{ user_stats.appointments_count }}</div>
+                    <div class="label">نوبت‌ها</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-mini">
+                    <div class="value">{{ user_stats.transactions_count }}</div>
+                    <div class="label">تراکنش‌ها</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-mini">
+                    <div class="value">{{ user_stats.reviews_count }}</div>
+                    <div class="label">نظرات</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- کسب‌وکارها -->
+        {% if user_businesses %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">🏪 کسب‌وکارهای کاربر</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>وضعیت</th>
+                            <th>امتیاز</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for business in user_businesses %}
+                        <tr>
+                            <td>{{ business.name }}</td>
+                            <td>
+                                {% if business.status == 'approved' %}
+                                <span class="status-badge status-active">تایید شده</span>
+                                {% elif business.status == 'pending' %}
+                                <span class="status-badge status-unverified">در انتظار</span>
+                                {% else %}
+                                <span class="status-badge status-inactive">رد شده</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ business.rating }} ⭐</td>
+                            <td>
+                                <a href="{% url 'dashboard:business_detail' business.id %}" class="btn btn-sm btn-outline-primary">
+                                    جزئیات
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- نوبت‌های اخیر -->
+        {% if recent_appointments %}
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">📅 نوبت‌های اخیر</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>خدمت</th>
+                            <th>کسب‌وکار</th>
+                            <th>تاریخ</th>
+                            <th>وضعیت</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for apt in recent_appointments %}
+                        <tr>
+                            <td>{{ apt.service.name }}</td>
+                            <td>{{ apt.business.name }}</td>
+                            <td>{{ apt.date_key }}</td>
+                            <td>
+                                {% if apt.status == 'reserved' %}
+                                <span class="status-badge" style="background:#D1ECF1;color:#0C5460;">رزرو شده</span>
+                                {% elif apt.status == 'done' %}
+                                <span class="status-badge status-active">انجام شده</span>
+                                {% else %}
+                                <span class="status-badge status-inactive">لغو شده</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

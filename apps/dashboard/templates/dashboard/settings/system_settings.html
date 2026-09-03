@@ -1,0 +1,86 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}تنظیمات سیستم{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">🔧 تنظیمات سیستم</h4>
+            <form method="post">
+                {% csrf_token %}
+
+                <h6 class="fw-bold mb-3">📦 نسخه اپلیکیشن</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">آخرین نسخه</label>
+                        <input type="text" class="form-control" name="latest_version"
+                               value="{{ config.latest_version|default:'1.0.0' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">حداقل نسخه مورد نیاز</label>
+                        <input type="text" class="form-control" name="min_required_version"
+                               value="{{ config.min_required_version|default:'1.0.0' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_force_update" id="forceUpdate"
+                               {% if config.is_force_update %}checked{% endif %}>
+                        <label class="form-check-label" for="forceUpdate">آپدیت اجباری</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان آپدیت</label>
+                    <input type="text" class="form-control" name="update_title"
+                           value="{{ config.update_title|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">پیام آپدیت</label>
+                    <textarea class="form-control" name="update_message" rows="2">{{ config.update_message|default:'' }}</textarea>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold mb-3">🔧 حالت تعمیرات</h6>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_maintenance" id="maintenance"
+                               {% if config.is_maintenance %}checked{% endif %}>
+                        <label class="form-check-label" for="maintenance">حالت تعمیرات فعال</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان تعمیرات</label>
+                    <input type="text" class="form-control" name="maintenance_title"
+                           value="{{ config.maintenance_title|default:'' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">پیام تعمیرات</label>
+                    <textarea class="form-control" name="maintenance_message" rows="2">{{ config.maintenance_message|default:'' }}</textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">زمان تقریبی پایان</label>
+                        <input type="text" class="form-control" name="maintenance_estimated_end"
+                               value="{{ config.maintenance_estimated_end|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">شماره پشتیبانی</label>
+                        <input type="text" class="form-control" name="support_phone"
+                               value="{{ config.support_phone|default:'' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">دلیل تعمیرات</label>
+                    <textarea class="form-control" name="maintenance_reason" rows="2">{{ config.maintenance_reason|default:'' }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تنظیمات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

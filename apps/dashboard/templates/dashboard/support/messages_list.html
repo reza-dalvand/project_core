@@ -1,0 +1,198 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}پیام‌های تماس{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .stat-mini {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .stat-mini .value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-mini .label {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 4px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .pagination .page-link {
+        color: var(--primary-dark);
+        border-color: var(--border);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📨 پیام‌های تماس</h2>
+        <p class="text-muted mb-0">پیام‌های دریافتی از فرم تماس سایت</p>
+    </div>
+    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد پشتیبانی
+    </a>
+</div>
+
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل پیام‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-mini">
+            <div class="value">{{ stats.unread }}</div>
+            <div class="label">خوانده نشده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="stat-mini">
+            <div class="value">{{ stats.replied }}</div>
+            <div class="label">پاسخ داده شده</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-6">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="نام، شماره تماس، موضوع، پیام..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="read" class="form-select">
+                <option value="all" {% if read_filter == 'all' %}selected{% endif %}>همه</option>
+                <option value="unread" {% if read_filter == 'unread' %}selected{% endif %}>خوانده نشده</option>
+                <option value="read" {% if read_filter == 'read' %}selected{% endif %}>خوانده شده</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">🔍 جستجو</button>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>نام</th>
+                <th>شماره تماس</th>
+                <th>موضوع</th>
+                <th>پیام</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for msg in page_obj %}
+            <tr>
+                <td><strong>{{ msg.full_name }}</strong></td>
+                <td><code>{{ msg.phone }}</code></td>
+                <td>{{ msg.subject|truncatechars:30 }}</td>
+                <td>{{ msg.message|truncatechars:50 }}</td>
+                <td>
+                    {% if msg.is_read %}
+                    <span class="status-badge" style="background:#D4EDDA;color:#155724;">خوانده شده</span>
+                    {% else %}
+                    <span class="status-badge" style="background:#FFF3CD;color:#856404;">خوانده نشده</span>
+                    {% endif %}
+                    {% if msg.is_replied %}
+                    <span class="status-badge ms-1" style="background:#D1ECF1;color:#0C5460;">پاسخ داده شده</span>
+                    {% endif %}
+                </td>
+                <td>{{ msg.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:message_detail' msg.id %}" class="btn btn-sm btn-outline-primary">
+                        مشاهده
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    پیامی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&read={{ read_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&read={{ read_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

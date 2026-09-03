@@ -7,24 +7,13 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from apps.core.admin_site import OTPAdminSite
-admin.site.__class__ = OTPAdminSite
 
-# ═══════ سفارشی‌سازی Admin ═══════
-admin.site.site_header = "پنل مدیریت بیو کلاب"
-admin.site.site_title = "بیو کلاب | مدیریت"
-admin.site.index_title = "داشبورد مدیریت"
 
 urlpatterns = [
-    # ═══════ Admin ═══════
-    path(
-        settings.LANDING_ADMIN_URL,
-        admin.site.urls,
-        name='admin',
-    ),
-
     # ═══════ Landing Page ═══════
     path('', include('apps.landing.urls')),
-
+    # ═══════ Dashboard ═══════
+    path('dashboard/', include('apps.dashboard.urls')),
     # ═══════ REST API ═══════
     path('api/v1/', include([
         path('accounts/', include('apps.accounts.urls')),
@@ -47,9 +36,6 @@ urlpatterns = [
         # ✅ فاز ۱: اندپوینت‌های کانفیگ
         path('config/', include('apps.core.urls')),
     ])),
-
-    # ═══════ Dashboard ═══════
-    path('dashboard/', include('apps.dashboard.urls')),
 ]
 
 # ═══════ Media & Static در توسعه ═══════
