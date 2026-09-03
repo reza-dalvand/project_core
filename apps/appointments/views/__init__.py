@@ -72,7 +72,7 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
 
 
 class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
-    """لیست نوبت‌های مشتری"""
+    """لیست نوبت‌های مشتری با فیلتر وضعیت"""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AppointmentListSerializer
     pagination_class = StandardResultsSetPagination
@@ -83,7 +83,7 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
                 name='status',
                 type=str,
                 required=False,
-                enum=['upcoming', 'past', 'all'],
+                enum=['upcoming', 'past', 'cancelled', 'all'],
             ),
         ],
         tags=['Appointments - Customer'],
@@ -100,15 +100,36 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         today_key = today_jalali_key()
 
         if status_filter == 'upcoming':
+            # ✅ نوبت‌های آینده: رزرو شده با تاریخ امروز یا بعد
             qs = qs.filter(
                 date_key__gte=today_key,
                 status=Appointment.Status.RESERVED,
             )
         elif status_filter == 'past':
-            qs = qs.filter(date_key__lt=today_key)
+            # ✅ نوبت‌های گذشته: انجام شده + رزرو شده‌هایی که تاریخشان گذشته
+            # لغو شده‌ها اینجا نمایش داده نمی‌شوند
+            qs = qs.filter(
+                Q(status=Appointment.Status.DONE) |
+                Q(
+                    status=Appointment.Status.RESERVED,
+                    date_key__lt=today_key,
+                )
+            ).exclude(
+                status__in=[
+                    Appointment.Status.CANCELLED_BY_SALON,
+                    Appointment.Status.CANCELLED_BY_CUSTOMER,
+                ]
+            )
+        elif status_filter == 'cancelled':
+            # ✅ نوبت‌های لغو شده: همه لغو شده‌ها صرف‌نظر از تاریخ
+            qs = qs.filter(
+                status__in=[
+                    Appointment.Status.CANCELLED_BY_SALON,
+                    Appointment.Status.CANCELLED_BY_CUSTOMER,
+                ]
+            )
 
         return qs
-
 
 class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
     """لیست نوبت‌های کسب‌وکار با فیلترهای پیشرفته"""
