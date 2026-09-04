@@ -274,6 +274,16 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                 'national_id', 'is_national_id_verified', 'verified_name',
             ])
 
+             # ✅ همگام‌سازی با کسب‌وکار تا فیلدهای سطح کسب‌وکار هم پر شوند
+            business = request.user.businesses.first()
+            if business:
+                business.national_id = national_id
+                business.is_national_id_verified = True
+                business.verified_name = result.get('verified_name', '')
+                business.save(update_fields=[
+                    'national_id', 'is_national_id_verified', 'verified_name',
+                ])
+
             return self.success_response(
                 data={
                     'verified_name': result['verified_name'],

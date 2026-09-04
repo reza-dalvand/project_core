@@ -91,9 +91,10 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
     city = CitySerializer(read_only=True)
     owner_name = serializers.SerializerMethodField()
     gallery = BusinessGallerySerializer(many=True, read_only=True)
-
-    # ✅ جدید: لیست خدمات کسب‌وکار
     services = serializers.SerializerMethodField()
+    verified_name = serializers.SerializerMethodField()
+    national_id = serializers.SerializerMethodField()
+    is_national_id_verified = serializers.SerializerMethodField()
 
     class Meta:
         model = Business
@@ -108,22 +109,40 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'gallery',
             'services',
             'owner_name', 'created_at',
+            # ✅ وضعیت بانکی
             'bank_info_registered', 'bank_info_verified',
+            # ✅ اضافه شد: جزئیات بانکی
+            'bank_owner_name',
+            'bank_national_id',
+            'bank_name',
+            'bank_id',
+            'bank_sheba',
+            'bank_card_number',
+            'bank_account_number',
+            # ✅ احراز هویت
             'verified_name',
             'national_id',
+            'is_national_id_verified',
         ]
-        # ✅ حذف owner_name تکراری
 
     def get_owner_name(self, obj):
         return obj.owner.full_name
 
-    # ✅ جدید: متد برای دریافت خدمات
+    def get_verified_name(self, obj):
+        return obj.verified_name or obj.owner.verified_name or ''
+
+    def get_national_id(self, obj):
+        return obj.national_id or obj.owner.national_id or ''
+
+    def get_is_national_id_verified(self, obj):
+        return bool(obj.is_national_id_verified or obj.owner.is_national_id_verified)
+
     def get_services(self, obj):
         from apps.services.serializers import ServiceListSerializer
         services = obj.services.filter(is_active=True)
         return ServiceListSerializer(services, many=True).data
-
     
+         
 class BusinessUpdateSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
     owner_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)
