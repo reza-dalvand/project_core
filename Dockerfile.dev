@@ -35,7 +35,7 @@ COPY requirements/development.txt requirements/development.txt
 RUN pip install --upgrade pip && \
     pip install -r requirements/development.txt && \
     pip install --no-cache-dir \
-    django-debug-toolbar \
+    "django-debug-toolbar==6.1.0" \
     django-extensions \
     Werkzeug \
     ipython \

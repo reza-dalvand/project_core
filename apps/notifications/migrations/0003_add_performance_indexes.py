@@ -1,9 +1,7 @@
 # apps/notifications/migrations/0003_add_performance_indexes.py
-
 """
 فاز ۵: افزودن ایندکس‌های عملکردی
 """
-
 from django.db import migrations, models
 
 
@@ -14,6 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # ─── Notification indexes (فیلد created_at وجود دارد ✅) ───
         migrations.AddIndex(
             model_name="notification",
             index=models.Index(
@@ -35,24 +34,25 @@ class Migration(migrations.Migration):
                 name="notif_read_created_idx",
             ),
         ),
+        # ─── SMSLog indexes ───
         migrations.AddIndex(
             model_name="smslog",
             index=models.Index(
-                fields=["user", "sent_at"],
+                fields=["user", "sent_at"],   
                 name="smslog_user_sent_idx",
             ),
         ),
         migrations.AddIndex(
             model_name="smslog",
             index=models.Index(
-                fields=["template", "sent_at"],
+                fields=["template", "sent_at"], 
                 name="smslog_template_sent_idx",
             ),
         ),
         migrations.AddIndex(
             model_name="smslog",
             index=models.Index(
-                fields=["created_at"],
+                fields=["sent_at"],             
                 name="smslog_created_idx",
             ),
         ),
