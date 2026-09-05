@@ -1,356 +1,552 @@
 /* ═══════════════════════════════════════════════
-   بیو کلاب — استایل پنل مدیریت
-   فاز ۴: استایل جامع + ریسپانسیو جداول
-   ═══════════════════════════════════════════════ */
+بیو کلاب — استایل پنل مدیریت
+فاز ۴: بازنویسی کامل
+- دسترسی‌پذیری
+- ریسپانسیو کامل
+- استایل چاپ
+- بج‌های وضعیت کامل
+═══════════════════════════════════════════════ */
 
 /* ─── متغیرهای رنگ ─── */
 :root {
-    --primary: #A88B7D;
-    --primary-dark: #8D7468;
-    --primary-light: #C5AE9F;
-    --primary-bg: rgba(168, 139, 125, 0.08);
-    --bg: #F5F0EC;
-    --card: #FFFFFF;
-    --text: #2C2521;
-    --text-2: #5A504B;
-    --border: #DCD1CB;
-    --sidebar-width: 260px;
-    --success: #43A047;
-    --warning: #FF9800;
-    --danger: #E53935;
-    --info: #2196F3;
+--primary: #A88B7D;
+--primary-dark: #8D7468;
+--primary-light: #C5AE9F;
+--primary-bg: rgba(168, 139, 125, 0.08);
+--bg: #F5F0EC;
+--card: #FFFFFF;
+--text: #2C2521;
+--text-2: #5A504B;
+--border: #DCD1CB;
+--sidebar-width: 260px;
+--success: #43A047;
+--warning: #FF9800;
+--danger: #E53935;
+--info: #2196F3;
 }
 
 /* ─── فونت و پایه ─── */
 * {
-    font-family: 'Vazirmatn', Tahoma, sans-serif;
+font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
 }
 
 body {
-    background: var(--bg);
-    color: var(--text);
+background: var(--bg);
+color: var(--text);
+font-size: 14px;
+line-height: 1.7;
+}
+
+/* ─── دسترسی‌پذیری: فوکوس قابل مشاهده ─── */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+outline: 3px solid var(--primary);
+outline-offset: 2px;
+border-radius: 4px;
 }
 
 /* ═══════════════════════════════════════════════
-   ریسپانسیو جداول — فاز ۴
-   ═══════════════════════════════════════════════ */
-.table-card {
-    background: var(--card);
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+سایدبار
+═══════════════════════════════════════════════ */
+.sidebar {
+position: fixed;
+top: 0;
+right: -280px;
+width: var(--sidebar-width);
+height: 100vh;
+background: var(--card);
+border-left: 1px solid var(--border);
+transition: right 0.3s ease;
+z-index: 1050;
+overflow-y: auto;
 }
 
-.table-card .table {
-    margin-bottom: 0;
-    min-width: 650px;
+.sidebar.open {
+right: 0;
 }
 
-.table-card .table th {
-    background: var(--bg);
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--text-2);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 16px;
-    white-space: nowrap;
+.sidebar-header {
+padding: 20px;
+border-bottom: 1px solid var(--border);
+display: flex;
+align-items: center;
+justify-content: space-between;
 }
 
-.table-card .table td {
-    padding: 12px 16px;
-    font-size: 14px;
-    vertical-align: middle;
+.sidebar-brand {
+display: flex;
+align-items: center;
+gap: 10px;
+font-weight: 800;
+font-size: 18px;
+color: var(--text);
 }
 
-@media (max-width: 768px) {
-    .table-card .table {
-        min-width: 550px;
-    }
+.sidebar-logo {
+width: 40px;
+height: 40px;
+border-radius: 12px;
+background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+display: flex;
+align-items: center;
+justify-content: center;
+color: #fff;
+font-size: 20px;
+}
 
-    .table-card .table th,
-    .table-card .table td {
-        padding: 8px 10px;
-        font-size: 13px;
-        white-space: nowrap;
-    }
+.sidebar-close {
+background: none;
+border: none;
+font-size: 24px;
+color: var(--text-2);
+cursor: pointer;
+padding: 4px 8px;
+border-radius: 6px;
+}
+
+.sidebar-close:hover {
+background: var(--bg);
+}
+
+.sidebar-nav {
+padding: 16px 12px;
+}
+
+.sidebar-nav a {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 12px 16px;
+border-radius: 12px;
+color: var(--text-2);
+text-decoration: none;
+font-size: 14px;
+font-weight: 500;
+transition: all 0.2s;
+margin-bottom: 4px;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+background: var(--primary-bg);
+color: var(--primary-dark);
+}
+
+.sidebar-nav a .icon {
+font-size: 18px;
+}
+
+.sidebar-nav hr {
+border-color: var(--border);
+margin: 12px 0;
+}
+
+/* ─── محتوای اصلی ─── */
+.main-content {
+margin-right: 0;
+transition: margin-right 0.3s ease;
+min-height: 100vh;
+}
+
+.main-content.shifted {
+margin-right: var(--sidebar-width);
+}
+
+/* ─── هدر ─── */
+.top-header {
+background: var(--card);
+border-bottom: 1px solid var(--border);
+padding: 16px 24px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+
+.hamburger-btn {
+background: none;
+border: 1px solid var(--border);
+border-radius: 10px;
+padding: 8px 12px;
+cursor: pointer;
+color: var(--text);
+font-size: 18px;
+}
+
+.hamburger-btn:hover {
+background: var(--bg);
+}
+
+/* ─── Overlay ─── */
+.sidebar-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0, 0, 0, 0.3);
+z-index: 1040;
+}
+
+.sidebar-overlay.show {
+display: block;
 }
 
 /* ═══════════════════════════════════════════════
-   بج‌های وضعیت
-   ═══════════════════════════════════════════════ */
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-    white-space: nowrap;
-}
-
-.status-pending    { background: #FFF3CD; color: #856404; }
-.status-approved   { background: #D4EDDA; color: #155724; }
-.status-rejected   { background: #F8D7DA; color: #721C24; }
-.status-active     { background: #D4EDDA; color: #155724; }
-.status-inactive   { background: #F8D7DA; color: #721C24; }
-.status-reserved   { background: #D1ECF1; color: #0C5460; }
-.status-done       { background: #D4EDDA; color: #155724; }
-.status-cancelled  { background: #F8D7DA; color: #721C24; }
-.status-blocked    { background: #FFF3CD; color: #856404; }
-.status-settling   { background: #D1ECF1; color: #0C5460; }
-.status-settled    { background: #D4EDDA; color: #155724; }
-.status-refunded   { background: #F8D7DA; color: #721C24; }
-.status-failed     { background: #F8D7DA; color: #721C24; }
-.status-processing { background: #D1ECF1; color: #0C5460; }
-.status-completed  { background: #D4EDDA; color: #155724; }
-.status-pinned     { background: #D4EDDA; color: #155724; }
-.status-urgent     { background: #F8D7DA; color: #721C24; }
-.status-published  { background: #D4EDDA; color: #155724; }
-.status-draft      { background: #FFF3CD; color: #856404; }
-.status-open       { background: #D1ECF1; color: #0C5460; }
-.status-in_progress { background: #FFF3CD; color: #856404; }
-.status-resolved   { background: #D4EDDA; color: #155724; }
-.status-closed     { background: #F8D7DA; color: #721C24; }
-.status-unverified { background: #FFF3CD; color: #856404; }
-.status-staff      { background: #D1ECF1; color: #0C5460; }
-
-.priority-low    { background: #E9ECEF; color: #495057; }
-.priority-medium { background: #D1ECF1; color: #0C5460; }
-.priority-high   { background: #FFF3CD; color: #856404; }
-.priority-urgent { background: #F8D7DA; color: #721C24; }
-
-/* ═══════════════════════════════════════════════
-   کارت‌های آمار
-   ═══════════════════════════════════════════════ */
+کارت‌ها و آمار
+═══════════════════════════════════════════════ */
 .stat-card {
-    background: var(--card);
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid var(--border);
-    transition: all 0.2s;
-    height: 100%;
+background: var(--card);
+border-radius: 16px;
+padding: 24px;
+border: 1px solid var(--border);
+transition: all 0.2s;
+height: 100%;
 }
 
 .stat-card:hover {
-    box-shadow: 0 4px 16px rgba(44, 37, 33, 0.08);
-    transform: translateY(-2px);
+box-shadow: 0 4px 16px rgba(44, 37, 33, 0.08);
+transform: translateY(-2px);
 }
 
 .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    margin-bottom: 16px;
+width: 48px;
+height: 48px;
+border-radius: 12px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 22px;
+margin-bottom: 16px;
 }
 
 .stat-value {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--text);
-    margin-bottom: 4px;
+font-size: 28px;
+font-weight: 800;
+color: var(--text);
+margin-bottom: 4px;
 }
 
 .stat-label {
-    font-size: 13px;
-    color: var(--text-2);
+font-size: 13px;
+color: var(--text-2);
 }
 
 .stat-badge {
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 600;
+font-size: 11px;
+padding: 4px 10px;
+border-radius: 20px;
+font-weight: 600;
 }
 
 .stat-mini {
-    background: var(--bg);
-    border-radius: 12px;
-    padding: 16px;
-    text-align: center;
-    border: 1px solid var(--border);
+background: var(--bg);
+border-radius: 12px;
+padding: 16px;
+text-align: center;
+border: 1px solid var(--border);
 }
 
 .stat-mini .value {
-    font-size: 24px;
-    font-weight: 800;
-    color: var(--text);
+font-size: 24px;
+font-weight: 800;
+color: var(--text);
 }
 
 .stat-mini .label {
-    font-size: 12px;
-    color: var(--text-2);
-    margin-top: 4px;
+font-size: 12px;
+color: var(--text-2);
+margin-top: 4px;
 }
 
 /* ═══════════════════════════════════════════════
-   فیلتر و جستجو
-   ═══════════════════════════════════════════════ */
+بج‌های وضعیت — کامل و جامع
+═══════════════════════════════════════════════ */
+.status-badge {
+padding: 4px 12px;
+border-radius: 20px;
+font-size: 12px;
+font-weight: 600;
+display: inline-block;
+white-space: nowrap;
+}
+
+/* وضعیت‌های کسب‌وکار */
+.status-pending { background: #FFF3CD; color: #856404; }
+.status-approved { background: #D4EDDA; color: #155724; }
+.status-rejected { background: #F8D7DA; color: #721C24; }
+
+/* وضعیت‌های کاربر */
+.status-active { background: #D4EDDA; color: #155724; }
+.status-inactive { background: #F8D7DA; color: #721C24; }
+.status-unverified { background: #FFF3CD; color: #856404; }
+.status-staff { background: #D1ECF1; color: #0C5460; }
+
+/* وضعیت‌های نوبت */
+.status-reserved { background: #D1ECF1; color: #0C5460; }
+.status-done { background: #D4EDDA; color: #155724; }
+.status-cancelled { background: #F8D7DA; color: #721C24; }
+
+/* وضعیت‌های تراکنش */
+.status-blocked { background: #FFF3CD; color: #856404; }
+.status-settling { background: #D1ECF1; color: #0C5460; }
+.status-settled { background: #D4EDDA; color: #155724; }
+.status-refunded { background: #F8D7DA; color: #721C24; }
+.status-failed { background: #F8D7DA; color: #721C24; }
+
+/* وضعیت‌های تسویه */
+.status-processing { background: #D1ECF1; color: #0C5460; }
+.status-completed { background: #D4EDDA; color: #155724; }
+
+/* وضعیت‌های محتوا */
+.status-pinned { background: #D4EDDA; color: #155724; }
+.status-published { background: #D4EDDA; color: #155724; }
+.status-draft { background: #FFF3CD; color: #856404; }
+
+/* وضعیت‌های تیکت */
+.status-open { background: #D1ECF1; color: #0C5460; }
+.status-in_progress { background: #FFF3CD; color: #856404; }
+.status-resolved { background: #D4EDDA; color: #155724; }
+.status-closed { background: #F8D7DA; color: #721C24; }
+
+/* اولویت‌ها */
+.priority-low { background: #E9ECEF; color: #495057; }
+.priority-medium { background: #D1ECF1; color: #0C5460; }
+.priority-high { background: #FFF3CD; color: #856404; }
+.priority-urgent { background: #F8D7DA; color: #721C24; }
+
+/* VIP */
+.vip-badge {
+background: linear-gradient(135deg, #FFD700, #FFA500);
+color: #000;
+padding: 2px 8px;
+border-radius: 12px;
+font-size: 11px;
+font-weight: 700;
+white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════
+جداول — ریسپانسیو کامل
+═══════════════════════════════════════════════ */
+.table-card {
+background: var(--card);
+border-radius: 16px;
+border: 1px solid var(--border);
+overflow: hidden;
+overflow-x: auto;
+-webkit-overflow-scrolling: touch;
+}
+
+.table-card .table {
+margin-bottom: 0;
+min-width: 650px;
+}
+
+.table-card .table th {
+background: var(--bg);
+font-weight: 600;
+font-size: 13px;
+color: var(--text-2);
+border-bottom: 1px solid var(--border);
+padding: 12px 16px;
+white-space: nowrap;
+}
+
+.table-card .table td {
+padding: 12px 16px;
+font-size: 14px;
+vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+.table-card .table {
+min-width: 550px;
+}
+.table-card .table th,
+.table-card .table td {
+padding: 8px 10px;
+font-size: 13px;
+}
+}
+
+/* ═══════════════════════════════════════════════
+فیلتر و جستجو
+═══════════════════════════════════════════════ */
 .filter-bar {
-    background: var(--card);
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid var(--border);
-    margin-bottom: 24px;
+background: var(--card);
+border-radius: 16px;
+padding: 20px;
+border: 1px solid var(--border);
+margin-bottom: 24px;
 }
 
 /* ═══════════════════════════════════════════════
-   بخش‌بندی
-   ═══════════════════════════════════════════════ */
-.section-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* ═══════════════════════════════════════════════
-   لینک‌های سریع
-   ═══════════════════════════════════════════════ */
+لینک‌های سریع
+═══════════════════════════════════════════════ */
 .quick-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 12px;
-    background: var(--bg);
-    text-decoration: none;
-    color: var(--text);
-    transition: all 0.2s;
-    border: 1px solid var(--border);
-    height: 100%;
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 16px;
+border-radius: 12px;
+background: var(--bg);
+text-decoration: none;
+color: var(--text);
+transition: all 0.2s;
+border: 1px solid var(--border);
+height: 100%;
 }
 
 .quick-link:hover {
-    background: rgba(168, 139, 125, 0.1);
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    color: var(--text);
+background: var(--primary-bg);
+border-color: var(--primary);
+transform: translateY(-2px);
+color: var(--text);
 }
 
 .quick-link .icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
+width: 40px;
+height: 40px;
+border-radius: 10px;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 18px;
+flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════════════════
-   نمودارها
-   ═══════════════════════════════════════════════ */
+نمودارها
+═══════════════════════════════════════════════ */
 .chart-container {
-    background: var(--card);
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid var(--border);
-    height: 300px;
+background: var(--card);
+border-radius: 16px;
+padding: 24px;
+border: 1px solid var(--border);
+height: 300px;
 }
 
 /* ═══════════════════════════════════════════════
-   آواتار و تصاویر کوچک
-   ═══════════════════════════════════════════════ */
+آواتار و تصاویر کوچک
+═══════════════════════════════════════════════ */
 .avatar-sm {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    object-fit: cover;
-    background: var(--primary-bg);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary-dark);
-    font-weight: 700;
-    font-size: 14px;
+width: 36px;
+height: 36px;
+border-radius: 10px;
+object-fit: cover;
+background: var(--primary-bg);
+display: inline-flex;
+align-items: center;
+justify-content: center;
+color: var(--primary-dark);
+font-weight: 700;
+font-size: 14px;
 }
 
 .post-thumb,
 .portfolio-thumb {
-    width: 50px;
-    height: 50px;
-    border-radius: 8px;
-    object-fit: cover;
+width: 50px;
+height: 50px;
+border-radius: 8px;
+object-fit: cover;
 }
 
 /* ═══════════════════════════════════════════════
-   VIP Badge
-   ═══════════════════════════════════════════════ */
-.vip-badge {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #000;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-/* ═══════════════════════════════════════════════
-   صفحه‌بندی
-   ═══════════════════════════════════════════════ */
+صفحه‌بندی
+═══════════════════════════════════════════════ */
 .pagination .page-link {
-    color: var(--primary-dark);
-    border-color: var(--border);
+color: var(--primary-dark);
+border-color: var(--border);
 }
 
 .pagination .page-item.active .page-link {
-    background: var(--primary);
-    border-color: var(--primary);
+background: var(--primary);
+border-color: var(--primary);
 }
 
 /* ═══════════════════════════════════════════════
-   Alert سفارشی
-   ═══════════════════════════════════════════════ */
-.alert {
-    border-radius: 12px;
-    font-size: 14px;
+فرم‌ها
+═══════════════════════════════════════════════ */
+.form-control:focus,
+.form-select:focus {
+border-color: var(--primary);
+box-shadow: 0 0 0 3px rgba(168, 139, 125, 0.15);
 }
 
 /* ═══════════════════════════════════════════════
-   ریسپانسیو عمومی
-   ═══════════════════════════════════════════════ */
+ریسپانسیو عمومی
+═══════════════════════════════════════════════ */
 @media (max-width: 768px) {
-    .stat-value {
-        font-size: 22px;
-    }
-
-    .stat-card {
-        padding: 16px;
-    }
-
-    .filter-bar {
-        padding: 14px;
-    }
-
-    .section-title {
-        font-size: 16px;
-    }
-
-    .chart-container {
-        height: 250px;
-    }
+.main-content.shifted {
+margin-right: 0;
+}
+.stat-value {
+font-size: 22px;
+}
+.stat-card {
+padding: 16px;
+}
+.filter-bar {
+padding: 14px;
+}
+.chart-container {
+height: 250px;
+}
 }
 
 @media (max-width: 576px) {
-    .stat-mini {
-        padding: 12px;
-    }
+.stat-mini {
+padding: 12px;
+}
+.stat-mini .value {
+font-size: 20px;
+}
+.quick-link {
+padding: 12px;
+}
+.container-fluid {
+padding-left: 12px;
+padding-right: 12px;
+}
+}
 
-    .stat-mini .value {
-        font-size: 20px;
-    }
-
-    .quick-link {
-        padding: 12px;
-    }
+/* ═══════════════════════════════════════════════
+✅ فاز ۴: استایل چاپ
+═══════════════════════════════════════════════ */
+@media print {
+.sidebar,
+.sidebar-overlay,
+.top-header,
+.skip-link,
+.hamburger-btn,
+.btn,
+.pagination,
+.filter-bar,
+.modal,
+#confirmModal {
+display: none !important;
+}
+.main-content {
+margin-right: 0 !important;
+}
+.stat-card {
+box-shadow: none;
+border: 1px solid #ccc;
+break-inside: avoid;
+}
+.table-card {
+box-shadow: none;
+border: 1px solid #ccc;
+}
+.table-card .table th {
+background: #f0f0f0;
+}
+body {
+background: #fff;
+}
+a {
+color: #000 !important;
+text-decoration: none !important;
+}
 }

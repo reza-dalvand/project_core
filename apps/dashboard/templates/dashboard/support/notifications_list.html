@@ -67,14 +67,20 @@
 {% endblock %}
 
 {% block content %}
+<!-- ─── هدر ─── -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">🔔 اعلان‌ها</h2>
         <p class="text-muted mb-0">اعلان‌های ارسالی به کاربران</p>
     </div>
-    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
-        ← بازگشت به داشبورد پشتیبانی
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:notification_create' %}" class="btn btn-primary btn-sm">
+            ➕ ارسال اعلان
+        </a>
+        <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+            ← بازگشت به داشبورد پشتیبانی
+        </a>
+    </div>
 </div>
 
 <!-- ─── آمار سریع ─── -->
@@ -151,6 +157,17 @@
                     {% endif %}
                 </td>
                 <td>{{ notif.created_at|date:"Y/m/d H:i" }}</td>
+                                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="confirmDelete({{ notif.id }}, '{{ notif.title|truncatechars:20|escapejs }}')">
+                        🗑️
+                    </button>
+                    <form method="post" action="{% url 'dashboard:notification_delete' notif.id %}"
+                          id="deleteForm{{ notif.id }}" class="d-none">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
+                    </form>
+                </td>
             </tr>
             {% empty %}
             <tr>

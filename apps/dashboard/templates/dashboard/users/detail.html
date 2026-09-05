@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load dashboard_tags %}
 {% block title %}جزئیات کاربر{% endblock %}
 
 {% block content %}
@@ -9,44 +9,72 @@
         <div class="stat-card">
             <div class="text-center mb-3">
                 {% if user_obj.avatar %}
-                <img src="{{ user_obj.avatar.url }}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
+                    <img src="{{ user_obj.avatar.url }}"
+                         style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">
                 {% else %}
-                <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--primary-bg); display: inline-flex; align-items: center; justify-content: center; font-size: 32px; color: var(--primary-dark);">
-                    {{ user_obj.first_name|first|default:"؟" }}
-                </div>
+                    <div style="width: 80px; height: 80px; border-radius: 50%;
+                                background: var(--primary-bg); display: inline-flex;
+                                align-items: center; justify-content: center;
+                                font-size: 32px; color: var(--primary-dark);">
+                        {{ user_obj.first_name|first|default:"؟" }}
+                    </div>
                 {% endif %}
             </div>
+
             <h4 class="text-center fw-bold mb-1">{{ user_obj.full_name }}</h4>
             <p class="text-center text-muted mb-3"><code>{{ user_obj.phone }}</code></p>
 
-            <div class="d-grid gap-2">
+            <div class="d-grid gap-2 mb-3">
                 {% if user_obj.is_active %}
-                <span class="status-badge status-active text-center">✅ فعال</span>
+                    <span class="status-badge status-active text-center">✅ فعال</span>
                 {% else %}
-                <span class="status-badge status-inactive text-center">❌ غیرفعال</span>
+                    <span class="status-badge status-inactive text-center">❌ غیرفعال</span>
                 {% endif %}
 
                 {% if user_obj.is_verified %}
-                <span class="status-badge status-active text-center mt-2">📱 شماره تایید شده</span>
+                    <span class="status-badge status-active text-center">📱 شماره تایید شده</span>
                 {% else %}
-                <span class="status-badge status-unverified text-center mt-2">⚠️ شماره تایید نشده</span>
+                    <span class="status-badge status-unverified text-center">⚠️ شماره تایید نشده</span>
+                {% endif %}
+
+                {% if user_obj.is_staff %}
+                    <span class="status-badge status-staff text-center">🛡️ ادمین</span>
                 {% endif %}
             </div>
 
             <hr>
 
-            <form method="post" action="{% url 'dashboard:user_toggle_active' user_obj.id %}">
-                {% csrf_token %}
-                {% if user_obj.is_active %}
-                <button type="submit" class="btn btn-danger w-100">
-                    🚫 غیرفعال کردن کاربر
+            <!-- دکمه‌های عملیات -->
+            <div class="d-grid gap-2">
+                <a href="{% url 'dashboard:user_edit' user_obj.id %}"
+                   class="btn btn-outline-primary w-100">
+                    ✏️ ویرایش اطلاعات
+                </a>
+
+                <form method="post" action="{% url 'dashboard:user_toggle_active' user_obj.id %}">
+                    {% csrf_token %}
+                    {% if user_obj.is_active %}
+                        <button type="submit" class="btn btn-danger w-100">
+                            🚫 غیرفعال کردن کاربر
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ فعال کردن کاربر
+                        </button>
+                    {% endif %}
+                </form>
+
+                <button type="button" class="btn btn-outline-danger w-100"
+                        onclick="confirmDeleteUser({{ user_obj.id }}, '{{ user_obj.phone }}')"
+                        {% if user_obj.is_superuser %}disabled{% endif %}>
+                    🗑️ حذف کاربر
                 </button>
-                {% else %}
-                <button type="submit" class="btn btn-success w-100">
-                    ✅ فعال کردن کاربر
-                </button>
-                {% endif %}
-            </form>
+                <form method="post" action="{% url 'dashboard:user_delete' user_obj.id %}"
+                      id="deleteUserForm" class="d-none">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="yes">
+                </form>
+            </div>
         </div>
     </div>
 
@@ -66,15 +94,17 @@
                 </div>
                 <div class="col-md-6">
                     <label class="small text-muted">کد ملی</label>
-                    <div class="fw-semibold">{{ user_obj.national_id|default:"-" }}</div>
+                    <div class="fw-semibold">
+                        <code>{{ user_obj.national_id|mask_national_id }}</code>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="small text-muted">وضعیت کد ملی</label>
                     <div class="fw-semibold">
                         {% if user_obj.is_national_id_verified %}
-                        <span class="text-success">✅ تایید شده</span>
+                            <span class="text-success">✅ تایید شده</span>
                         {% else %}
-                        <span class="text-warning">⚠️ تایید نشده</span>
+                            <span class="text-warning">⚠️ تایید نشده</span>
                         {% endif %}
                     </div>
                 </div>
@@ -87,6 +117,85 @@
                     <div class="fw-semibold">{{ user_obj.last_login|date:"Y/m/d H:i"|default:"-" }}</div>
                 </div>
             </div>
+        </div>
+
+        <!-- ✅ فاز ۲: اطلاعات بانکی با ماسک‌سازی -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">🏦 اطلاعات بانکی</h5>
+            {% if bank_info %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">نام بانک</label>
+                    <div class="fw-semibold">{{ bank_info.bank_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">نام صاحب حساب</label>
+                    <div class="fw-semibold">{{ bank_info.owner_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره شبا</label>
+                    <div class="fw-semibold">
+                        <code>{{ bank_info.sheba|mask_sheba }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره کارت</label>
+                    <div class="fw-semibold">
+                        <code>{{ bank_info.card_number|mask_card }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">وضعیت اطلاعات</label>
+                    <div class="fw-semibold">
+                        {% if bank_info.is_complete %}
+                            <span class="text-success">✅ کامل</span>
+                        {% else %}
+                            <span class="text-warning">⚠️ ناقص</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">اطلاعات بانکی ثبت نشده است.</p>
+            {% endif %}
+        </div>
+        <!-- ✅ فاز ۲: دستگاه‌های فعال -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📱 دستگاه‌های فعال</h5>
+            {% if devices %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>دستگاه</th>
+                                <th>نوع</th>
+                                <th>IP</th>
+                                <th>وضعیت</th>
+                                <th>آخرین فعالیت</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td>{{ device.device_name }}</td>
+                                <td>{{ device.get_device_type_display }}</td>
+                                <td><code>{{ device.ip_address }}</code></td>
+                                <td>
+                                    {% if device.is_current %}
+                                        <span class="status-badge status-active">فعلی</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ device.last_active|date:"Y/m/d H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">دستگاهی ثبت نشده است.</p>
+            {% endif %}
         </div>
 
         <!-- آمار -->
@@ -137,18 +246,17 @@
                             <td>{{ business.name }}</td>
                             <td>
                                 {% if business.status == 'approved' %}
-                                <span class="status-badge status-active">تایید شده</span>
+                                    <span class="status-badge status-active">تایید شده</span>
                                 {% elif business.status == 'pending' %}
-                                <span class="status-badge status-unverified">در انتظار</span>
+                                    <span class="status-badge status-unverified">در انتظار</span>
                                 {% else %}
-                                <span class="status-badge status-inactive">رد شده</span>
+                                    <span class="status-badge status-inactive">رد شده</span>
                                 {% endif %}
                             </td>
                             <td>{{ business.rating }} ⭐</td>
                             <td>
-                                <a href="{% url 'dashboard:business_detail' business.id %}" class="btn btn-sm btn-outline-primary">
-                                    جزئیات
-                                </a>
+                                <a href="{% url 'dashboard:business_detail' business.id %}"
+                                   class="btn btn-sm btn-outline-primary">جزئیات</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -160,7 +268,7 @@
 
         <!-- نوبت‌های اخیر -->
         {% if recent_appointments %}
-        <div class="stat-card">
+        <div class="stat-card mb-4">
             <h5 class="fw-bold mb-3">📅 نوبت‌های اخیر</h5>
             <div class="table-responsive">
                 <table class="table table-sm">
@@ -180,11 +288,11 @@
                             <td>{{ apt.date_key }}</td>
                             <td>
                                 {% if apt.status == 'reserved' %}
-                                <span class="status-badge" style="background:#D1ECF1;color:#0C5460;">رزرو شده</span>
+                                    <span class="status-badge" style="background:#D1ECF1;color:#0C5460;">رزرو شده</span>
                                 {% elif apt.status == 'done' %}
-                                <span class="status-badge status-active">انجام شده</span>
+                                    <span class="status-badge status-active">انجام شده</span>
                                 {% else %}
-                                <span class="status-badge status-inactive">لغو شده</span>
+                                    <span class="status-badge status-inactive">لغو شده</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -194,6 +302,37 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- ✅ فاز ۲: ارسال نوتیفیکیشن -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">🔔 ارسال نوتیفیکیشن</h5>
+            <form method="post" action="{% url 'dashboard:user_notify' user_obj.id %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">عنوان</label>
+                    <input type="text" class="form-control" name="title"
+                           placeholder="عنوان نوتیفیکیشن" required maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن</label>
+                    <textarea class="form-control" name="body" rows="3"
+                              placeholder="متن نوتیفیکیشن..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-outline-primary">
+                    📨 ارسال نوتیفیکیشن
+                </button>
+            </form>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDeleteUser(userId, phone) {
+    if (confirm(`آیا از حذف کاربر "${phone}" مطمئن هستید؟\nاین عملیات قابل بازگشت نیست.`)) {
+        document.getElementById('deleteUserForm').submit();
+    }
+}
+</script>
 {% endblock %}

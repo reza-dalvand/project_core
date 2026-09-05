@@ -126,22 +126,23 @@
             <div class="portfolio-thumb d-flex align-items-center justify-content-center bg-light">🖼️</div>
             {% endif %}
             </td>
-            <td><strong>{{ portfolio.title }}</strong></td>
-            <td>{{ portfolio.business.name }}</td>
-            <td>{{ portfolio.category.name }}</td>
-            <td>{{ portfolio.sub_service.name }}</td>
-            <td>{{ portfolio.images.count }}</td>
-            <td>{{ portfolio.created_at|date:"Y/m/d" }}</td>
-            <td>
-            <button type="button" class="btn btn-sm btn-outline-danger"
-            onclick="confirmDelete({{ portfolio.id }}, '{{ portfolio.title|truncatechars:20|escapejs }}')">
-            🗑️ حذف
-            </button>
-            <form method="post" action="{% url 'dashboard:portfolio_delete' portfolio.id %}" id="deleteForm{{ portfolio.id }}" class="d-none">
-            {% csrf_token %}
-            <input type="hidden" name="confirm" value="yes">
-            </form>
-            </td>
+                <td><strong>{{ portfolio.title }}</strong></td>
+                <td>{{ portfolio.business.name }}</td>
+                <td>{{ portfolio.category.name }}</td>
+                <td>{{ portfolio.sub_service.name }}</td>
+                <td>{{ portfolio.images.count }}</td>
+                <td>{{ portfolio.created_at|date:"Y/m/d" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:portfolio_edit' portfolio.id %}" class="btn btn-sm btn-outline-secondary" title="ویرایش">✏️</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="confirmDelete({{ portfolio.id }}, '{{ portfolio.title|truncatechars:20|escapejs }}')">
+                        🗑️
+                    </button>
+                    <form method="post" action="{% url 'dashboard:portfolio_delete' portfolio.id %}" id="deleteForm{{ portfolio.id }}" class="d-none">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

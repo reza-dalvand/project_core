@@ -1,26 +1,115 @@
-{% extends 'dashboard/base.html' %}
-{% block title %}خطای سرور{% endblock %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-6">
-        <div class="stat-card text-center py-5">
-            <div style="font-size: 72px; margin-bottom: 20px;">⚠️</div>
-            <h2 class="fw-bold mb-3">خطای داخلی سرور</h2>
-            <p class="text-muted mb-4">
-                متاسفانه مشکلی در پردازش درخواست شما رخ داده است.
-                تیم فنی از این خطا مطلع شده و در حال بررسی است.
-                لطفاً دقایقی دیگر دوباره تلاش کنید.
-            </p>
-            <div class="d-flex gap-2 justify-content-center">
-                <a href="{% url 'dashboard:home' %}" class="btn btn-primary">
-                    🏠 بازگشت به داشبورد
-                </a>
-                <button onclick="location.reload()" class="btn btn-outline-secondary">
-                    🔄 تلاش مجدد
-                </button>
-            </div>
-        </div>
-    </div>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>خطای سرور | بیو کلاب</title>
+<style>
+@font-face {
+font-family: 'Vazirmatn';
+src: url('/static/dashboard/fonts/Vazirmatn-Regular.woff2') format('woff2');
+font-weight: 400;
+font-display: swap;
+}
+@font-face {
+font-family: 'Vazirmatn';
+src: url('/static/dashboard/fonts/Vazirmatn-Bold.woff2') format('woff2');
+font-weight: 700;
+font-display: swap;
+}
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+body {
+font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+background: linear-gradient(135deg, #F5F0EC 0%, #EFE7E1 100%);
+min-height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+color: #2C2521;
+padding: 20px;
+}
+.error-card {
+background: #fff;
+border-radius: 24px;
+padding: 48px 40px;
+max-width: 480px;
+width: 100%;
+text-align: center;
+box-shadow: 0 16px 48px rgba(44, 37, 33, 0.12);
+border: 1px solid #EEE5DF;
+}
+.error-icon {
+font-size: 80px;
+margin-bottom: 24px;
+}
+.error-card h1 {
+font-size: 24px;
+font-weight: 800;
+margin-bottom: 12px;
+}
+.error-card p {
+color: #5A504B;
+font-size: 15px;
+line-height: 1.9;
+margin-bottom: 32px;
+}
+.btn-group {
+display: flex;
+gap: 12px;
+justify-content: center;
+flex-wrap: wrap;
+}
+.btn {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+padding: 12px 28px;
+border-radius: 14px;
+font-weight: 700;
+font-size: 14px;
+text-decoration: none;
+transition: all 0.2s;
+border: none;
+cursor: pointer;
+font-family: inherit;
+background: linear-gradient(135deg, #A88B7D, #8D7468);
+color: #fff;
+box-shadow: 0 6px 20px rgba(168, 139, 125, 0.35);
+}
+.btn:hover {
+transform: translateY(-2px);
+box-shadow: 0 10px 28px rgba(168, 139, 125, 0.45);
+}
+.btn-outline {
+background: transparent;
+color: #8D7468;
+border: 1.5px solid #A88B7D;
+box-shadow: none;
+}
+.btn-outline:hover {
+background: #A88B7D;
+color: #fff;
+}
+</style>
+</head>
+<body>
+<div class="error-card">
+<div class="error-icon" aria-hidden="true">⚠️</div>
+<h1>خطای داخلی سرور</h1>
+<p>
+متاسفانه مشکلی در پردازش درخواست شما رخ داده است.
+تیم فنی از این خطا مطلع شده و در حال بررسی است.
+لطفاً دقایقی دیگر دوباره تلاش کنید.
+</p>
+<div class="btn-group">
+<a href="/dashboard/" class="btn">🏠 بازگشت به داشبورد</a>
+<button onclick="location.reload()" class="btn btn-outline">🔄 تلاش مجدد</button>
 </div>
-{% endblock %}
+</div>
+</body>
+</html>

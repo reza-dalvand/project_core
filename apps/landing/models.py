@@ -781,18 +781,27 @@ class ContactSection(models.Model):
 class ContactMessage(models.Model):
     """پیام‌های دریافتی از فرم تماس"""
 
-    full_name = models.CharField('نام و نام خانوادگی', max_length=100)
+    full_name = models.CharField(
+        'نام و نام خانوادگی', max_length=100,
+    )
     phone = models.CharField('شماره تماس', max_length=20)
     email = models.EmailField('ایمیل', blank=True)
     subject = models.CharField('موضوع', max_length=200)
     message = models.TextField('پیام')
-
     is_read = models.BooleanField('خوانده شده', default=False)
     is_replied = models.BooleanField('پاسخ داده شده', default=False)
     admin_note = models.TextField('یادداشت ادمین', blank=True)
 
-    created_at = models.DateTimeField('تاریخ ارسال', auto_now_add=True)
-    updated_at = models.DateTimeField('آخرین بروزرسانی', auto_now=True)
+    # ✅ FIX فاز ۱: فیلد is_active اضافه شد
+    # برای پشتیبانی از حذف نرم (soft delete) در پنل ادمین
+    is_active = models.BooleanField('فعال', default=True)
+
+    created_at = models.DateTimeField(
+        'تاریخ ارسال', auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        'آخرین بروزرسانی', auto_now=True,
+    )
 
     class Meta:
         verbose_name = '📨 پیام تماس'
@@ -801,8 +810,7 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f'{self.full_name} - {self.subject}'
-
-
+        
 # ═══════════════════════════════════════════════════════════════
 #                    بخش دانلود
 # ═══════════════════════════════════════════════════════════════

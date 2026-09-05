@@ -71,14 +71,20 @@
 {% endblock %}
 
 {% block content %}
+<!-- ─── هدر ─── -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">📱 لاگ پیامک‌ها</h2>
         <p class="text-muted mb-0">پیامک‌های ارسال شده به کاربران</p>
     </div>
-    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
-        ← بازگشت به داشبورد پشتیبانی
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:sms_send' %}" class="btn btn-primary btn-sm">
+            ➕ ارسال پیامک
+        </a>
+        <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+            ← بازگشت به داشبورد پشتیبانی
+        </a>
+    </div>
 </div>
 
 <!-- ─── آمار سریع ─── -->

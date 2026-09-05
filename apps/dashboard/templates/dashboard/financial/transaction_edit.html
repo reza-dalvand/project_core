@@ -1,0 +1,71 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش تراکنش{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش تراکنش: <code>{{ transaction.tracking_code }}</code></h4>
+                <a href="{% url 'dashboard:transaction_detail' transaction.id %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">وضعیت <span class="text-danger">*</span></label>
+                        <select class="form-select" name="status" required>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}"
+                                    {% if transaction.status == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">مبلغ (تومان) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="amount"
+                               value="{{ transaction.amount }}" min="1000" step="1000" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">کمیسیون</label>
+                        <input type="text" class="form-control" value="{{ transaction.app_fee|floatformat:0 }} تومان" disabled>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">شناسه تراکنش درگاه</label>
+                        <input type="text" class="form-control" name="gateway_transaction_id"
+                               value="{{ transaction.gateway_transaction_id }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">شماره کارت</label>
+                        <input type="text" class="form-control" name="card_number"
+                               value="{{ transaction.card_number }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">بانک کارت</label>
+                        <input type="text" class="form-control" name="card_bank"
+                               value="{{ transaction.card_bank }}">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">دلیل استرداد (اختیاری)</label>
+                    <textarea class="form-control" name="refund_reason" rows="2">{{ transaction.refund_reason }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

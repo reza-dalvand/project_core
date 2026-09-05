@@ -1,16 +1,17 @@
 {% extends 'dashboard/base.html' %}
-
 {% block title %}تنظیمات سیستم{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-lg-8">
         <div class="stat-card">
-            <h4 class="fw-bold mb-3">🔧 تنظیمات سیستم</h4>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">🔧 تنظیمات سیستم</h4>
+                <a href="{% url 'dashboard:settings' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
             <form method="post">
                 {% csrf_token %}
-
-                <h6 class="fw-bold mb-3">📦 نسخه اپلیکیشن</h6>
+                <!-- ─── نسخه اپلیکیشن ─── -->
+                <h6 class="fw-bold mb-3 mt-3">📦 نسخه اپلیکیشن</h6>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">آخرین نسخه</label>
@@ -39,9 +40,35 @@
                     <label class="form-label">پیام آپدیت</label>
                     <textarea class="form-control" name="update_message" rows="2">{{ config.update_message|default:'' }}</textarea>
                 </div>
-
+                <!-- ✅ فاز ۷: فروشگاه -->
                 <hr>
-
+                <h6 class="fw-bold mb-3">🏪 فروشگاه</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">لینک فروشگاه</label>
+                        <input type="url" class="form-control" name="store_url"
+                               value="{{ config.store_url|default:'https://beauclub.ir' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">نام فروشگاه</label>
+                        <input type="text" class="form-control" name="store_name"
+                               value="{{ config.store_name|default:'بیو کلاب وب' }}">
+                    </div>
+                </div>
+                <!-- ✅ فاز ۷: چنج‌لاگ -->
+                <hr>
+                <h6 class="fw-bold mb-3">📝 چنج‌لاگ (تغییرات نسخه)</h6>
+                <div class="mb-3">
+                    <label class="form-label">آرایه JSON</label>
+                    <textarea class="form-control" name="changelog" rows="5"
+                              placeholder='[{"icon": "✨", "text": "بهبود عملکرد"}]'
+                              style="direction:ltr;">{{ changelog_json }}</textarea>
+                    <small class="text-muted">
+                        فرمت: <code>[{"icon": "✨", "text": "توضیح تغییر"}]</code>
+                    </small>
+                </div>
+                <!-- ─── حالت تعمیرات ─── -->
+                <hr>
                 <h6 class="fw-bold mb-3">🔧 حالت تعمیرات</h6>
                 <div class="mb-3">
                     <div class="form-check">
@@ -75,7 +102,6 @@
                     <label class="form-label">دلیل تعمیرات</label>
                     <textarea class="form-control" name="maintenance_reason" rows="2">{{ config.maintenance_reason|default:'' }}</textarea>
                 </div>
-
                 <button type="submit" class="btn btn-primary w-100">
                     💾 ذخیره تنظیمات
                 </button>

@@ -1,0 +1,82 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ایجاد کاربر{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">➕ ایجاد کاربر جدید</h4>
+                <a href="{% url 'dashboard:users_list' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">شماره موبایل <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" name="phone"
+                           placeholder="09123456789" value="{{ phone|default:'' }}"
+                           required autofocus inputmode="tel">
+                    <small class="text-muted">شماره ۱۱ رقمی با پیش‌شماره ۰۹</small>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نام</label>
+                        <input type="text" class="form-control" name="first_name"
+                               value="{{ first_name|default:'' }}" placeholder="نام">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نام خانوادگی</label>
+                        <input type="text" class="form-control" name="last_name"
+                               value="{{ last_name|default:'' }}" placeholder="نام خانوادگی">
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox"
+                               name="is_verified" id="isVerified" checked>
+                        <label class="form-check-label" for="isVerified">
+                            📱 شماره تایید شده
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox"
+                               name="is_staff" id="isStaff">
+                        <label class="form-check-label" for="isStaff">
+                            🛡️ دسترسی به پنل ادمین
+                        </label>
+                    </div>
+                    <small class="text-muted">
+                        اگر فعال باشد، کاربر می‌تواند وارد پنل مدیریت شود
+                    </small>
+                </div>
+
+                <hr>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ایجاد کاربر
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

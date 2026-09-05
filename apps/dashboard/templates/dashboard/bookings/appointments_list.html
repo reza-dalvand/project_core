@@ -1,0 +1,224 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}لیست نوبت‌ها{% endblock %}
+{% block extra_head %}
+<style>
+.filter-bar {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+.stat-mini {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+.stat-mini .value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+}
+.stat-mini .label {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 4px;
+}
+.table-card {
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    overflow-x: auto;
+}
+.table-card .table { margin-bottom: 0; }
+.table-card .table th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    white-space: nowrap;
+}
+.table-card .table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    vertical-align: middle;
+}
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+}
+.status-reserved { background: #D1ECF1; color: #0C5460; }
+.status-done { background: #D4EDDA; color: #155724; }
+.status-cancelled { background: #F8D7DA; color: #721C24; }
+.pagination .page-link {
+    color: var(--primary-dark);
+    border-color: var(--border);
+}
+.pagination .page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📋 لیست نوبت‌ها</h2>
+        <p class="text-muted mb-0">مدیریت رزروهای مشتریان</p>
+    </div>
+    <a href="{% url 'dashboard:bookings' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به داشبورد نوبت‌ها
+    </a>
+</div>
+<!-- ─── آمار سریع ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.reserved }}</div>
+            <div class="label">رزرو شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.done }}</div>
+            <div class="label">انجام شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.cancelled }}</div>
+            <div class="label">لغو شده</div>
+        </div>
+    </div>
+</div>
+<!-- ─── فیلتر و جستجو ─── -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">جستجو</label>
+            <input type="text" name="search" class="form-control"
+                   placeholder="شماره مشتری، نام کسب‌وکار، نام خدمت، کد تایید..."
+                   value="{{ search }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">وضعیت</label>
+            <select name="status" class="form-select">
+                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small fw-semibold">بازه زمانی</label>
+            <select name="date_filter" class="form-select">
+                <option value="all" {% if date_filter == 'all' %}selected{% endif %}>همه</option>
+                <option value="today" {% if date_filter == 'today' %}selected{% endif %}>امروز</option>
+                <option value="week" {% if date_filter == 'week' %}selected{% endif %}>این هفته</option>
+                <option value="month" {% if date_filter == 'month' %}selected{% endif %}>این ماه</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">🔍 فیلتر</button>
+        </div>
+    </form>
+</div>
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>مشتری</th>
+                <th>کسب‌وکار</th>
+                <th>خدمت</th>
+                <th>تاریخ</th>
+                <th>ساعت</th>
+                <th>مبلغ</th>
+                <th>بیعانه</th>
+                <th>وضعیت</th>
+                <th>کد تایید</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for apt in page_obj %}
+            <tr>
+                <td>
+                    {{ apt.customer.full_name }}
+                    <br>
+                    <small class="text-muted"><code>{{ apt.customer.phone }}</code></small>
+                </td>
+                <td>{{ apt.business.name }}</td>
+                <td>{{ apt.service.name }}</td>
+                <td>{{ apt.date_key }}</td>
+                <td>{{ apt.time_slot|time:"H:i" }}</td>
+                <td>{{ apt.total_price|floatformat:0 }} تومان</td>
+                <td>{{ apt.deposit_amount|floatformat:0 }} تومان</td>
+                <td>
+                    {% if apt.status == 'reserved' %}
+                        <span class="status-badge status-reserved">رزرو شده</span>
+                    {% elif apt.status == 'done' %}
+                        <span class="status-badge status-done">انجام شده</span>
+                    {% elif apt.status == 'cancelled_by_salon' %}
+                        <span class="status-badge status-cancelled">لغو توسط سالن</span>
+                    {% else %}
+                        <span class="status-badge status-cancelled">لغو توسط مشتری</span>
+                    {% endif %}
+                </td>
+                <td><code>{{ apt.verification_code|default:"-" }}</code></td>
+                <td>
+                    <a href="{% url 'dashboard:appointment_detail' apt.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10" class="text-center py-4 text-muted">
+                    نوبتی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<!-- ─── صفحه‌بندی ─── -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&status={{ status_filter }}&date_filter={{ date_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&status={{ status_filter }}&date_filter={{ date_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

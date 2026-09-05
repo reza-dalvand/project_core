@@ -1,0 +1,118 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}جزئیات خدمت{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">💆 جزئیات خدمت</h4>
+            <div class="mb-3">
+                <label class="small text-muted">نام خدمت</label>
+                <div class="fw-bold">{{ service.name }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">کسب‌وکار</label>
+                <div class="fw-semibold">{{ service.business.name }}</div>
+                <small class="text-muted">{{ service.business.owner.phone }}</small>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">دسته‌بندی</label>
+                <div class="fw-semibold">{{ service.category.name }} — {{ service.sub_service.name }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">توضیحات</label>
+                <div class="fw-semibold">{{ service.description|default:"-" }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">قیمت</label>
+                <div class="fw-semibold fs-5">{{ service.original_price|floatformat:0 }} تومان</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">تخفیف</label>
+                <div class="fw-semibold">{{ service.discount_percent }}% ({{ service.discount_amount|floatformat:0 }} تومان)</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">قیمت نهایی</label>
+                <div class="fw-semibold fs-5">{{ service.final_price|floatformat:0 }} تومان</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">بیعانه</label>
+                <div class="fw-semibold">
+                    {% if service.has_deposit %}
+                        {{ service.deposit_amount|floatformat:0 }} تومان
+                    {% else %}
+                        ندارد
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">مدت زمان</label>
+                <div class="fw-semibold">{{ service.duration }} دقیقه</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">یادآوری تمدید</label>
+                <div class="fw-semibold">
+                    {% if service.renewal_days > 0 %}
+                        {{ service.renewal_days }} روز
+                    {% else %}
+                        ندارد
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">وضعیت</label>
+                <div>
+                    {% if service.is_active %}
+                        <span class="status-badge status-active">فعال</span>
+                    {% else %}
+                        <span class="status-badge status-inactive">غیرفعال</span>
+                    {% endif %}
+                </div>
+            </div>
+            <hr>
+            <form method="post" action="{% url 'dashboard:service_toggle_active' service.id %}">
+                {% csrf_token %}
+                {% if service.is_active %}
+                    <button type="submit" class="btn btn-danger w-100">
+                        🚫 غیرفعال کردن خدمت
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn btn-success w-100">
+                        ✅ فعال کردن خدمت
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    <!-- ─── آمار و لینک‌ها ─── -->
+    <div class="col-lg-8">
+        <!-- آمار نوبت‌ها -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📊 آمار نوبت‌های این خدمت</h5>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="small text-muted">کل نوبت‌ها</label>
+                    <div class="fw-semibold fs-4">{{ appointments_stats.total|default:"0" }}</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted">رزرو شده</label>
+                    <div class="fw-semibold">{{ appointments_stats.reserved|default:"0" }}</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted">انجام شده</label>
+                    <div class="fw-semibold">{{ appointments_stats.done|default:"0" }}</div>
+                </div>
+            </div>
+        </div>
+        <!-- لینک‌ها -->
+        <div class="mt-3">
+            <a href="{% url 'dashboard:services_list' %}" class="btn btn-outline-secondary btn-sm">
+                ← بازگشت به لیست خدمات
+            </a>
+            <a href="{% url 'dashboard:business_detail' service.business.id %}" class="btn btn-outline-primary btn-sm">
+                🏪 مشاهده کسب‌وکار
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

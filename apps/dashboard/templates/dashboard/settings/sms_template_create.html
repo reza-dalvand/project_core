@@ -1,0 +1,61 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ایجاد قالب پیامک{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">➕ ایجاد قالب پیامک جدید</h4>
+                <a href="{% url 'dashboard:sms_templates' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نوع قالب <span class="text-danger">*</span></label>
+                        <select class="form-select" name="type" required>
+                            <option value="">انتخاب کنید...</option>
+                            {% for value, label in type_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">روش ارسال <span class="text-danger">*</span></label>
+                        <select class="form-select" name="send_method" required>
+                            {% for value, label in send_method_choices %}
+                                <option value="{{ value }}" {% if value == 'simple' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نام قالب <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required placeholder="کد تایید ورود">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">شناسه قالب در کاوه‌نگار <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="provider_template_id" required placeholder="beau-otp">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن قالب <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="pattern" rows="4" required
+                              placeholder="کد تایید شما: {{ code }}"></textarea>
+                    <small class="text-muted">از متغیرها با فرمت {{ '{{ متغیر }}' }} استفاده کنید</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متغیرها (با کاما جدا کنید)</label>
+                    <input type="text" class="form-control" name="variables" placeholder="code, name">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ایجاد قالب
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load dashboard_tags %}
 {% block title %}جزئیات کسب‌وکار{% endblock %}
 
 {% block content %}
@@ -8,79 +8,101 @@
     <div class="col-lg-4">
         <div class="stat-card">
             {% if business.logo %}
-            <div class="text-center mb-3">
-                <img src="{{ business.logo.url }}" style="width: 80px; height: 80px; border-radius: 16px; object-fit: cover;">
-            </div>
+                <div class="text-center mb-3">
+                    <img src="{{ business.logo.url }}" style="width: 80px; height: 80px; border-radius: 16px; object-fit: cover;">
+                </div>
             {% endif %}
 
             <h4 class="text-center fw-bold mb-1">
                 {{ business.name }}
                 {% if business.is_vip %}
-                <span class="vip-badge">👑 VIP</span>
+                    <span class="vip-badge">👑 VIP</span>
                 {% endif %}
             </h4>
             <p class="text-center text-muted mb-3">{{ business.category.name }}</p>
 
             <div class="text-center mb-3">
                 {% if business.status == 'pending' %}
-                <span class="status-badge status-pending">در انتظار تایید</span>
+                    <span class="status-badge status-pending">در انتظار تایید</span>
                 {% elif business.status == 'approved' %}
-                <span class="status-badge status-approved">تایید شده</span>
+                    <span class="status-badge status-approved">تایید شده</span>
                 {% else %}
-                <span class="status-badge status-rejected">رد شده</span>
+                    <span class="status-badge status-rejected">رد شده</span>
                 {% endif %}
             </div>
 
             {% if business.rating > 0 %}
-            <div class="text-center mb-3">
-                <span class="fs-4 fw-bold">{{ business.rating }}</span>
-                <span class="text-warning">⭐</span>
-                <br>
-                <small class="text-muted">{{ business.reviews_count }} نظر</small>
-            </div>
+                <div class="text-center mb-3">
+                    <span class="fs-4 fw-bold">{{ business.rating }}</span>
+                    <span class="text-warning">⭐</span>
+                    <br>
+                    <small class="text-muted">{{ business.reviews_count }} نظر</small>
+                </div>
             {% endif %}
 
             <hr>
 
             <!-- دکمه‌های عملیات -->
             <div class="d-grid gap-2">
-                {% if business.status == 'pending' %}
-                <form method="post" action="{% url 'dashboard:business_approve' business.id %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success w-100">
-                        ✅ تایید کسب‌وکار
-                    </button>
-                </form>
+                <a href="{% url 'dashboard:business_edit' business.id %}"
+                   class="btn btn-outline-primary w-100">
+                    ✏️ ویرایش اطلاعات
+                </a>
 
-                <form method="post" action="{% url 'dashboard:business_reject' business.id %}" id="rejectForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="rejection_reason" id="rejectionReason" value="">
-                    <button type="button" class="btn btn-danger w-100" onclick="showRejectModal()">
-                        ❌ رد کسب‌وکار
-                    </button>
-                </form>
+                {% if business.status == 'pending' %}
+                    <form method="post" action="{% url 'dashboard:business_approve' business.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ تایید کسب‌وکار
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'dashboard:business_reject' business.id %}" id="rejectForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="rejection_reason" id="rejectionReason" value="">
+                        <button type="button" class="btn btn-danger w-100" onclick="showRejectModal()">
+                            ❌ رد کسب‌وکار
+                        </button>
+                    </form>
                 {% endif %}
 
                 <form method="post" action="{% url 'dashboard:business_toggle_vip' business.id %}">
                     {% csrf_token %}
                     {% if business.is_vip %}
-                    <button type="submit" class="btn btn-outline-secondary w-100">
-                        خروج از VIP
-                    </button>
+                        <button type="submit" class="btn btn-outline-secondary w-100">
+                            خروج از VIP
+                        </button>
                     {% else %}
-                    <button type="submit" class="btn btn-outline-warning w-100">
-                        👑 VIP کردن
-                    </button>
+                        <button type="submit" class="btn btn-outline-warning w-100">
+                            👑 VIP کردن
+                        </button>
                     {% endif %}
+                </form>
+
+                <form method="post" action="{% url 'dashboard:business_reset_slug' business.id %}"
+                      onsubmit="return confirm('آیا از تغییر لینک رزرو مطمئن هستید؟');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-info w-100">
+                        🔗 ریست لینک رزرو
+                    </button>
+                </form>
+
+                <button type="button" class="btn btn-outline-danger w-100"
+                        onclick="confirmDeleteBusiness({{ business.id }}, '{{ business.name|escapejs }}')">
+                    🗑️ حذف کسب‌وکار
+                </button>
+                <form method="post" action="{% url 'dashboard:business_delete' business.id %}"
+                      id="deleteBusinessForm" class="d-none">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="yes">
                 </form>
             </div>
 
             {% if business.rejection_reason %}
-            <hr>
-            <div class="alert alert-warning small">
-                <strong>دلیل رد:</strong>
-                {{ business.rejection_reason }}
-            </div>
+                <hr>
+                <div class="alert alert-warning small">
+                    <strong>دلیل رد:</strong>
+                    {{ business.rejection_reason }}
+                </div>
             {% endif %}
         </div>
     </div>
@@ -114,17 +136,23 @@
                 </div>
                 <div class="col-md-6">
                     <label class="small text-muted">لینک رزرو</label>
-                    <div class="fw-semibold"><code>{{ business.booking_slug }}</code></div>
+                    <div class="fw-semibold">
+                        <code>{{ business.booking_slug }}</code>
+                        <button class="btn btn-sm btn-outline-secondary ms-1"
+                                onclick="copyToClipboard('{{ business.booking_slug }}', this)">
+                            📋
+                        </button>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="small text-muted">وضعیت اطلاعات بانکی</label>
                     <div class="fw-semibold">
                         {% if business.bank_info_verified %}
-                        <span class="text-success">✅ تایید شده</span>
+                            <span class="text-success">✅ تایید شده</span>
                         {% elif business.bank_info_registered %}
-                        <span class="text-warning">⚠️ ثبت شده</span>
+                            <span class="text-warning">⚠️ ثبت شده</span>
                         {% else %}
-                        <span class="text-muted">❌ ثبت نشده</span>
+                            <span class="text-muted">❌ ثبت نشده</span>
                         {% endif %}
                     </div>
                 </div>
@@ -135,32 +163,113 @@
             </div>
         </div>
 
+        <!-- ✅ فاز ۲ + ۳: اطلاعات بانکی — با ماسک‌سازی -->
+        {% if business.bank_info_registered %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">🏦 اطلاعات بانکی</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="small text-muted">نام صاحب حساب</label>
+                    <div class="fw-semibold">{{ business.bank_owner_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">نام بانک</label>
+                    <div class="fw-semibold">{{ business.bank_name|default:"-" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره شبا</label>
+                    <div class="fw-semibold">
+                        <code>{{ business.bank_sheba|mask_sheba }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره کارت</label>
+                    <div class="fw-semibold">
+                        <code>{{ business.bank_card_number|mask_card }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">شماره حساب</label>
+                    <div class="fw-semibold">
+                        <code>{{ business.bank_account_number|mask_account }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">کد ملی صاحب حساب</label>
+                    <div class="fw-semibold">
+                        <code>{{ business.bank_national_id|mask_national_id }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="small text-muted">وضعیت تایید</label>
+                    <div class="fw-semibold">
+                        {% if business.bank_info_verified %}
+                            <span class="text-success">✅ تایید شده</span>
+                        {% else %}
+                            <span class="text-warning">⚠️ در انتظار تایید</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- آمار -->
         <div class="row g-3 mb-4">
-            <div class="col-6 col-md-4">
+            <div class="col-6 col-md-3">
                 <div class="stat-mini">
                     <div class="value">{{ business_stats.services_count }}</div>
                     <div class="label">خدمات فعال</div>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
+            <div class="col-6 col-md-3">
                 <div class="stat-mini">
                     <div class="value">{{ business_stats.appointments_count }}</div>
                     <div class="label">نوبت‌ها</div>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
+            <div class="col-6 col-md-3">
                 <div class="stat-mini">
                     <div class="value">{{ business_stats.transactions_count }}</div>
                     <div class="label">تراکنش‌ها</div>
                 </div>
             </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-mini">
+                    <div class="value">{{ business_stats.reviews_count }}</div>
+                    <div class="label">نظرات</div>
+                </div>
+            </div>
         </div>
 
-        <!-- خدمات -->
+        <!-- ✅ فاز ۳: گالری -->
+        {% if gallery %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">🖼️ گالری تصاویر ({{ gallery|length }}/3)</h5>
+            <div class="row g-2">
+                {% for img in gallery %}
+                <div class="col-4">
+                    <div class="position-relative">
+                        <img src="{{ img.image.url }}" class="img-fluid rounded"
+                             style="width: 100%; height: 120px; object-fit: cover;">
+                        <form method="post"
+                              action="{% url 'dashboard:business_gallery_delete' business.id img.id %}"
+                              class="position-absolute top-0 start-0 m-1"
+                              onsubmit="return confirm('حذف تصویر؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger">✕</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ✅ فاز ۳: خدمات -->
         {% if services %}
         <div class="stat-card mb-4">
-            <h5 class="fw-bold mb-3">💆 خدمات</h5>
+            <h5 class="fw-bold mb-3">💆 خدمات ({{ services|length }})</h5>
             <div class="table-responsive">
                 <table class="table table-sm">
                     <thead>
@@ -170,6 +279,7 @@
                             <th>تخفیف</th>
                             <th>بیعانه</th>
                             <th>وضعیت</th>
+                            <th>عملیات</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -180,17 +290,71 @@
                             <td>{{ service.discount_percent }}%</td>
                             <td>
                                 {% if service.has_deposit %}
-                                {{ service.deposit_amount|floatformat:0 }} تومان
+                                    {{ service.deposit_amount|floatformat:0 }} تومان
                                 {% else %}
-                                -
+                                    -
                                 {% endif %}
                             </td>
                             <td>
                                 {% if service.is_active %}
-                                <span class="status-badge status-active">فعال</span>
+                                    <span class="status-badge status-active">فعال</span>
                                 {% else %}
-                                <span class="status-badge status-inactive">غیرفعال</span>
+                                    <span class="status-badge status-inactive">غیرفعال</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <form method="post"
+                                      action="{% url 'dashboard:business_service_toggle' business.id service.id %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    {% if service.is_active %}
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">🚫</button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success">✅</button>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ✅ فاز ۳: نوبت‌های فعال -->
+        {% if active_appointments %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📅 نوبت‌های فعال ({{ active_appointments|length }})</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>مشتری</th>
+                            <th>خدمت</th>
+                            <th>تاریخ</th>
+                            <th>ساعت</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for apt in active_appointments %}
+                        <tr>
+                            <td>
+                                {{ apt.customer.full_name }}
+                                <br><small class="text-muted"><code>{{ apt.customer.phone }}</code></small>
+                            </td>
+                            <td>{{ apt.service.name }}</td>
+                            <td>{{ apt.date_key }}</td>
+                            <td>{{ apt.time_slot }}</td>
+                            <td>
+                                <form method="post"
+                                      action="{% url 'dashboard:business_appointment_cancel' business.id apt.id %}"
+                                      onsubmit="return confirm('لغو نوبت؟');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="reason" value="لغو توسط ادمین">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">لغو</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
@@ -218,7 +382,7 @@
                     <small class="text-muted">{{ review.created_at|date:"Y/m/d" }}</small>
                 </div>
                 {% if review.comment %}
-                <p class="text-muted small mb-0 mt-1">{{ review.comment }}</p>
+                    <p class="text-muted small mb-0 mt-1">{{ review.comment }}</p>
                 {% endif %}
             </div>
             {% endfor %}
@@ -251,19 +415,33 @@
 
 {% block extra_js %}
 <script>
-    function showRejectModal() {
-        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
-        modal.show();
-    }
+function showRejectModal() {
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
 
-    function submitReject() {
-        const reason = document.getElementById('rejectReasonText').value.trim();
-        if (!reason) {
-            alert('لطفاً دلیل رد را وارد کنید.');
-            return;
-        }
-        document.getElementById('rejectionReason').value = reason;
-        document.getElementById('rejectForm').submit();
+function submitReject() {
+    const reason = document.getElementById('rejectReasonText').value.trim();
+    if (!reason) {
+        alert('لطفاً دلیل رد را وارد کنید.');
+        return;
     }
+    document.getElementById('rejectionReason').value = reason;
+    document.getElementById('rejectForm').submit();
+}
+
+function confirmDeleteBusiness(businessId, name) {
+    if (confirm(`آیا از حذف کسب‌وکار "${name}" مطمئن هستید؟\nاین عملیات قابل بازگشت نیست.`)) {
+        document.getElementById('deleteBusinessForm').submit();
+    }
+}
+
+function copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+        const original = btn.textContent;
+        btn.textContent = '✅';
+        setTimeout(() => { btn.textContent = original; }, 2000);
+    });
+}
 </script>
 {% endblock %}

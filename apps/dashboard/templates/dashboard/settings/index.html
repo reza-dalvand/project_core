@@ -119,7 +119,7 @@
             <div class="icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎭</div>
             <div>
                 <strong>نقش‌ها</strong>
-                <br><small class="text-muted">مدیریت نقش‌های ادمین</small>
+                <br><small class="text-muted">{{ role_stats.total|default:"0" }} نقش</small>
             </div>
         </a>
     </div>
@@ -128,7 +128,7 @@
             <div class="icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">👨‍💼</div>
             <div>
                 <strong>ادمین‌ها</strong>
-                <br><small class="text-muted">مدیریت کاربران ادمین</small>
+                <br><small class="text-muted">{{ admin_stats.total|default:"0" }} ادمین</small>
             </div>
         </a>
     </div>
@@ -137,7 +137,7 @@
             <div class="icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">🔧</div>
             <div>
                 <strong>تنظیمات سیستم</strong>
-                <br><small class="text-muted">نسخه و حالت تعمیرات</small>
+                <br><small class="text-muted">نسخه و تعمیرات</small>
             </div>
         </a>
     </div>
@@ -146,18 +146,46 @@
             <div class="icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">📱</div>
             <div>
                 <strong>قالب‌های پیامک</strong>
-                <br><small class="text-muted">مدیریت قالب‌ها</small>
+                <br><small class="text-muted">{{ sms_stats.total|default:"0" }} قالب</small>
             </div>
         </a>
     </div>
 </div>
-<div class="row g-3">
+<div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
         <a href="{% url 'dashboard:landing_settings' %}" class="quick-link">
             <div class="icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🌐</div>
             <div>
                 <strong>تنظیمات لندینگ</strong>
-                <br><small class="text-muted">سایت معرفی</small>
+                <br><small class="text-muted">{{ site_settings.site_name|default:"-" }}</small>
+            </div>
+        </a>
+    </div>
+    <!-- ✅ فاز ۹: لینک‌های جدید -->
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:audit_log' %}" class="quick-link">
+            <div class="icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">📋</div>
+            <div>
+                <strong>لاگ عملیات</strong>
+                <br><small class="text-muted">حسابرسی تغییرات</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:dashboard_search' %}" class="quick-link">
+            <div class="icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">🔍</div>
+            <div>
+                <strong>جستجوی سراسری</strong>
+                <br><small class="text-muted">جستجو در همه بخش‌ها</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:alerts' %}" class="quick-link">
+            <div class="icon" style="background: rgba(244, 67, 54, 0.1); color: #C62828;">🔔</div>
+            <div>
+                <strong>هشدارها</strong>
+                <br><small class="text-muted">اعلان‌های سیستم</small>
             </div>
         </a>
     </div>

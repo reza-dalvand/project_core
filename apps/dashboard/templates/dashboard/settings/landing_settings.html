@@ -1,16 +1,17 @@
 {% extends 'dashboard/base.html' %}
-
 {% block title %}تنظیمات لندینگ{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-lg-8">
         <div class="stat-card">
-            <h4 class="fw-bold mb-3">🌐 تنظیمات لندینگ</h4>
-            <form method="post">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">🌐 تنظیمات لندینگ</h4>
+                <a href="{% url 'dashboard:settings' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-
-                <h6 class="fw-bold mb-3">🏷️ برندینگ</h6>
+                <!-- ─── برندینگ ─── -->
+                <h6 class="fw-bold mb-3 mt-3">🏷️ برندینگ</h6>
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label class="form-label">نام سایت</label>
@@ -23,9 +24,71 @@
                                value="{{ settings.site_slogan|default:'' }}">
                     </div>
                 </div>
-
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">آیکون لوگو (Material Icon)</label>
+                        <input type="text" class="form-control" name="logo_icon"
+                               value="{{ settings.logo_icon|default:'spa' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">لوگو (آپلود تصویر)</label>
+                        <input type="file" class="form-control" name="logo" accept="image/*">
+                        {% if settings.logo %}
+                            <small class="text-success">✅ لوگوی فعلی موجود است</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">فاویکون (آپلود تصویر)</label>
+                        <input type="file" class="form-control" name="favicon" accept="image/*">
+                        {% if settings.favicon %}
+                            <small class="text-success">✅ فاویکون فعلی موجود است</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <!-- ✅ فاز ۷: رنگ‌بندی -->
                 <hr>
-
+                <h6 class="fw-bold mb-3">🎨 رنگ‌بندی</h6>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">رنگ اصلی</label>
+                        <input type="color" class="form-control form-control-color w-100"
+                               name="primary_color" value="{{ settings.primary_color|default:'#A88B7D' }}">
+                        <small class="text-muted">{{ settings.primary_color|default:'#A88B7D' }}</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">رنگ تیره</label>
+                        <input type="color" class="form-control form-control-color w-100"
+                               name="primary_dark_color" value="{{ settings.primary_dark_color|default:'#8D7468' }}">
+                        <small class="text-muted">{{ settings.primary_dark_color|default:'#8D7468' }}</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">رنگ روشن</label>
+                        <input type="color" class="form-control form-control-color w-100"
+                               name="primary_light_color" value="{{ settings.primary_light_color|default:'#C5AE9F' }}">
+                        <small class="text-muted">{{ settings.primary_light_color|default:'#C5AE9F' }}</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">پس‌زمینه</label>
+                        <input type="color" class="form-control form-control-color w-100"
+                               name="background_color" value="{{ settings.background_color|default:'#F5F0EC' }}">
+                        <small class="text-muted">{{ settings.background_color|default:'#F5F0EC' }}</small>
+                    </div>
+                </div>
+                <!-- ✅ فاز ۷: سئو -->
+                <hr>
+                <h6 class="fw-bold mb-3">🔍 سئو (SEO)</h6>
+                <div class="mb-3">
+                    <label class="form-label">توضیحات متا</label>
+                    <textarea class="form-control" name="meta_description" rows="2">{{ settings.meta_description|default:'' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">کلمات کلیدی</label>
+                    <input type="text" class="form-control" name="meta_keywords"
+                           value="{{ settings.meta_keywords|default:'' }}"
+                           placeholder="رزرو آنلاین, سالن زیبایی, خدمات زیبایی">
+                </div>
+                <!-- ─── اطلاعات تماس ─── -->
+                <hr>
                 <h6 class="fw-bold mb-3">📞 اطلاعات تماس</h6>
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -49,9 +112,8 @@
                     <input type="text" class="form-control" name="working_hours"
                            value="{{ settings.working_hours|default:'' }}">
                 </div>
-
+                <!-- ─── شبکه‌های اجتماعی ─── -->
                 <hr>
-
                 <h6 class="fw-bold mb-3">🌐 شبکه‌های اجتماعی</h6>
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -65,14 +127,20 @@
                                value="{{ settings.telegram_url|default:'' }}">
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">واتساپ</label>
-                    <input type="url" class="form-control" name="whatsapp_url"
-                           value="{{ settings.whatsapp_url|default:'' }}">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">واتساپ</label>
+                        <input type="url" class="form-control" name="whatsapp_url"
+                               value="{{ settings.whatsapp_url|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">توییتر</label>
+                        <input type="url" class="form-control" name="twitter_url"
+                               value="{{ settings.twitter_url|default:'' }}">
+                    </div>
                 </div>
-
+                <!-- ─── لینک‌های دانلود ─── -->
                 <hr>
-
                 <h6 class="fw-bold mb-3">📱 لینک‌های دانلود</h6>
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -86,7 +154,49 @@
                                value="{{ settings.myket_url|default:'' }}">
                     </div>
                 </div>
-
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">گوگل‌پلی</label>
+                        <input type="url" class="form-control" name="google_play_url"
+                               value="{{ settings.google_play_url|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">اپ‌استور</label>
+                        <input type="url" class="form-control" name="app_store_url"
+                               value="{{ settings.app_store_url|default:'' }}">
+                    </div>
+                </div>
+                <!-- ✅ فاز ۷: ای‌نماد -->
+                <hr>
+                <h6 class="fw-bold mb-3">🛡️ ای‌نماد</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">تصویر ای‌نماد</label>
+                        <input type="file" class="form-control" name="enamad_image" accept="image/*">
+                        {% if settings.enamad_image %}
+                            <small class="text-success">✅ تصویر فعلی موجود است</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">کد HTML ای‌نماد</label>
+                        <textarea class="form-control" name="enamad_code" rows="3">{{ settings.enamad_code|default:'' }}</textarea>
+                    </div>
+                </div>
+                <!-- ─── فوتر ─── -->
+                <hr>
+                <h6 class="fw-bold mb-3">📝 فوتر</h6>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">متن فوتر</label>
+                        <input type="text" class="form-control" name="footer_text"
+                               value="{{ settings.footer_text|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">سال کپی‌رایت</label>
+                        <input type="text" class="form-control" name="copyright_year"
+                               value="{{ settings.copyright_year|default:'۱۴۰۵' }}">
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-primary w-100">
                     💾 ذخیره تنظیمات
                 </button>

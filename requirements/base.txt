@@ -14,9 +14,9 @@ Jinja2==3.1.4
 django-jinja==2.11.0
 
 # ─── REST API ───
-djangorestframework==3.15.2
+djangorestframework==3.16.0
 djangorestframework-simplejwt==5.3.1
-drf-spectacular==0.27.2
+drf-spectacular==0.28.0
 django-filter==24.3
 django-cors-headers==4.4.0
 
@@ -48,3 +48,6 @@ requests==2.32.3
 
 # ─── Static Files Serving ───
 whitenoise==6.8.2
+
+
+openpyxl==3.1.5

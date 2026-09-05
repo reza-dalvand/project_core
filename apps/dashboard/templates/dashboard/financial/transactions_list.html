@@ -72,14 +72,20 @@
 {% endblock %}
 
 {% block content %}
+<!-- ─── هدر ─── -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">📋 تراکنش‌ها</h2>
         <p class="text-muted mb-0">لیست تمام تراکنش‌های مالی</p>
     </div>
-    <a href="{% url 'dashboard:financial' %}" class="btn btn-outline-secondary btn-sm">
-        ← بازگشت به داشبورد مالی
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:transaction_create' %}" class="btn btn-primary btn-sm">
+            ➕ ایجاد تراکنش
+        </a>
+        <a href="{% url 'dashboard:financial' %}" class="btn btn-outline-secondary btn-sm">
+            ← بازگشت به داشبورد مالی
+        </a>
+    </div>
 </div>
 
 <!-- ─── آمار سریع ─── -->
@@ -125,32 +131,40 @@
 <!-- ─── فیلتر و جستجو ─── -->
 <div class="filter-bar">
     <form method="get" class="row g-3 align-items-end">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label small fw-semibold">جستجو</label>
             <input type="text" name="search" class="form-control"
-                   placeholder="کد پیگیری، شماره مشتری، نام کسب‌وکار..."
+                   placeholder="کد پیگیری، شماره مشتری..."
                    value="{{ search }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label small fw-semibold">وضعیت</label>
             <select name="status" class="form-select">
                 <option value="all" {% if status_filter == 'all' %}selected{% endif %}>همه</option>
                 {% for value, label in status_choices %}
-                <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label small fw-semibold">نوع</label>
-            <select name="type" class="form-select">
-                <option value="all" {% if type_filter == 'all' %}selected{% endif %}>همه</option>
-                {% for value, label in type_choices %}
-                <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">🔍 فیلتر</button>
+            <label class="form-label small fw-semibold">نوع</label>
+            <select name="type" class="form-select">
+                <option value="all" {% if type_filter == 'all' %}selected{% endif %}>همه</option>
+                {% for value, label in type_choices %}
+                    <option value="{{ value }}" {% if type_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-semibold">از تاریخ</label>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small fw-semibold">تا تاریخ</label>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-primary w-100">🔍</button>
         </div>
     </form>
 </div>
@@ -203,6 +217,9 @@
                 <td>
                     <a href="{% url 'dashboard:transaction_detail' tx.id %}" class="btn btn-sm btn-outline-primary">
                         جزئیات
+                    </a>
+                    <a href="{% url 'dashboard:transaction_edit' tx.id %}" class="btn btn-sm btn-outline-secondary">
+                        ✏️
                     </a>
                 </td>
             </tr>

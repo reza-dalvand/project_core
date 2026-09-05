@@ -450,3 +450,39 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=4, minute=0),
     },
 }
+
+
+# ═══════════════════════════════════════════════
+#   Dashboard Security Settings
+#   ✅ فاز ۲: تنظیمات امنیتی داشبورد
+# ═══════════════════════════════════════════════
+DASHBOARD_SETTINGS = {
+    # انقضای سشن غیرفعال (دقیقه)
+    'SESSION_TIMEOUT_MINUTES': env.int(
+        'DASHBOARD_SESSION_TIMEOUT', default=60
+    ),
+    # حداکثر عمر مطلق سشن (ساعت)
+    'ABSOLUTE_SESSION_TIMEOUT_HOURS': env.int(
+        'DASHBOARD_ABSOLUTE_SESSION_TIMEOUT', default=8
+    ),
+    # حداکثر تلاش ورود با یک شماره قبل از قفل (تعداد)
+    'MAX_LOGIN_ATTEMPTS': env.int(
+        'DASHBOARD_MAX_LOGIN_ATTEMPTS', default=5
+    ),
+    # مدت قفل پس از تجاوز از حد مجاز (دقیقه)
+    'LOGIN_LOCKOUT_MINUTES': env.int(
+        'DASHBOARD_LOGIN_LOCKOUT_MINUTES', default=15
+    ),
+    # حداکثر ارسال مجدد کد تایید (تعداد)
+    'MAX_RESEND_ATTEMPTS': env.int(
+        'DASHBOARD_MAX_RESEND_ATTEMPTS', default=3
+    ),
+    # IPهای مجاز برای داشبورد (خالی = همه مجاز)
+    'ALLOWED_IPS': env.list(
+        'DASHBOARD_ALLOWED_IPS', default=[]
+    ),
+    # فعال‌سازی بررسی IP
+    'ENABLE_IP_RESTRICTION': env.bool(
+        'DASHBOARD_ENABLE_IP_RESTRICTION', default=False
+    ),
+}

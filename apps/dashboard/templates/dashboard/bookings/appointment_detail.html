@@ -1,0 +1,183 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}جزئیات نوبت{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">📅 جزئیات نوبت</h4>
+            <div class="mb-3">
+                <label class="small text-muted">مشتری</label>
+                <div class="fw-bold">{{ appointment.customer.full_name }}</div>
+                <small class="text-muted"><code>{{ appointment.customer.phone }}</code></small>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">کسب‌وکار</label>
+                <div class="fw-semibold">{{ appointment.business.name }}</div>
+                <small class="text-muted">{{ appointment.business.owner.phone }}</small>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">خدمت</label>
+                <div class="fw-semibold">{{ appointment.service.name }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">تاریخ و ساعت</label>
+                <div class="fw-semibold">{{ appointment.date_key }} — {{ appointment.time_slot|time:"H:i" }}</div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">وضعیت</label>
+                <div>
+                    {% if appointment.status == 'reserved' %}
+                        <span class="status-badge status-reserved">رزرو شده</span>
+                    {% elif appointment.status == 'done' %}
+                        <span class="status-badge status-done">انجام شده</span>
+                    {% elif appointment.status == 'cancelled_by_salon' %}
+                        <span class="status-badge status-cancelled">لغو توسط سالن</span>
+                    {% else %}
+                        <span class="status-badge status-cancelled">لغو توسط مشتری</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="small text-muted">کد تایید</label>
+                <div class="fw-semibold"><code>{{ appointment.verification_code|default:"-" }}</code></div>
+            </div>
+            {% if appointment.is_trust_based %}
+            <div class="mb-3">
+                <label class="small text-muted">نوع رزرو</label>
+                <div class="fw-semibold">🤝 اعتماد به سالن (بدون کد تایید)</div>
+            </div>
+            {% endif %}
+            {% if appointment.is_verified %}
+            <div class="mb-3">
+                <label class="small text-muted">زمان تایید</label>
+                <div class="fw-semibold">{{ appointment.verified_at|date:"Y/m/d H:i" }}</div>
+            </div>
+            {% endif %}
+            {% if appointment.cancellation_reason %}
+            <div class="mb-3">
+                <label class="small text-muted">دلیل لغو</label>
+                <div class="alert alert-warning small mb-0">{{ appointment.cancellation_reason }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <!-- ─── جزئیات مالی و عملیات ─── -->
+    <div class="col-lg-8">
+        <!-- اطلاعات مالی -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">💰 اطلاعات مالی</h5>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="small text-muted">قیمت کل</label>
+                    <div class="fw-semibold fs-5">{{ appointment.total_price|floatformat:0 }} تومان</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted">بیعانه</label>
+                    <div class="fw-semibold">{{ appointment.deposit_amount|floatformat:0 }} تومان</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted">مبلغ باقی‌مانده</label>
+                    <div class="fw-semibold">{{ appointment.remaining_amount|floatformat:0 }} تومان</div>
+                </div>
+            </div>
+        </div>
+        <!-- تراکنش‌ها -->
+        {% if transactions %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">💳 تراکنش‌های مرتبط</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>کد پیگیری</th>
+                            <th>نوع</th>
+                            <th>مبلغ</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td><code>{{ tx.tracking_code }}</code></td>
+                            <td>{{ tx.get_type_display }}</td>
+                            <td>{{ tx.amount|floatformat:0 }} تومان</td>
+                            <td>{{ tx.get_status_display }}</td>
+                            <td>{{ tx.created_at|date:"Y/m/d H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        <!-- عملیات‌ها -->
+        {% if appointment.status == 'reserved' %}
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">🔧 عملیات‌ها</h5>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <form method="post" action="{% url 'dashboard:appointment_status_change' appointment.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="new_status" value="done">
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ علامت‌گذاری به عنوان انجام شده
+                        </button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-danger w-100"
+                            onclick="showCancelModal()">
+                        ❌ لغو نوبت
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- لینک‌ها -->
+        <div class="mt-3">
+            <a href="{% url 'dashboard:appointments_list' %}" class="btn btn-outline-secondary btn-sm">
+                ← بازگشت به لیست نوبت‌ها
+            </a>
+            <a href="{% url 'dashboard:user_detail' appointment.customer.id %}" class="btn btn-outline-primary btn-sm">
+                👤 مشاهده پروفایل مشتری
+            </a>
+            <a href="{% url 'dashboard:business_detail' appointment.business.id %}" class="btn btn-outline-primary btn-sm">
+                🏪 مشاهده کسب‌وکار
+            </a>
+        </div>
+    </div>
+</div>
+<!-- ─── مودال لغو نوبت ─── -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">لغو نوبت</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="cancelForm" method="post" action="{% url 'dashboard:appointment_cancel' appointment.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <label class="form-label">دلیل لغو (الزامی)</label>
+                    <textarea class="form-control" name="reason" rows="3"
+                              placeholder="دلیل لغو نوبت را بنویسید..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">لغو نوبت</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function showCancelModal() {
+    const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

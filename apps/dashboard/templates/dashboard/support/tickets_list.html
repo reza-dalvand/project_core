@@ -75,14 +75,20 @@
 {% endblock %}
 
 {% block content %}
+<!-- ─── هدر ─── -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">🎧 تیکت‌های پشتیبانی</h2>
         <p class="text-muted mb-0">مدیریت تیکت‌های کاربران</p>
     </div>
-    <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
-        ← بازگشت به داشبورد پشتیبانی
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:ticket_create' %}" class="btn btn-primary btn-sm">
+            ➕ ایجاد تیکت
+        </a>
+        <a href="{% url 'dashboard:support' %}" class="btn btn-outline-secondary btn-sm">
+            ← بازگشت به داشبورد پشتیبانی
+        </a>
+    </div>
 </div>
 
 <!-- ─── آمار سریع ─── -->
@@ -152,75 +158,101 @@
     </form>
 </div>
 
-<!-- ─── جدول ─── -->
-<div class="table-card">
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>موضوع</th>
-                <th>کاربر</th>
-                <th>اولویت</th>
-                <th>وضعیت</th>
-                <th>پاسخ</th>
-                <th>تاریخ ایجاد</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for ticket in page_obj %}
-            <tr>
-                <td><strong>{{ ticket.subject|truncatechars:50 }}</strong></td>
-                <td>
-                    {{ ticket.user.full_name|default:"-" }}
-                    <br>
-                    <small class="text-muted"><code>{{ ticket.user.phone }}</code></small>
-                </td>
-                <td>
-                    {% if ticket.priority == 'urgent' %}
-                    <span class="status-badge priority-urgent">🔥 فوری</span>
-                    {% elif ticket.priority == 'high' %}
-                    <span class="status-badge priority-high">بالا</span>
-                    {% elif ticket.priority == 'medium' %}
-                    <span class="status-badge priority-medium">متوسط</span>
-                    {% else %}
-                    <span class="status-badge priority-low">کم</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if ticket.status == 'open' %}
-                    <span class="status-badge status-open">باز</span>
-                    {% elif ticket.status == 'in_progress' %}
-                    <span class="status-badge status-in_progress">در حال بررسی</span>
-                    {% elif ticket.status == 'resolved' %}
-                    <span class="status-badge status-resolved">حل شده</span>
-                    {% else %}
-                    <span class="status-badge status-closed">بسته شده</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if ticket.response %}
-                    <span class="text-success">✅ پاسخ داده شده</span>
-                    {% else %}
-                    <span class="text-muted">-</span>
-                    {% endif %}
-                </td>
-                <td>{{ ticket.created_at|date:"Y/m/d H:i" }}</td>
-                <td>
-                    <a href="{% url 'dashboard:ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">
-                        جزئیات
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="text-center py-4 text-muted">
-                    تیکتی یافت نشد.
-                </td>
-            </tr>
+<!-- ─── فرم تغییر وضعیت دسته‌ای ─── -->
+<form method="post" action="{% url 'dashboard:ticket_bulk_status' %}" id="bulkStatusForm">
+    {% csrf_token %}
+    <div class="d-flex gap-2 mb-3">
+        <select class="form-select form-select-sm" name="new_status" style="width: 200px;">
+            <option value="">وضعیت جدید...</option>
+            {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
+        </select>
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            🔄 اعمال به انتخاب‌شده‌ها
+        </button>
+    </div>
+<!-- ─── جدول ─── -->
+    <div class="table-card">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll" class="form-check-input"></th>
+                    <th>موضوع</th>
+                    <th>کاربر</th>
+                    <th>اولویت</th>
+                    <th>وضعیت</th>
+                    <th>پاسخ</th>
+                    <th>تاریخ ایجاد</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in page_obj %}
+                <tr>
+                    <td><input type="checkbox" name="ticket_ids" value="{{ ticket.id }}" class="form-check-input ticket-checkbox"></td>
+                    <td><strong>{{ ticket.subject|truncatechars:50 }}</strong></td>
+                    <td>
+                        {{ ticket.user.full_name|default:"-" }}
+                        <br>
+                        <small class="text-muted"><code>{{ ticket.user.phone }}</code></small>
+                    </td>
+                    <td>
+                        {% if ticket.priority == 'urgent' %}
+                            <span class="status-badge priority-urgent">🔥 فوری</span>
+                        {% elif ticket.priority == 'high' %}
+                            <span class="status-badge priority-high">بالا</span>
+                        {% elif ticket.priority == 'medium' %}
+                            <span class="status-badge priority-medium">متوسط</span>
+                        {% else %}
+                            <span class="status-badge priority-low">کم</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ticket.status == 'open' %}
+                            <span class="status-badge status-open">باز</span>
+                        {% elif ticket.status == 'in_progress' %}
+                            <span class="status-badge status-in_progress">در حال بررسی</span>
+                        {% elif ticket.status == 'resolved' %}
+                            <span class="status-badge status-resolved">حل شده</span>
+                        {% else %}
+                            <span class="status-badge status-closed">بسته شده</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ticket.response %}
+                            <span class="text-success">✅ پاسخ داده شده</span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ ticket.created_at|date:"Y/m/d H:i" }}</td>
+                    <td>
+                        <a href="{% url 'dashboard:ticket_detail' ticket.id %}" class="btn btn-sm btn-outline-primary">
+                            جزئیات
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="confirmDelete({{ ticket.id }}, '{{ ticket.subject|truncatechars:20|escapejs }}')">
+                            🗑️
+                        </button>
+                        <form method="post" action="{% url 'dashboard:ticket_delete' ticket.id %}"
+                              id="deleteForm{{ ticket.id }}" class="d-none">
+                            {% csrf_token %}
+                            <input type="hidden" name="confirm" value="yes">
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-muted">
+                        تیکتی یافت نشد.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</form>
 
 <!-- ─── صفحه‌بندی ─── -->
 {% if page_obj.has_other_pages %}
@@ -246,4 +278,20 @@
     </ul>
 </nav>
 {% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+// انتخاب همه
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.ticket-checkbox').forEach(cb => {
+        cb.checked = this.checked;
+    });
+});
+// تایید حذف
+function confirmDelete(ticketId, subject) {
+    if (confirm(`آیا از حذف تیکت "${subject}" مطمئن هستید؟`)) {
+        document.getElementById('deleteForm' + ticketId).submit();
+    }
+}
+</script>
 {% endblock %}

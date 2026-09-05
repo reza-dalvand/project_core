@@ -158,6 +158,15 @@
                     <a href="{% url 'dashboard:message_detail' msg.id %}" class="btn btn-sm btn-outline-primary">
                         مشاهده
                     </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="confirmDelete({{ msg.id }}, '{{ msg.subject|truncatechars:20|escapejs }}')">
+                        🗑️
+                    </button>
+                    <form method="post" action="{% url 'dashboard:message_delete' msg.id %}"
+                          id="deleteForm{{ msg.id }}" class="d-none">
+                        {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
+                    </form>
                 </td>
             </tr>
             {% empty %}

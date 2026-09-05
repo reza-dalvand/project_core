@@ -173,6 +173,15 @@
         </a>
     </div>
     <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:ticket_create' %}" class="quick-link">
+            <div class="icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">➕</div>
+            <div>
+                <strong>ایجاد تیکت</strong>
+                <br><small class="text-muted">ثبت تیکت جدید</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
         <a href="{% url 'dashboard:messages_list' %}" class="quick-link">
             <div class="icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">📨</div>
             <div>
@@ -190,12 +199,32 @@
             </div>
         </a>
     </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:notification_create' %}" class="quick-link">
+            <div class="icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">📢</div>
+            <div>
+                <strong>ارسال اعلان</strong>
+                <br><small class="text-muted">ارسال اعلان به کاربر</small>
+            </div>
+        </a>
+    </div>
     <div class="col-6 col-md-3">
         <a href="{% url 'dashboard:sms_logs' %}" class="quick-link">
             <div class="icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">📱</div>
             <div>
                 <strong>لاگ پیامک‌ها</strong>
                 <br><small class="text-muted">پیامک‌های ارسال شده</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:sms_send' %}" class="quick-link">
+            <div class="icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">✉️</div>
+            <div>
+                <strong>ارسال پیامک</strong>
+                <br><small class="text-muted">ارسال پیامک به کاربر</small>
             </div>
         </a>
     </div>

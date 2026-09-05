@@ -112,22 +112,23 @@
         <tbody>
         {% for rental in page_obj %}
         <tr>
-        <td><strong>{{ rental.title }}</strong></td>
-        <td>{{ rental.business.name }}</td>
-        <td>{{ rental.service_category.name }}</td>
-        <td>{{ rental.get_collab_type_display }}</td>
-        <td><code>{{ rental.contact_phone }}</code></td>
-        <td>{{ rental.created_at|date:"Y/m/d" }}</td>
-        <td>
-        <button type="button" class="btn btn-sm btn-outline-danger"
-        onclick="confirmDelete({{ rental.id }}, '{{ rental.title|truncatechars:20|escapejs }}')">
-        🗑️ حذف
-        </button>
-        <form method="post" action="{% url 'dashboard:line_rental_delete' rental.id %}" id="deleteForm{{ rental.id }}" class="d-none">
-        {% csrf_token %}
-        <input type="hidden" name="confirm" value="yes">
-        </form>
-        </td>
+            <td><strong>{{ rental.title }}</strong></td>
+            <td>{{ rental.business.name }}</td>
+            <td>{{ rental.service_category.name }}</td>
+            <td>{{ rental.get_collab_type_display }}</td>
+            <td><code>{{ rental.contact_phone }}</code></td>
+            <td>{{ rental.created_at|date:"Y/m/d" }}</td>
+            <td>
+                <a href="{% url 'dashboard:line_rental_edit' rental.id %}" class="btn btn-sm btn-outline-secondary" title="ویرایش">✏️</a>
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="confirmDelete({{ rental.id }}, '{{ rental.title|truncatechars:20|escapejs }}')">
+                    🗑️
+                </button>
+                <form method="post" action="{% url 'dashboard:line_rental_delete' rental.id %}" id="deleteForm{{ rental.id }}" class="d-none">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="yes">
+                </form>
+            </td>
         </tr>
         {% endfor %}
         </tbody>

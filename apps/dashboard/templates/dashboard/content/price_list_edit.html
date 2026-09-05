@@ -1,0 +1,67 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش لیست قیمت{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش لیست قیمت: {{ price_list.business.name }}</h4>
+                <a href="{% url 'dashboard:price_lists' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">تم ظاهری</label>
+                        <select class="form-select" name="theme">
+                            {% for value, label in theme_choices %}
+                                <option value="{{ value }}" {% if price_list.theme == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_published" id="isPublished"
+                                   {% if price_list.is_published %}checked{% endif %}>
+                            <label class="form-check-label" for="isPublished">✅ منتشر شده</label>
+                        </div>
+                    </div>
+                </div>
+                <!-- یادداشت‌های فعلی -->
+                {% if price_list.notes.all %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">یادداشت‌های فعلی</label>
+                    {% for note in price_list.notes.all %}
+                    <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded" style="background:var(--bg);">
+                        <input class="form-check-input" type="checkbox" name="delete_notes" value="{{ note.id }}" id="del_note_{{ note.id }}">
+                        <label for="del_note_{{ note.id }}" class="flex-grow-1 mb-0">
+                            <strong>{{ note.label }}</strong>
+                            <small class="text-muted ms-2">{{ note.min_value }} - {{ note.max_value }}</small>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <!-- افزودن یادداشت جدید -->
+                <hr>
+                <h6 class="fw-bold mb-3">➕ افزودن یادداشت جدید</h6>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label small">عنوان</label>
+                        <input type="text" class="form-control" name="new_note_label" placeholder="مثلاً: افزانه مواد">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">حداقل</label>
+                        <input type="number" class="form-control" name="new_note_min" value="0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">حداکثر</label>
+                        <input type="number" class="form-control" name="new_note_max" value="0">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">💾 ذخیره تغییرات</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

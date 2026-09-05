@@ -1,0 +1,288 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}نوبت‌ها و خدمات{% endblock %}
+{% block extra_head %}
+<style>
+.stat-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    height: 100%;
+}
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+}
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+.stat-label {
+    font-size: 13px;
+    color: var(--text-2);
+}
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.table-card {
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    overflow-x: auto;
+}
+.table-card .table { margin-bottom: 0; }
+.table-card .table th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    white-space: nowrap;
+}
+.table-card .table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    vertical-align: middle;
+}
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+}
+.status-reserved { background: #D1ECF1; color: #0C5460; }
+.status-done { background: #D4EDDA; color: #155724; }
+.status-cancelled { background: #F8D7DA; color: #721C24; }
+.quick-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--bg);
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.2s;
+    border: 1px solid var(--border);
+    height: 100%;
+}
+.quick-link:hover {
+    background: rgba(168, 139, 125, 0.1);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    color: var(--text);
+}
+.quick-link .icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+</style>
+{% endblock %}
+{% block content %}
+<!-- ─── هدر ─── -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📅 نوبت‌ها و خدمات</h2>
+        <p class="text-muted mb-0">مدیریت رزروها، خدمات و زمان‌بندی‌ها</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:appointments_list' %}" class="btn btn-outline-primary btn-sm">
+            📋 لیست نوبت‌ها
+        </a>
+        <a href="{% url 'dashboard:services_list' %}" class="btn btn-outline-primary btn-sm">
+            💆 لیست خدمات
+        </a>
+        <a href="{% url 'dashboard:schedules_list' %}" class="btn btn-outline-primary btn-sm">
+            🕐 زمان‌بندی‌ها
+        </a>
+    </div>
+</div>
+<!-- ─── آمار کلی ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">📅</div>
+            <div class="stat-value">{{ appointments_stats.total|default:"0" }}</div>
+            <div class="stat-label">کل نوبت‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #F57F17;">⏳</div>
+            <div class="stat-value">{{ appointments_stats.reserved|default:"0" }}</div>
+            <div class="stat-label">رزرو شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">✅</div>
+            <div class="stat-value">{{ appointments_stats.done|default:"0" }}</div>
+            <div class="stat-label">انجام شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(244, 67, 54, 0.1); color: #C62828;">❌</div>
+            <div class="stat-value">{{ appointments_stats.cancelled|default:"0" }}</div>
+            <div class="stat-label">لغو شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">💆</div>
+            <div class="stat-value">{{ services_stats.total|default:"0" }}</div>
+            <div class="stat-label">خدمات</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🕐</div>
+            <div class="stat-value">{{ schedules_stats.total|default:"0" }}</div>
+            <div class="stat-label">زمان‌بندی‌ها</div>
+        </div>
+    </div>
+</div>
+<!-- ─── لینک‌های سریع ─── -->
+<div class="section-title">🔗 دسترسی سریع</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:appointments_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">📋</div>
+            <div>
+                <strong>نوبت‌ها</strong>
+                <br><small class="text-muted">مدیریت رزروها</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:services_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">💆</div>
+            <div>
+                <strong>خدمات</strong>
+                <br><small class="text-muted">مدیریت خدمات</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:schedules_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🕐</div>
+            <div>
+                <strong>زمان‌بندی‌ها</strong>
+                <br><small class="text-muted">مدیریت ساعات کاری</small>
+            </div>
+        </a>
+    </div>
+</div>
+<!-- ─── نوبت‌های امروز ─── -->
+{% if today_appointments %}
+<div class="section-title">📅 نوبت‌های امروز ({{ today_key }})</div>
+<div class="table-card mb-4">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>مشتری</th>
+                <th>کسب‌وکار</th>
+                <th>خدمت</th>
+                <th>ساعت</th>
+                <th>مبلغ</th>
+                <th>وضعیت</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for apt in today_appointments %}
+            <tr>
+                <td>
+                    {{ apt.customer.full_name }}
+                    <br>
+                    <small class="text-muted"><code>{{ apt.customer.phone }}</code></small>
+                </td>
+                <td>{{ apt.business.name }}</td>
+                <td>{{ apt.service.name }}</td>
+                <td>{{ apt.time_slot|time:"H:i" }}</td>
+                <td>{{ apt.total_price|floatformat:0 }} تومان</td>
+                <td>
+                    {% if apt.status == 'reserved' %}
+                        <span class="status-badge status-reserved">رزرو شده</span>
+                    {% elif apt.status == 'done' %}
+                        <span class="status-badge status-done">انجام شده</span>
+                    {% else %}
+                        <span class="status-badge status-cancelled">لغو شده</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'dashboard:appointment_detail' apt.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+<!-- ─── نوبت‌های اخیر ─── -->
+{% if recent_appointments %}
+<div class="section-title">🕐 نوبت‌های اخیر</div>
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>مشتری</th>
+                <th>کسب‌وکار</th>
+                <th>خدمت</th>
+                <th>تاریخ</th>
+                <th>ساعت</th>
+                <th>وضعیت</th>
+                <th>تاریخ ایجاد</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for apt in recent_appointments %}
+            <tr>
+                <td>{{ apt.customer.phone }}</td>
+                <td>{{ apt.business.name }}</td>
+                <td>{{ apt.service.name }}</td>
+                <td>{{ apt.date_key }}</td>
+                <td>{{ apt.time_slot|time:"H:i" }}</td>
+                <td>
+                    {% if apt.status == 'reserved' %}
+                        <span class="status-badge status-reserved">رزرو شده</span>
+                    {% elif apt.status == 'done' %}
+                        <span class="status-badge status-done">انجام شده</span>
+                    {% else %}
+                        <span class="status-badge status-cancelled">لغو شده</span>
+                    {% endif %}
+                </td>
+                <td>{{ apt.created_at|date:"Y/m/d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
