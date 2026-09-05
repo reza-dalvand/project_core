@@ -1,5 +1,4 @@
 {% extends 'dashboard/base.html' %}
-
 {% block title %}داشبورد{% endblock %}
 
 {% block extra_head %}
@@ -133,8 +132,8 @@
                 <div>
                     <h2 class="fw-bold mb-1">👋 خوش آمدید</h2>
                     <p class="text-muted mb-0">
-                        نقش: <strong>سوپر ادمین</strong> | 
-                        ورود: <strong>{{ phone }}</strong> | 
+                        نقش: <strong>{{ role }}</strong> |
+                        ورود: <strong>{{ phone }}</strong> |
                         زمان: <strong>{{ current_time|date:"H:i" }}</strong>
                     </p>
                 </div>
@@ -206,7 +205,6 @@
 
 <!-- ─── کارت‌های آمار ثانویه ─── -->
 <div class="row g-4 mb-4">
-    <!-- نظرات -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #F57F17;">⭐</div>
@@ -214,7 +212,6 @@
             <div class="stat-label">نظرات</div>
         </div>
     </div>
-    <!-- تیکت‌ها -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">🎧</div>
@@ -222,7 +219,6 @@
             <div class="stat-label">تیکت‌ها</div>
         </div>
     </div>
-    <!-- پیام‌های تماس -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">📨</div>
@@ -230,7 +226,6 @@
             <div class="stat-label">پیام‌ها</div>
         </div>
     </div>
-    <!-- اکسپلور -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">🔍</div>
@@ -238,7 +233,6 @@
             <div class="stat-label">پست‌ها</div>
         </div>
     </div>
-    <!-- نمونه‌کارها -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">🖼️</div>
@@ -246,11 +240,11 @@
             <div class="stat-label">نمونه‌کارها</div>
         </div>
     </div>
-    <!-- تسویه‌ها -->
+    <!-- ✅ FIX فاز ۱: آمار تسویه‌ها واقعی شد -->
     <div class="col-6 col-lg-2">
         <div class="stat-card">
             <div class="stat-icon" style="background: rgba(0, 188, 212, 0.1); color: #0097A7;">🏧</div>
-            <div class="stat-value">-</div>
+            <div class="stat-value">{{ settlement_stats.total|default:"0" }}</div>
             <div class="stat-label">تسویه‌ها</div>
         </div>
     </div>
@@ -304,8 +298,9 @@
                         <td>{{ business.created_at|date:"Y/m/d" }}</td>
                         <td><span class="status-badge status-pending">در انتظار</span></td>
                         <td>
-                            <a href="#" class="btn btn-sm btn-outline-success">تایید</a>
-                            <a href="#" class="btn btn-sm btn-outline-danger">رد</a>
+                            <a href="{% url 'dashboard:business_detail' business.id %}" class="btn btn-sm btn-outline-primary">
+                                بررسی
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -339,9 +334,9 @@
                         <td>{{ user.date_joined|date:"Y/m/d" }}</td>
                         <td>
                             {% if user.is_active %}
-                            <span class="status-badge status-approved">فعال</span>
+                                <span class="status-badge status-approved">فعال</span>
                             {% else %}
-                            <span class="status-badge status-rejected">غیرفعال</span>
+                                <span class="status-badge status-rejected">غیرفعال</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -350,7 +345,6 @@
             </table>
         </div>
     </div>
-
     <!-- نوبت‌های اخیر -->
     <div class="col-lg-6">
         <div class="section-title">📅 نوبت‌های اخیر</div>
@@ -372,11 +366,11 @@
                         <td>{{ apt.date_key }}</td>
                         <td>
                             {% if apt.status == 'reserved' %}
-                            <span class="status-badge status-reserved">رزرو شده</span>
+                                <span class="status-badge status-reserved">رزرو شده</span>
                             {% elif apt.status == 'done' %}
-                            <span class="status-badge status-done">انجام شده</span>
+                                <span class="status-badge status-done">انجام شده</span>
                             {% else %}
-                            <span class="status-badge status-cancelled">لغو شده</span>
+                                <span class="status-badge status-cancelled">لغو شده</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -414,15 +408,15 @@
                         <td>{{ tx.get_type_display }}</td>
                         <td>
                             {% if tx.status == 'blocked' %}
-                            <span class="status-badge status-blocked">بلوکه</span>
+                                <span class="status-badge status-blocked">بلوکه</span>
                             {% elif tx.status == 'settling' %}
-                            <span class="status-badge status-settling">در حال تسویه</span>
+                                <span class="status-badge status-settling">در حال تسویه</span>
                             {% elif tx.status == 'settled' %}
-                            <span class="status-badge status-settled">تسویه شده</span>
+                                <span class="status-badge status-settled">تسویه شده</span>
                             {% elif tx.status == 'refunded' %}
-                            <span class="status-badge status-refunded">مسترد شده</span>
+                                <span class="status-badge status-refunded">مسترد شده</span>
                             {% else %}
-                            <span class="status-badge status-rejected">ناموفق</span>
+                                <span class="status-badge status-rejected">ناموفق</span>
                             {% endif %}
                         </td>
                         <td>{{ tx.created_at|date:"Y/m/d H:i" }}</td>
@@ -439,75 +433,82 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-    // ─── نمودار نوبت‌ها ───
-    const appointmentsCtx = document.getElementById('appointmentsChart').getContext('2d');
-    new Chart(appointmentsCtx, {
-        type: 'line',
-        data: {
-            labels: {{ appointments_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
-            datasets: [{
-                label: 'نوبت‌ها',
-                data: {{ appointments_7days|map(attribute='count')|list|tojson }},
-                borderColor: '#A88B7D',
-                backgroundColor: 'rgba(168, 139, 125, 0.1)',
-                fill: true,
-                tension: 0.4,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
-            }
-        }
-    });
+// ═══════════════════════════════════════════
+//   ✅ FIX فاز ۱: داده‌های نمودار از یک رشته
+//   JSON معتبر خوانده می‌شوند، نه از دیکت پایتون
+//   و نه از فیلترهای غیرموجودِ |map و |tojson
+// ═══════════════════════════════════════════
+const chartData = {{ chart_data_json|safe }};
 
-    // ─── نمودار تراکنش‌ها ───
-    const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
-    new Chart(transactionsCtx, {
-        type: 'bar',
-        data: {
-            labels: {{ transactions_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
-            datasets: [{
-                label: 'تراکنش‌ها',
-                data: {{ transactions_7days|map(attribute='count')|list|tojson }},
-                backgroundColor: '#4CAF50',
-                borderRadius: 8,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
-            }
+// ─── نمودار نوبت‌ها ───
+const appointmentsCtx = document.getElementById('appointmentsChart').getContext('2d');
+new Chart(appointmentsCtx, {
+    type: 'line',
+    data: {
+        labels: chartData.appointments_labels,
+        datasets: [{
+            label: 'نوبت‌ها',
+            data: chartData.appointments_values,
+            borderColor: '#A88B7D',
+            backgroundColor: 'rgba(168, 139, 125, 0.1)',
+            fill: true,
+            tension: 0.4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
         }
-    });
+    }
+});
 
-    // ─── نمودار کاربران ───
-    const usersCtx = document.getElementById('usersChart').getContext('2d');
-    new Chart(usersCtx, {
-        type: 'doughnut',
-        data: {
-            labels: {{ users_7days|map(attribute='date')|map('date', 'm/d')|list|tojson }},
-            datasets: [{
-                data: {{ users_7days|map(attribute='count')|list|tojson }},
-                backgroundColor: [
-                    '#A88B7D', '#8D7468', '#C5AE9F',
-                    '#4CAF50', '#2196F3', '#FF9800', '#9C27B0'
-                ],
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
+// ─── نمودار تراکنش‌ها ───
+const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
+new Chart(transactionsCtx, {
+    type: 'bar',
+    data: {
+        labels: chartData.transactions_labels,
+        datasets: [{
+            label: 'تراکنش‌ها',
+            data: chartData.transactions_values,
+            backgroundColor: '#4CAF50',
+            borderRadius: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
         }
-    });
+    }
+});
+
+// ─── نمودار کاربران ───
+const usersCtx = document.getElementById('usersChart').getContext('2d');
+new Chart(usersCtx, {
+    type: 'doughnut',
+    data: {
+        labels: chartData.users_labels,
+        datasets: [{
+            data: chartData.users_values,
+            backgroundColor: [
+                '#A88B7D', '#8D7468', '#C5AE9F',
+                '#4CAF50', '#2196F3', '#FF9800', '#9C27B0'
+            ],
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' }
+        }
+    }
+});
 </script>
 {% endblock %}

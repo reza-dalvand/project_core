@@ -1,5 +1,6 @@
 """
 مدیریت محتوا — اکسپلور، نمونه‌کارها، آگهی‌ها، لیست قیمت
+✅ فاز ۳: مکانیزم تأیید حذف + هندل خطا
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -7,7 +8,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.db.models import Q, Count, Avg
 from django.core.paginator import Paginator
-
+from django.db import DatabaseError
 from apps.explore.models import ExplorePost
 from apps.portfolios.models import Portfolio
 from apps.ads.models import ModelRequest, LineRental
@@ -20,36 +21,33 @@ logger = logging.getLogger(__name__)
 @admin_login_required
 def content_index_view(request):
     """داشبورد اصلی مدیریت محتوا با آمار"""
-    # ─── آمار اکسپلور ───
-    explore_stats = ExplorePost.objects.aggregate(
-        total=Count('id'),
-        pinned=Count('id', filter=Q(is_pinned=True)),
-        business=Count('id', filter=Q(source='business')),
-        magazine=Count('id', filter=Q(source='magazine')),
-    )
+    try:
+        explore_stats = ExplorePost.objects.aggregate(
+            total=Count('id'),
+            pinned=Count('id', filter=Q(is_pinned=True)),
+            business=Count('id', filter=Q(source='business')),
+            magazine=Count('id', filter=Q(source='magazine')),
+        )
+        portfolio_stats = Portfolio.objects.aggregate(total=Count('id'))
+        model_request_stats = ModelRequest.objects.aggregate(
+            total=Count('id'),
+            urgent=Count('id', filter=Q(is_urgent=True)),
+        )
+        line_rental_stats = LineRental.objects.aggregate(total=Count('id'))
+        price_list_stats = PriceList.objects.aggregate(
+            total=Count('id'),
+            published=Count('id', filter=Q(is_published=True)),
+        )
+    except DatabaseError as e:
+        logger.error(f"Content index DB error: {e}")
+        messages.error(request, 'خطا در دریافت آمار محتوا.')
+        explore_stats = {'total': 0, 'pinned': 0, 'business': 0, 'magazine': 0}
+        portfolio_stats = {'total': 0}
+        model_request_stats = {'total': 0, 'urgent': 0}
+        line_rental_stats = {'total': 0}
+        price_list_stats = {'total': 0, 'published': 0}
 
-    # ─── آمار نمونه‌کارها ───
-    portfolio_stats = Portfolio.objects.aggregate(
-        total=Count('id'),
-    )
-
-    # ─── آمار آگهی‌ها ───
-    model_request_stats = ModelRequest.objects.aggregate(
-        total=Count('id'),
-        urgent=Count('id', filter=Q(is_urgent=True)),
-    )
-
-    line_rental_stats = LineRental.objects.aggregate(
-        total=Count('id'),
-    )
-
-    # ─── آمار لیست قیمت ───
-    price_list_stats = PriceList.objects.aggregate(
-        total=Count('id'),
-        published=Count('id', filter=Q(is_published=True)),
-    )
-
-    # ─── لیست‌های اخیر ───
+    # لیست‌های اخیر
     recent_posts = ExplorePost.objects.select_related(
         'business'
     ).order_by('-created_at')[:5]
@@ -73,7 +71,6 @@ def content_index_view(request):
 # ═══════════════════════════════════════════════
 #   اکسپلور
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def explore_list_view(request):
     """لیست پست‌های اکسپلور"""
@@ -82,40 +79,38 @@ def explore_list_view(request):
     pinned_filter = request.GET.get('pinned', 'all')
     page_number = request.GET.get('page', 1)
 
-    queryset = ExplorePost.objects.select_related(
+    queryset = ExplorePost.objects.filter(is_active=True).select_related(
         'business', 'main_category'
     ).prefetch_related('images').order_by('-is_pinned', '-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(caption__icontains=search) |
             Q(business__name__icontains=search)
         )
 
-    # فیلتر منبع
     if source_filter == 'business':
         queryset = queryset.filter(source='business')
     elif source_filter == 'magazine':
         queryset = queryset.filter(source='magazine')
 
-    # فیلتر پین
     if pinned_filter == 'pinned':
         queryset = queryset.filter(is_pinned=True)
     elif pinned_filter == 'unpinned':
         queryset = queryset.filter(is_pinned=False)
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': ExplorePost.objects.count(),
-        'pinned': ExplorePost.objects.filter(is_pinned=True).count(),
-        'business': ExplorePost.objects.filter(source='business').count(),
-        'magazine': ExplorePost.objects.filter(source='magazine').count(),
-    }
+    try:
+        stats = {
+            'total': ExplorePost.objects.count(),
+            'pinned': ExplorePost.objects.filter(is_pinned=True).count(),
+            'business': ExplorePost.objects.filter(source='business').count(),
+            'magazine': ExplorePost.objects.filter(source='magazine').count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'pinned': 0, 'business': 0, 'magazine': 0}
 
     context = {
         'page_obj': page_obj,
@@ -133,12 +128,20 @@ def explore_toggle_pin_view(request, post_id):
     post = get_object_or_404(ExplorePost, id=post_id)
 
     if request.method == 'POST':
-        post.is_pinned = not post.is_pinned
-        post.save(update_fields=['is_pinned'])
+        try:
+            post.is_pinned = not post.is_pinned
+            post.save(update_fields=['is_pinned'])
 
-        status_text = 'پین شد' if post.is_pinned else 'از پین خارج شد'
-        messages.success(request, f'پست "{post.caption[:30]}..." {status_text}.')
-        logger.info(f"Explore post {post_id} {'pinned' if post.is_pinned else 'unpinned'}")
+            status_text = 'پین شد' if post.is_pinned else 'از پین خارج شد'
+            messages.success(request, f'پست "{post.caption[:30]}..." {status_text}.')
+            logger.info(f"Explore post {post_id} {'pinned' if post.is_pinned else 'unpinned'}")
+
+        except DatabaseError as e:
+            logger.error(f"Explore pin toggle DB error: {e}")
+            messages.error(request, 'خطا در تغییر وضعیت پست.')
+        except Exception as e:
+            logger.error(f"Explore pin toggle unexpected error: {e}")
+            messages.error(request, 'خطای غیرمنتظره در تغییر وضعیت پست.')
 
     return redirect(reverse('dashboard:explore_list'))
 
@@ -149,15 +152,30 @@ def explore_delete_view(request, post_id):
     post = get_object_or_404(ExplorePost, id=post_id)
 
     if request.method == 'POST':
-        caption_preview = post.caption[:30]
-        # حذف تصاویر از دیسک
-        for image in post.images.all():
-            if image.image:
-                image.image.delete(save=False)
-        post.delete()
+        # ✅ فاز ۳: مکانیزم تأیید سمت سرور
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'عملیات حذف تایید نشد.')
+            return redirect(reverse('dashboard:explore_list'))
 
-        messages.success(request, f'پست "{caption_preview}..." حذف شد.')
-        logger.info(f"Explore post {post_id} deleted")
+        try:
+            caption_preview = post.caption[:30]
+
+            # حذف تصاویر از دیسک
+            for image in post.images.all():
+                if image.image:
+                    try:
+                        image.image.delete(save=False)
+                    except Exception:
+                        pass
+
+            post.delete()
+
+            messages.success(request, f'پست "{caption_preview}..." حذف شد.')
+            logger.info(f"Explore post {post_id} deleted")
+
+        except Exception as e:
+            logger.error(f"Explore delete error: {e}")
+            messages.error(request, 'خطا در حذف پست. لطفاً دوباره تلاش کنید.')
 
     return redirect(reverse('dashboard:explore_list'))
 
@@ -165,7 +183,6 @@ def explore_delete_view(request, post_id):
 # ═══════════════════════════════════════════════
 #   نمونه‌کارها
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def portfolios_list_view(request):
     """لیست نمونه‌کارها"""
@@ -176,7 +193,6 @@ def portfolios_list_view(request):
         'business', 'category', 'sub_service'
     ).prefetch_related('images').order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(title__icontains=search) |
@@ -184,14 +200,13 @@ def portfolios_list_view(request):
             Q(category__name__icontains=search)
         )
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': Portfolio.objects.count(),
-    }
+    try:
+        stats = {'total': Portfolio.objects.count()}
+    except DatabaseError:
+        stats = {'total': 0}
 
     context = {
         'page_obj': page_obj,
@@ -207,17 +222,35 @@ def portfolio_delete_view(request, portfolio_id):
     portfolio = get_object_or_404(Portfolio, id=portfolio_id)
 
     if request.method == 'POST':
-        title = portfolio.title
-        # حذف تصاویر از دیسک
-        if portfolio.cover_image:
-            portfolio.cover_image.delete(save=False)
-        for image in portfolio.images.all():
-            if image.image:
-                image.image.delete(save=False)
-        portfolio.delete()
+        # ✅ فاز ۳: مکانیزم تأیید سمت سرور
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'عملیات حذف تایید نشد.')
+            return redirect(reverse('dashboard:portfolios_list'))
 
-        messages.success(request, f'نمونه‌کار "{title}" حذف شد.')
-        logger.info(f"Portfolio {portfolio_id} deleted")
+        try:
+            title = portfolio.title
+
+            if portfolio.cover_image:
+                try:
+                    portfolio.cover_image.delete(save=False)
+                except Exception:
+                    pass
+
+            for image in portfolio.images.all():
+                if image.image:
+                    try:
+                        image.image.delete(save=False)
+                    except Exception:
+                        pass
+
+            portfolio.delete()
+
+            messages.success(request, f'نمونه‌کار "{title}" حذف شد.')
+            logger.info(f"Portfolio {portfolio_id} deleted")
+
+        except Exception as e:
+            logger.error(f"Portfolio delete error: {e}")
+            messages.error(request, 'خطا در حذف نمونه‌کار.')
 
     return redirect(reverse('dashboard:portfolios_list'))
 
@@ -225,7 +258,6 @@ def portfolio_delete_view(request, portfolio_id):
 # ═══════════════════════════════════════════════
 #   آگهی‌ها
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def model_requests_list_view(request):
     """لیست درخواست‌های مدل"""
@@ -236,22 +268,22 @@ def model_requests_list_view(request):
         'business', 'service'
     ).order_by('-is_urgent', '-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(title__icontains=search) |
             Q(business__name__icontains=search)
         )
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': ModelRequest.objects.count(),
-        'urgent': ModelRequest.objects.filter(is_urgent=True).count(),
-    }
+    try:
+        stats = {
+            'total': ModelRequest.objects.count(),
+            'urgent': ModelRequest.objects.filter(is_urgent=True).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'urgent': 0}
 
     context = {
         'page_obj': page_obj,
@@ -267,13 +299,26 @@ def model_request_delete_view(request, request_id):
     model_request = get_object_or_404(ModelRequest, id=request_id)
 
     if request.method == 'POST':
-        title = model_request.title
-        if model_request.service_image:
-            model_request.service_image.delete(save=False)
-        model_request.delete()
+        # ✅ فاز ۳: مکانیزم تأیید سمت سرور
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'عملیات حذف تایید نشد.')
+            return redirect(reverse('dashboard:model_requests_list'))
 
-        messages.success(request, f'درخواست مدل "{title}" حذف شد.')
-        logger.info(f"Model request {request_id} deleted")
+        try:
+            title = model_request.title
+            if model_request.service_image:
+                try:
+                    model_request.service_image.delete(save=False)
+                except Exception:
+                    pass
+
+            model_request.delete()
+            messages.success(request, f'درخواست مدل "{title}" حذف شد.')
+            logger.info(f"Model request {request_id} deleted")
+
+        except Exception as e:
+            logger.error(f"Model request delete error: {e}")
+            messages.error(request, 'خطا در حذف درخواست مدل.')
 
     return redirect(reverse('dashboard:model_requests_list'))
 
@@ -288,21 +333,19 @@ def line_rentals_list_view(request):
         'business', 'service_category'
     ).order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(title__icontains=search) |
             Q(business__name__icontains=search)
         )
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': LineRental.objects.count(),
-    }
+    try:
+        stats = {'total': LineRental.objects.count()}
+    except DatabaseError:
+        stats = {'total': 0}
 
     context = {
         'page_obj': page_obj,
@@ -318,13 +361,26 @@ def line_rental_delete_view(request, rental_id):
     line_rental = get_object_or_404(LineRental, id=rental_id)
 
     if request.method == 'POST':
-        title = line_rental.title
-        if line_rental.line_image:
-            line_rental.line_image.delete(save=False)
-        line_rental.delete()
+        # ✅ فاز ۳: مکانیزم تأیید سمت سرور
+        if request.POST.get('confirm') != 'yes':
+            messages.error(request, 'عملیات حذف تایید نشد.')
+            return redirect(reverse('dashboard:line_rentals_list'))
 
-        messages.success(request, f'آگهی لاین "{title}" حذف شد.')
-        logger.info(f"Line rental {rental_id} deleted")
+        try:
+            title = line_rental.title
+            if line_rental.line_image:
+                try:
+                    line_rental.line_image.delete(save=False)
+                except Exception:
+                    pass
+
+            line_rental.delete()
+            messages.success(request, f'آگهی لاین "{title}" حذف شد.')
+            logger.info(f"Line rental {rental_id} deleted")
+
+        except Exception as e:
+            logger.error(f"Line rental delete error: {e}")
+            messages.error(request, 'خطا در حذف آگهی.')
 
     return redirect(reverse('dashboard:line_rentals_list'))
 
@@ -332,7 +388,6 @@ def line_rental_delete_view(request, rental_id):
 # ═══════════════════════════════════════════════
 #   لیست قیمت
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def price_lists_view(request):
     """لیست لیست‌های قیمت"""
@@ -343,21 +398,21 @@ def price_lists_view(request):
         'business'
     ).prefetch_related('notes').order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(business__name__icontains=search)
         )
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': PriceList.objects.count(),
-        'published': PriceList.objects.filter(is_published=True).count(),
-    }
+    try:
+        stats = {
+            'total': PriceList.objects.count(),
+            'published': PriceList.objects.filter(is_published=True).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'published': 0}
 
     context = {
         'page_obj': page_obj,

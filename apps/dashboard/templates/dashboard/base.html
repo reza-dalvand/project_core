@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -5,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}پنل مدیریت{% endblock %} | بیو کلاب</title>
 
-    <!-- Bootstrap 5.3 RTL -->
+    <!-- Bootstrap 5.3 RTL — CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
-
-    <!-- فونت وزیرمتن -->
+    <!-- فونت وزیرمتن — CDN -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+
+    <!-- ✅ فاز ۴: استایل سفارشی پنل -->
+    <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
 
     <style>
         :root {
@@ -23,96 +26,52 @@
             --border: #DCD1CB;
             --sidebar-width: 260px;
         }
-
         * { font-family: 'Vazirmatn', Tahoma, sans-serif; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-        }
+        body { background: var(--bg); color: var(--text); }
 
         /* ─── سایدبار ─── */
         .sidebar {
-            position: fixed;
-            top: 0;
-            right: -280px;
-            width: var(--sidebar-width);
-            height: 100vh;
+            position: fixed; top: 0; right: -280px;
+            width: var(--sidebar-width); height: 100vh;
             background: var(--card);
             border-left: 1px solid var(--border);
             transition: right 0.3s ease;
-            z-index: 1050;
-            overflow-y: auto;
+            z-index: 1050; overflow-y: auto;
         }
-
-        .sidebar.open {
-            right: 0;
-        }
-
+        .sidebar.open { right: 0; }
         .sidebar-header {
             padding: 20px;
             border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
         }
-
         .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 800;
-            font-size: 18px;
-            color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 800; font-size: 18px; color: var(--text);
         }
-
         .sidebar-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+            width: 40px; height: 40px; border-radius: 12px;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 20px;
         }
-
         .sidebar-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: var(--text-2);
-            cursor: pointer;
+            background: none; border: none;
+            font-size: 24px; color: var(--text-2); cursor: pointer;
         }
-
-        .sidebar-nav {
-            padding: 16px 12px;
-        }
-
+        .sidebar-nav { padding: 16px 12px; }
         .sidebar-nav a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            color: var(--text-2);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            margin-bottom: 4px;
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-radius: 12px;
+            color: var(--text-2); text-decoration: none;
+            font-size: 14px; font-weight: 500;
+            transition: all 0.2s; margin-bottom: 4px;
         }
-
         .sidebar-nav a:hover,
         .sidebar-nav a.active {
             background: rgba(168, 139, 125, 0.1);
             color: var(--primary-dark);
         }
-
-        .sidebar-nav a .icon {
-            font-size: 18px;
-        }
+        .sidebar-nav a .icon { font-size: 18px; }
 
         /* ─── محتوا ─── */
         .main-content {
@@ -120,75 +79,32 @@
             transition: margin-right 0.3s ease;
             min-height: 100vh;
         }
-
-        .main-content.shifted {
-            margin-right: var(--sidebar-width);
-        }
+        .main-content.shifted { margin-right: var(--sidebar-width); }
 
         /* ─── هدر ─── */
         .top-header {
             background: var(--card);
             border-bottom: 1px solid var(--border);
             padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
         }
-
         .hamburger-btn {
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 8px 12px;
-            cursor: pointer;
-            color: var(--text);
-        }
-
-        /* ─── کارت‌ها ─── */
-        .stat-card {
-            background: var(--card);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid var(--border);
-            transition: all 0.2s;
-        }
-
-        .stat-card:hover {
-            box-shadow: 0 4px 16px rgba(44, 37, 33, 0.08);
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            margin-bottom: 16px;
+            background: none; border: 1px solid var(--border);
+            border-radius: 10px; padding: 8px 12px;
+            cursor: pointer; color: var(--text);
         }
 
         /* ─── Overlay ─── */
         .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: 1040;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3); z-index: 1040;
         }
+        .sidebar-overlay.show { display: block; }
 
-        .sidebar-overlay.show {
-            display: block;
-        }
-
-        /* ─── ریسپانسیو ─── */
         @media (max-width: 768px) {
-            .main-content.shifted {
-                margin-right: 0;
-            }
+            .main-content.shifted { margin-right: 0; }
         }
     </style>
-
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -205,26 +121,35 @@
             </div>
             <button class="sidebar-close" id="sidebarClose">×</button>
         </div>
+
+        {% load dashboard_tags %}
         <nav class="sidebar-nav">
-            <a href="{% url 'dashboard:home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+            <a href="{% url 'dashboard:home' %}"
+               class="{% if request.resolver_match.url_name|url_in:'home' %}active{% endif %}">
                 <span class="icon">🏠</span> داشبورد
             </a>
-            <a href="{% url 'dashboard:users_list' %}" class="{% if request.resolver_match.url_name in 'users_list,user_detail' %}active{% endif %}">
+            <a href="{% url 'dashboard:users_list' %}"
+               class="{% if request.resolver_match.url_name|url_in:'users_list,user_detail,user_toggle_active' %}active{% endif %}">
                 <span class="icon">👥</span> کاربران
             </a>
-            <a href="{% url 'dashboard:businesses_list' %}" class="{% if request.resolver_match.url_name in 'businesses_list,business_detail' %}active{% endif %}">
+            <a href="{% url 'dashboard:businesses_list' %}"
+               class="{% if request.resolver_match.url_name|url_in:'businesses_list,business_detail,business_approve,business_reject,business_toggle_vip' %}active{% endif %}">
                 <span class="icon">🏪</span> کسب‌وکارها
             </a>
-            <a href="{% url 'dashboard:financial' %}" class="{% if request.resolver_match.url_name in 'financial,transactions_list,transaction_detail,settlements_list' %}active{% endif %}">
+            <a href="{% url 'dashboard:financial' %}"
+               class="{% if request.resolver_match.url_name|url_in:'financial,transactions_list,transaction_detail,settlements_list,settlement_approve,settlement_reject' %}active{% endif %}">
                 <span class="icon">💰</span> مالی
             </a>
-            <a href="{% url 'dashboard:content' %}" class="{% if request.resolver_match.url_name in 'content,explore_list,portfolios_list,model_requests_list,line_rentals_list,price_lists' %}active{% endif %}">
+            <a href="{% url 'dashboard:content' %}"
+               class="{% if request.resolver_match.url_name|url_in:'content,explore_list,explore_toggle_pin,explore_delete,portfolios_list,portfolio_delete,model_requests_list,model_request_delete,line_rentals_list,line_rental_delete,price_lists' %}active{% endif %}">
                 <span class="icon">📋</span> محتوا
             </a>
-            <a href="{% url 'dashboard:support' %}" class="{% if request.resolver_match.url_name in 'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}active{% endif %}">
+            <a href="{% url 'dashboard:support' %}"
+               class="{% if request.resolver_match.url_name|url_in:'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}active{% endif %}">
                 <span class="icon">🎧</span> پشتیبانی
             </a>
-            <a href="{% url 'dashboard:settings' %}" class="{% if request.resolver_match.url_name in 'settings,roles_list,role_create,role_edit,admins_list,admin_create,system_settings,sms_templates,sms_template_edit,landing_settings' %}active{% endif %}">
+            <a href="{% url 'dashboard:settings' %}"
+               class="{% if request.resolver_match.url_name|url_in:'settings,roles_list,role_create,role_edit,role_delete,admins_list,admin_create,admin_toggle_active,admin_delete,system_settings,sms_templates,sms_template_edit,landing_settings' %}active{% endif %}">
                 <span class="icon">⚙️</span> تنظیمات
             </a>
             <hr>
@@ -258,34 +183,11 @@
         </main>
     </div>
 
-    <!-- Bootstrap JS -->
+    <!-- Bootstrap JS — CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        const hamburger = document.getElementById('hamburgerBtn');
-        const closeBtn = document.getElementById('sidebarClose');
-        const mainContent = document.getElementById('mainContent');
-
-        function openSidebar() {
-            sidebar.classList.add('open');
-            overlay.classList.add('show');
-            if (window.innerWidth > 768) {
-                mainContent.classList.add('shifted');
-            }
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('show');
-            mainContent.classList.remove('shifted');
-        }
-
-        hamburger.addEventListener('click', openSidebar);
-        closeBtn.addEventListener('click', closeSidebar);
-        overlay.addEventListener('click', closeSidebar);
-    </script>
+    <!-- ✅ فاز ۴: جاوااسکریپت سفارشی پنل -->
+    <script src="{% static 'dashboard/js/main.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

@@ -127,34 +127,29 @@
         <tbody>
             {% for req in page_obj %}
             <tr>
-                <td><strong>{{ req.title }}</strong></td>
-                <td>{{ req.business.name }}</td>
-                <td>{{ req.service.name }}</td>
-                <td>{{ req.get_cost_type_display }}</td>
-                <td>{{ req.discount }}%</td>
-                <td>
-                    {% if req.is_urgent %}
-                    <span class="status-badge status-urgent">🔥 فوری</span>
-                    {% else %}
-                    <span class="text-muted">-</span>
-                    {% endif %}
-                </td>
-                <td>{{ req.created_at|date:"Y/m/d" }}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-outline-danger"
-                            onclick="confirmDelete({{ req.id }}, '{{ req.title|escapejs }}')">
-                        🗑️ حذف
-                    </button>
-                    <form method="post" action="{% url 'dashboard:model_request_delete' req.id %}" id="deleteForm{{ req.id }}" class="d-none">
-                        {% csrf_token %}
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
-                    درخواست مدلی یافت نشد.
-                </td>
+            <td><strong>{{ req.title }}</strong></td>
+            <td>{{ req.business.name }}</td>
+            <td>{{ req.service.name }}</td>
+            <td>{{ req.get_cost_type_display }}</td>
+            <td>{{ req.discount }}%</td>
+            <td>
+            {% if req.is_urgent %}
+            <span class="status-badge status-urgent">🔥 فوری</span>
+            {% else %}
+            <span class="text-muted">-</span>
+            {% endif %}
+            </td>
+            <td>{{ req.created_at|date:"Y/m/d" }}</td>
+            <td>
+            <button type="button" class="btn btn-sm btn-outline-danger"
+            onclick="confirmDelete({{ req.id }}, '{{ req.title|truncatechars:20|escapejs }}')">
+            🗑️ حذف
+            </button>
+            <form method="post" action="{% url 'dashboard:model_request_delete' req.id %}" id="deleteForm{{ req.id }}" class="d-none">
+            {% csrf_token %}
+            <input type="hidden" name="confirm" value="yes">
+            </form>
+            </td>
             </tr>
             {% endfor %}
         </tbody>

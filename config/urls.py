@@ -7,6 +7,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from apps.core.admin_site import OTPAdminSite
+from apps.dashboard.views.errors import error_403, error_404, error_500
 
 
 urlpatterns = [
@@ -55,3 +56,7 @@ urlpatterns += [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+handler403 = error_403
+handler404 = error_404
+handler500 = error_500

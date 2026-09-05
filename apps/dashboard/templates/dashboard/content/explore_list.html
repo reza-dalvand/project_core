@@ -207,6 +207,7 @@
                     </button>
                     <form method="post" action="{% url 'dashboard:explore_delete' post.id %}" id="deleteForm{{ post.id }}" class="d-none">
                         {% csrf_token %}
+                        <input type="hidden" name="confirm" value="yes">
                     </form>
                 </td>
             </tr>

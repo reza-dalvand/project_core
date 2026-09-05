@@ -274,3 +274,105 @@ def test_appointment(customer_user, approved_business, test_service):
         total_price=450000,
         deposit_amount=100000,
     )
+
+
+
+
+
+# ═══════════════════════════════════════════════
+#   فیکسچرهای داشبورد ادمین — فاز ۶
+# ═══════════════════════════════════════════════
+from django.utils import timezone as django_timezone
+
+
+@pytest.fixture
+def dashboard_admin_role(db):
+    """نقش سوپر ادمین داشبورد"""
+    from apps.dashboard.models import AdminRole
+    role, _ = AdminRole.objects.get_or_create(
+        name=AdminRole.Role.SUPER_ADMIN,
+        defaults={
+            'description': 'دسترسی کامل به تمام بخش‌ها',
+            'permissions': ['users', 'businesses', 'financial',
+                            'content', 'support', 'settings'],
+        },
+    )
+    return role
+
+
+@pytest.fixture
+def dashboard_app_admin_role(db):
+    """نقش ادمین اپلیکیشن داشبورد"""
+    from apps.dashboard.models import AdminRole
+    role, _ = AdminRole.objects.get_or_create(
+        name=AdminRole.Role.APP_ADMIN,
+        defaults={
+            'description': 'دسترسی به بخش کاربران و کسب‌وکارها',
+            'permissions': ['users', 'businesses'],
+        },
+    )
+    return role
+
+
+@pytest.fixture
+def dashboard_admin_user(db):
+    """کاربر ادمین داشبورد"""
+    return User.objects.create_user(
+        phone='09121111111',
+        first_name='ادمین',
+        last_name='داشبورد',
+        is_staff=True,
+        is_verified=True,
+    )
+
+
+@pytest.fixture
+def dashboard_admin_profile(dashboard_admin_user, dashboard_admin_role):
+    """پروفایل ادمین داشبورد (AdminUser)"""
+    from apps.dashboard.models import AdminUser
+    admin, _ = AdminUser.objects.get_or_create(
+        user=dashboard_admin_user,
+        defaults={
+            'role': dashboard_admin_role,
+            'is_active': True,
+        },
+    )
+    return admin
+
+
+@pytest.fixture
+def dashboard_client(client, dashboard_admin_user, dashboard_admin_profile):
+    """
+    کلاینت با سشن داشبورد فعال (نقش super_admin)
+    شبیه‌سازی ورود موفق به داشبورد بدون نیاز به OTP
+    """
+    session = client.session
+    session['dashboard_admin_logged_in'] = True
+    session['dashboard_admin_phone'] = dashboard_admin_user.phone
+    session['dashboard_role'] = 'super_admin'
+    session['dashboard_login_time'] = django_timezone.now().isoformat()
+    session.save()
+    return client
+
+
+@pytest.fixture
+def dashboard_app_admin_client(client, dashboard_admin_user, dashboard_app_admin_role):
+    """
+    کلاینت با سشن داشبورد فعال (نقش app_admin)
+    برای تست محدودیت‌های دسترسی
+    """
+    from apps.dashboard.models import AdminUser
+    AdminUser.objects.get_or_create(
+        user=dashboard_admin_user,
+        defaults={
+            'role': dashboard_app_admin_role,
+            'is_active': True,
+        },
+    )
+    session = client.session
+    session['dashboard_admin_logged_in'] = True
+    session['dashboard_admin_phone'] = dashboard_admin_user.phone
+    session['dashboard_role'] = 'app_admin'
+    session['dashboard_login_time'] = django_timezone.now().isoformat()
+    session.save()
+    return client

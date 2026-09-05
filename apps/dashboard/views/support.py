@@ -1,5 +1,6 @@
 """
 مدیریت پشتیبانی — تیکت‌ها، پیام‌های تماس، اعلان‌ها
+✅ فاز ۳: هندل خطا
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -8,7 +9,7 @@ from django.contrib import messages
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
 from django.utils import timezone
-
+from django.db import DatabaseError
 from apps.support.models import SupportTicket
 from apps.landing.models import ContactMessage
 from apps.notifications.models import Notification, SMSLog
@@ -20,43 +21,42 @@ logger = logging.getLogger(__name__)
 @admin_login_required
 def support_index_view(request):
     """داشبورد اصلی پشتیبانی با آمار"""
-    # ─── آمار تیکت‌ها ───
-    ticket_stats = SupportTicket.objects.aggregate(
-        total=Count('id'),
-        open=Count('id', filter=Q(status=SupportTicket.Status.OPEN)),
-        in_progress=Count('id', filter=Q(status=SupportTicket.Status.IN_PROGRESS)),
-        resolved=Count('id', filter=Q(status=SupportTicket.Status.RESOLVED)),
-        closed=Count('id', filter=Q(status=SupportTicket.Status.CLOSED)),
-    )
+    try:
+        ticket_stats = SupportTicket.objects.aggregate(
+            total=Count('id'),
+            open=Count('id', filter=Q(status=SupportTicket.Status.OPEN)),
+            in_progress=Count('id', filter=Q(status=SupportTicket.Status.IN_PROGRESS)),
+            resolved=Count('id', filter=Q(status=SupportTicket.Status.RESOLVED)),
+            closed=Count('id', filter=Q(status=SupportTicket.Status.CLOSED)),
+        )
+        message_stats = ContactMessage.objects.aggregate(
+            total=Count('id'),
+            unread=Count('id', filter=Q(is_read=False)),
+            unreplied=Count('id', filter=Q(is_replied=False)),
+        )
+        notification_stats = Notification.objects.aggregate(
+            total=Count('id'),
+            unread=Count('id', filter=Q(is_read=False)),
+        )
+        sms_stats = SMSLog.objects.aggregate(
+            total=Count('id'),
+            sent=Count('id', filter=Q(status=SMSLog.Status.SENT)),
+            failed=Count('id', filter=Q(status=SMSLog.Status.FAILED)),
+        )
+    except DatabaseError as e:
+        logger.error(f"Support index DB error: {e}")
+        messages.error(request, 'خطا در دریافت آمار پشتیبانی.')
+        ticket_stats = {'total': 0, 'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
+        message_stats = {'total': 0, 'unread': 0, 'unreplied': 0}
+        notification_stats = {'total': 0, 'unread': 0}
+        sms_stats = {'total': 0, 'sent': 0, 'failed': 0}
 
-    # ─── آمار پیام‌های تماس ───
-    message_stats = ContactMessage.objects.aggregate(
-        total=Count('id'),
-        unread=Count('id', filter=Q(is_read=False)),
-        unreplied=Count('id', filter=Q(is_replied=False)),
-    )
-
-    # ─── آمار اعلان‌ها ───
-    notification_stats = Notification.objects.aggregate(
-        total=Count('id'),
-        unread=Count('id', filter=Q(is_read=False)),
-    )
-
-    # ─── آمار پیامک‌ها ───
-    sms_stats = SMSLog.objects.aggregate(
-        total=Count('id'),
-        sent=Count('id', filter=Q(status=SMSLog.Status.SENT)),
-        failed=Count('id', filter=Q(status=SMSLog.Status.FAILED)),
-    )
-
-    # ─── لیست‌های اخیر ───
     recent_tickets = SupportTicket.objects.select_related(
         'user'
     ).order_by('-created_at')[:5]
 
     recent_messages = ContactMessage.objects.order_by('-created_at')[:5]
 
-    # ─── تیکت‌های در انتظار ───
     pending_tickets = SupportTicket.objects.select_related(
         'user'
     ).filter(
@@ -78,7 +78,6 @@ def support_index_view(request):
 # ═══════════════════════════════════════════════
 #   تیکت‌ها
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def tickets_list_view(request):
     """لیست تیکت‌های پشتیبانی"""
@@ -87,11 +86,10 @@ def tickets_list_view(request):
     priority_filter = request.GET.get('priority', 'all')
     page_number = request.GET.get('page', 1)
 
-    queryset = SupportTicket.objects.select_related(
+    queryset = SupportTicket.objects.filter(is_active=True).select_related(
         'user'
     ).order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(subject__icontains=search) |
@@ -99,26 +97,25 @@ def tickets_list_view(request):
             Q(user__phone__icontains=search)
         )
 
-    # فیلتر وضعیت
     if status_filter != 'all':
         queryset = queryset.filter(status=status_filter)
 
-    # فیلتر اولویت
     if priority_filter != 'all':
         queryset = queryset.filter(priority=priority_filter)
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': SupportTicket.objects.count(),
-        'open': SupportTicket.objects.filter(status=SupportTicket.Status.OPEN).count(),
-        'in_progress': SupportTicket.objects.filter(status=SupportTicket.Status.IN_PROGRESS).count(),
-        'resolved': SupportTicket.objects.filter(status=SupportTicket.Status.RESOLVED).count(),
-        'closed': SupportTicket.objects.filter(status=SupportTicket.Status.CLOSED).count(),
-    }
+    try:
+        stats = {
+            'total': SupportTicket.objects.count(),
+            'open': SupportTicket.objects.filter(status=SupportTicket.Status.OPEN).count(),
+            'in_progress': SupportTicket.objects.filter(status=SupportTicket.Status.IN_PROGRESS).count(),
+            'resolved': SupportTicket.objects.filter(status=SupportTicket.Status.RESOLVED).count(),
+            'closed': SupportTicket.objects.filter(status=SupportTicket.Status.CLOSED).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
 
     context = {
         'page_obj': page_obj,
@@ -144,17 +141,26 @@ def ticket_detail_view(request, ticket_id):
         response_text = request.POST.get('response', '').strip()
         new_status = request.POST.get('status', ticket.status)
 
-        if response_text:
-            ticket.response = response_text
-            ticket.responded_at = timezone.now()
+        # ✅ فاز ۳: هندل خطا
+        try:
+            if response_text:
+                ticket.response = response_text
+                ticket.responded_at = timezone.now()
 
-        if new_status in dict(SupportTicket.Status.choices):
-            ticket.status = new_status
+            if new_status in dict(SupportTicket.Status.choices):
+                ticket.status = new_status
 
-        ticket.save()
+            ticket.save()
 
-        messages.success(request, 'پاسخ با موفقیت ثبت شد.')
-        logger.info(f"Ticket {ticket_id} responded by admin")
+            messages.success(request, 'پاسخ با موفقیت ثبت شد.')
+            logger.info(f"Ticket {ticket_id} responded by admin")
+
+        except DatabaseError as e:
+            logger.error(f"Ticket update DB error: {e}")
+            messages.error(request, 'خطا در ثبت پاسخ. لطفاً دوباره تلاش کنید.')
+        except Exception as e:
+            logger.error(f"Ticket update unexpected error: {e}")
+            messages.error(request, 'خطای غیرمنتظره در ثبت پاسخ.')
 
         return redirect(reverse('dashboard:ticket_detail', kwargs={'ticket_id': ticket_id}))
 
@@ -168,7 +174,6 @@ def ticket_detail_view(request, ticket_id):
 # ═══════════════════════════════════════════════
 #   پیام‌های تماس
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def messages_list_view(request):
     """لیست پیام‌های تماس"""
@@ -178,7 +183,6 @@ def messages_list_view(request):
 
     queryset = ContactMessage.objects.order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(full_name__icontains=search) |
@@ -187,22 +191,22 @@ def messages_list_view(request):
             Q(message__icontains=search)
         )
 
-    # فیلتر خوانده شده
     if read_filter == 'unread':
         queryset = queryset.filter(is_read=False)
     elif read_filter == 'read':
         queryset = queryset.filter(is_read=True)
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': ContactMessage.objects.count(),
-        'unread': ContactMessage.objects.filter(is_read=False).count(),
-        'replied': ContactMessage.objects.filter(is_replied=True).count(),
-    }
+    try:
+        stats = {
+            'total': ContactMessage.objects.count(),
+            'unread': ContactMessage.objects.filter(is_read=False).count(),
+            'replied': ContactMessage.objects.filter(is_replied=True).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'unread': 0, 'replied': 0}
 
     context = {
         'page_obj': page_obj,
@@ -220,20 +224,33 @@ def message_detail_view(request, message_id):
 
     # علامت‌گذاری به عنوان خوانده شده
     if not message.is_read:
-        message.is_read = True
-        message.save(update_fields=['is_read'])
+        try:
+            message.is_read = True
+            message.save(update_fields=['is_read'])
+        except Exception as e:
+            logger.error(f"Message read update error: {e}")
 
     if request.method == 'POST':
-        admin_note = request.POST.get('admin_note', '').strip()
-        is_replied = request.POST.get('is_replied', '') == 'on'
+        # ✅ فاز ۳: هندل خطا
+        try:
+            admin_note = request.POST.get('admin_note', '').strip()
+            is_replied = request.POST.get('is_replied', '') == 'on'
 
-        if admin_note:
-            message.admin_note = admin_note
+            if admin_note:
+                message.admin_note = admin_note
 
-        message.is_replied = is_replied
-        message.save()
+            message.is_replied = is_replied
+            message.save()
 
-        messages.success(request, 'پیام بروزرسانی شد.')
+            messages.success(request, 'پیام بروزرسانی شد.')
+
+        except DatabaseError as e:
+            logger.error(f"Message update DB error: {e}")
+            messages.error(request, 'خطا در بروزرسانی پیام.')
+        except Exception as e:
+            logger.error(f"Message update unexpected error: {e}")
+            messages.error(request, 'خطای غیرمنتظره در بروزرسانی پیام.')
+
         return redirect(reverse('dashboard:message_detail', kwargs={'message_id': message_id}))
 
     context = {
@@ -245,7 +262,6 @@ def message_detail_view(request, message_id):
 # ═══════════════════════════════════════════════
 #   اعلان‌ها
 # ═══════════════════════════════════════════════
-
 @admin_login_required
 def notifications_list_view(request):
     """لیست اعلان‌ها"""
@@ -257,7 +273,6 @@ def notifications_list_view(request):
         'user'
     ).order_by('-created_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(title__icontains=search) |
@@ -265,19 +280,19 @@ def notifications_list_view(request):
             Q(user__phone__icontains=search)
         )
 
-    # فیلتر نوع
     if type_filter != 'all':
         queryset = queryset.filter(type=type_filter)
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': Notification.objects.count(),
-        'unread': Notification.objects.filter(is_read=False).count(),
-    }
+    try:
+        stats = {
+            'total': Notification.objects.count(),
+            'unread': Notification.objects.filter(is_read=False).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'unread': 0}
 
     context = {
         'page_obj': page_obj,
@@ -300,28 +315,27 @@ def sms_logs_view(request):
         'user', 'template'
     ).order_by('-sent_at')
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(phone__icontains=search) |
             Q(message__icontains=search)
         )
 
-    # فیلتر وضعیت
     if status_filter != 'all':
         queryset = queryset.filter(status=status_filter)
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
-    stats = {
-        'total': SMSLog.objects.count(),
-        'sent': SMSLog.objects.filter(status=SMSLog.Status.SENT).count(),
-        'delivered': SMSLog.objects.filter(status=SMSLog.Status.DELIVERED).count(),
-        'failed': SMSLog.objects.filter(status=SMSLog.Status.FAILED).count(),
-    }
+    try:
+        stats = {
+            'total': SMSLog.objects.count(),
+            'sent': SMSLog.objects.filter(status=SMSLog.Status.SENT).count(),
+            'delivered': SMSLog.objects.filter(status=SMSLog.Status.DELIVERED).count(),
+            'failed': SMSLog.objects.filter(status=SMSLog.Status.FAILED).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'sent': 0, 'delivered': 0, 'failed': 0}
 
     context = {
         'page_obj': page_obj,

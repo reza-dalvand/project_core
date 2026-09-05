@@ -1,5 +1,6 @@
 """
 مدیریت کاربران — لیست، جستجو، فیلتر، جزئیات، فعال/غیرفعال
+✅ فاز ۳: هندل خطا
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -8,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
-
+from django.db import DatabaseError
 from apps.dashboard.decorators import admin_login_required
 
 logger = logging.getLogger(__name__)
@@ -18,15 +19,19 @@ User = get_user_model()
 @admin_login_required
 def users_list_view(request):
     """لیست کاربران با جستجو و فیلتر"""
-    # ─── فیلترها ───
     search = request.GET.get('search', '').strip()
     status_filter = request.GET.get('status', 'all')
     page_number = request.GET.get('page', 1)
 
-    queryset = User.objects.annotate(
-        businesses_count=Count('businesses'),
-        appointments_count=Count('appointments'),
-    ).order_by('-date_joined')
+    try:
+        queryset = User.objects.filter(is_active=True).annotate(
+            businesses_count=Count('businesses', filter=Q(businesses__is_active=True)),
+            appointments_count=Count('appointments', filter=Q(appointments__is_active=True)),
+        ).order_by('-date_joined')
+    except DatabaseError as e:
+        logger.error(f"Users list DB error: {e}")
+        messages.error(request, 'خطا در دریافت لیست کاربران.')
+        queryset = User.objects.none()
 
     # جستجو
     if search:
@@ -54,13 +59,16 @@ def users_list_view(request):
     page_obj = paginator.get_page(page_number)
 
     # آمار سریع
-    stats = {
-        'total': User.objects.count(),
-        'active': User.objects.filter(is_active=True, is_verified=True).count(),
-        'inactive': User.objects.filter(is_active=False).count(),
-        'unverified': User.objects.filter(is_verified=False).count(),
-        'staff': User.objects.filter(is_staff=True).count(),
-    }
+    try:
+        stats = {
+            'total': User.objects.count(),
+            'active': User.objects.filter(is_active=True, is_verified=True).count(),
+            'inactive': User.objects.filter(is_active=False).count(),
+            'unverified': User.objects.filter(is_verified=False).count(),
+            'staff': User.objects.filter(is_staff=True).count(),
+        }
+    except DatabaseError:
+        stats = {'total': 0, 'active': 0, 'inactive': 0, 'unverified': 0, 'staff': 0}
 
     context = {
         'page_obj': page_obj,
@@ -74,19 +82,31 @@ def users_list_view(request):
 @admin_login_required
 def user_detail_view(request, user_id):
     """جزئیات کاربر"""
-    user = get_object_or_404(
-        User.objects.prefetch_related('businesses', 'appointments'),
-        id=user_id,
-    )
+    try:
+        user = get_object_or_404(
+            User.objects.prefetch_related('businesses', 'appointments'),
+            id=user_id,
+        )
+    except Exception as e:
+        logger.error(f"User detail error: {e}")
+        messages.error(request, 'خطا در دریافت جزئیات کاربر.')
+        return redirect(reverse('dashboard:users_list'))
 
     # آمار کاربر
-    user_stats = {
-        'businesses_count': user.businesses.count(),
-        'appointments_count': user.appointments.count(),
-        'transactions_count': user.transactions.count(),
-        'reviews_count': user.reviews.count(),
-        'favorites_count': user.favorite_businesses.count(),
-    }
+    try:
+        user_stats = {
+            'businesses_count': user.businesses.count(),
+            'appointments_count': user.appointments.count(),
+            'transactions_count': user.transactions.count(),
+            'reviews_count': user.reviews.count(),
+            'favorites_count': user.favorite_businesses.count(),
+        }
+    except DatabaseError:
+        user_stats = {
+            'businesses_count': 0, 'appointments_count': 0,
+            'transactions_count': 0, 'reviews_count': 0,
+            'favorites_count': 0,
+        }
 
     # کسب‌وکارهای کاربر
     user_businesses = user.businesses.all()
@@ -122,11 +142,20 @@ def user_toggle_active_view(request, user_id):
         return redirect(reverse('dashboard:user_detail', kwargs={'user_id': user_id}))
 
     if request.method == 'POST':
-        user.is_active = not user.is_active
-        user.save(update_fields=['is_active'])
+        # ✅ فاز ۳: هندل خطا
+        try:
+            user.is_active = not user.is_active
+            user.save(update_fields=['is_active'])
 
-        status_text = 'فعال' if user.is_active else 'غیرفعال'
-        messages.success(request, f'کاربر {user.phone} {status_text} شد.')
-        logger.info(f"Admin toggled user {user.phone} to {status_text}")
+            status_text = 'فعال' if user.is_active else 'غیرفعال'
+            messages.success(request, f'کاربر {user.phone} {status_text} شد.')
+            logger.info(f"Admin toggled user {user.phone} to {status_text}")
+
+        except DatabaseError as e:
+            logger.error(f"User toggle DB error: {e}")
+            messages.error(request, 'خطا در تغییر وضعیت کاربر. لطفاً دوباره تلاش کنید.')
+        except Exception as e:
+            logger.error(f"User toggle unexpected error: {e}")
+            messages.error(request, 'خطای غیرمنتظره در تغییر وضعیت کاربر.')
 
     return redirect(reverse('dashboard:user_detail', kwargs={'user_id': user_id}))

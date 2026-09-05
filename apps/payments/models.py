@@ -129,7 +129,9 @@ class Settlement(BaseModel):
     bank_sheba = models.CharField('شماره شبا', max_length=26)
     bank_name = models.CharField('نام بانک', max_length=100)
     settled_at = models.DateTimeField('تاریخ تسویه', null=True, blank=True)
-
+    rejection_reason = models.TextField(
+    'دلیل رد', blank=True, default=''
+    )
     class Meta:
         db_table = 'settlements'
         verbose_name = '🏧 تسویه حساب'

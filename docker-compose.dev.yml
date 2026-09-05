@@ -1,21 +1,7 @@
 # ═══════════════════════════════════════════════
 #   BEAU CLUB — Docker Compose Development
-#
-#   Usage:
-#     docker compose -f docker-compose.dev.yml up -d --build
-#     docker compose -f docker-compose.dev.yml logs -f backend
-#     docker compose -f docker-compose.dev.yml down
-#
-#   Access:
-#     Backend:    http://localhost:8000
-#     API Docs:   http://localhost:8000/api/docs/
-#     Admin:      http://localhost:8000/admin/
-#     PostgreSQL: localhost:5433
-#     Redis:      localhost:6380
 # ═══════════════════════════════════════════════
-
 services:
-
   # ═══════════ PostgreSQL + PostGIS ═══════════
   postgres:
     image: postgis/postgis:16-3.4-alpine
@@ -26,13 +12,11 @@ services:
       POSTGRES_USER: beau_dev
       POSTGRES_PASSWORD: beau_dev_pass
     ports:
-      # ✅ Exposed برای دسترسی از DBeaver/pgAdmin روی هاست
-      # پورت ۵۴۳۳ برای جلوگیری از تداخل با PostgreSQL لوکال
       - "5433:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U beau_dev"]
+      test: ["CMD-SHELL", "pg_isready -U beau_dev -d beau_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,8 +29,6 @@ services:
     container_name: beau_dev_redis
     restart: unless-stopped
     ports:
-      # ✅ Exposed برای دسترسی از RedisInsight روی هاست
-      # پورت ۶۳۸۰ برای جلوگیری از تداخل با Redis لوکال
       - "6380:6379"
     volumes:
       - redis_dev_data:/data
@@ -79,15 +61,11 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=True
     ports:
-      # ✅ مستقیم روی 0.0.0.0 برای دسترسی از شبکه LAN
       - "8000:8000"
     volumes:
-      # ✅ Hot-reload: تغییرات کد فوراً اعمال می‌شوند
       - .:/app
-      # ✅ Named volumes برای جلوگیری از overwrite توسط mount
       - dev_media:/app/media
       - dev_static:/app/staticfiles
-      # ✅ عدم overwrite node_modules و __pycache__
       - /app/__pycache__
       - /app/.pytest_cache
     depends_on:
@@ -95,30 +73,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # ✅ نیازی به اسکریپت انتظار نیست، depends_on کار را انجام می‌دهد
     command: >
       sh -c "
-        echo '═══════════════════════════════════════'
-        echo '🚀 BEAU CLUB — Development Server'
-        echo '═══════════════════════════════════════'
-        echo ''
-        echo '⏳ Waiting for PostgreSQL...'
-        python -c \"
-        import time, psycopg2
-        while True:
-            try:
-                psycopg2.connect(dbname='beau_dev', user='beau_dev', password='beau_dev_pass', host='postgres', port=5432)
-                break
-            except:
-                time.sleep(1)
-        print('✅ PostgreSQL is ready!')
-        \"
-        echo '⏳ Running migrations...'
-        python manage.py migrate --noinput
-        echo ''
-        echo '🌐 Starting Django dev server on http://0.0.0.0:8000'
-        echo '📚 API Docs: http://localhost:8000/api/docs/'
-        echo '🔧 Admin:    http://localhost:8000/admin/'
-        echo '═══════════════════════════════════════'
+        echo '🚀 BEAU CLUB — Development Server' &&
+        echo '⏳ Running migrations...' &&
+        python manage.py migrate --noinput &&
+        echo '🌐 Starting Django dev server on http://0.0.0.0:8000' &&
         python manage.py runserver 0.0.0.0:8000
       "
     networks:
@@ -144,8 +105,6 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=True
-      # ✅ Celery در dev به صورت eager اجرا شود (بدون worker واقعی)
-      # اگر worker واقعی می‌خواهید، این خط را حذف کنید
       - CELERY_TASK_ALWAYS_EAGER=False
     volumes:
       - .:/app
@@ -156,7 +115,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # ✅ Auto-reload با watchmedo — تغییرات .py فوراً اعمال می‌شوند
     command: >
       watchmedo auto-restart
       --directory=./
@@ -167,7 +125,6 @@ services:
       celery -A config worker
       -l info
       -c 2
-      --logfile=/app/logs/celery_worker.log
     networks:
       - beau_dev_net
 
@@ -203,7 +160,6 @@ services:
       celery -A config beat
       -l info
       --scheduler django_celery_beat.schedulers:DatabaseScheduler
-      --logfile=/app/logs/celery_beat.log
     networks:
       - beau_dev_net
 

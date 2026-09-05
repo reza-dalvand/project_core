@@ -1,0 +1,25 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}دسترسی غیرمجاز{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="stat-card text-center py-5">
+            <div style="font-size: 72px; margin-bottom: 20px;">🔒</div>
+            <h2 class="fw-bold mb-3">دسترسی غیرمجاز</h2>
+            <p class="text-muted mb-4">
+                شما مجوز دسترسی به این بخش را ندارید.
+                در صورت نیاز، با سوپرادمین تماس بگیرید.
+            </p>
+            <div class="d-flex gap-2 justify-content-center">
+                <a href="{% url 'dashboard:home' %}" class="btn btn-primary">
+                    🏠 بازگشت به داشبورد
+                </a>
+                <a href="{% url 'dashboard:logout' %}" class="btn btn-outline-secondary">
+                    🚪 خروج
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
