@@ -427,7 +427,8 @@ CELERY_BEAT_SCHEDULE = {
     },
     'check-renewal-reminders': {
         'task': 'apps.reminders.tasks.check_renewal_reminders',
-        'schedule': crontab(hour=8, minute=0),
+        # 'schedule': crontab(hour=8, minute=0),
+        'schedule': crontab(minute='*/1'), # هر دو دقیقه انجام میشه 
     },
     'auto-settle-appointments': {
         'task': 'apps.payments.tasks.auto_settle_completed_appointments',
