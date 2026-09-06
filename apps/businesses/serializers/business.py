@@ -1,14 +1,10 @@
 """
-Serializers مربوط به ثبت و مدیریت کسب‌وکار
-هر کاربر فقط یک کسب‌وکار — بدون تیم
+Serializers برای کسب‌وکار
 """
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from apps.businesses.models import Business, BusinessGallery
 from apps.categories.serializers import BusinessCategorySerializer
 from apps.locations.serializers import ProvinceSerializer, CitySerializer
-
-User = get_user_model()
 
 
 class BusinessGallerySerializer(serializers.ModelSerializer):
@@ -25,6 +21,7 @@ class BusinessGallerySerializer(serializers.ModelSerializer):
         if obj.image and request:
             return request.build_absolute_uri(obj.image.url)
         return None
+
 
 class BusinessCreateSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
@@ -68,20 +65,16 @@ class BusinessCreateSerializer(serializers.ModelSerializer):
         cover_image = validated_data.pop('cover_image', None)
         owner_photo = validated_data.pop('owner_photo', None)
         logo = validated_data.pop('logo', None)
-
         user = self.context['request'].user
         validated_data['owner'] = user
         validated_data['status'] = Business.Status.PENDING
-
-        # ✅ تصاویر مستقیماً در validated_data قرار گیرند
         if cover_image:
             validated_data['cover_image'] = cover_image
         if owner_photo:
             validated_data['owner_photo'] = owner_photo
         if logo:
             validated_data['logo'] = logo
-
-        business = Business.objects.create(**validated_data)  # ← فقط یک save
+        business = Business.objects.create(**validated_data)
         return business
 
 
@@ -109,9 +102,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'gallery',
             'services',
             'owner_name', 'created_at',
-            # ✅ وضعیت بانکی
             'bank_info_registered', 'bank_info_verified',
-            # ✅ اضافه شد: جزئیات بانکی
             'bank_owner_name',
             'bank_national_id',
             'bank_name',
@@ -119,7 +110,6 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'bank_sheba',
             'bank_card_number',
             'bank_account_number',
-            # ✅ احراز هویت
             'verified_name',
             'national_id',
             'is_national_id_verified',
@@ -141,8 +131,8 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
         from apps.services.serializers import ServiceListSerializer
         services = obj.services.filter(is_active=True)
         return ServiceListSerializer(services, many=True).data
-    
-         
+
+
 class BusinessUpdateSerializer(serializers.ModelSerializer):
     cover_image = serializers.ImageField(required=False, allow_null=True, write_only=True)
     owner_photo = serializers.ImageField(required=False, allow_null=True, write_only=True)
@@ -174,6 +164,15 @@ class BusinessUpdateSerializer(serializers.ModelSerializer):
 
 
 class BusinessBankInfoSerializer(serializers.ModelSerializer):
+    """
+    Serializer اطلاعات بانکی کسب‌وکار
+
+    ✅ تغییر: اعتبارسنجی مقایسه‌ای نام صاحب حساب حذف شد.
+    نام صاحب حساب مستقیماً توسط کاربر وارد و ذخیره می‌شود.
+    اعتبارسنجی‌های مقایسه‌ای (مقایسه با کد ملی، وضعیت کسب‌وکار و ...)
+    حذف شده‌اند. فقط اعتبارسنجی فرمت (شبا، کارت) باقی مانده است.
+    """
+
     class Meta:
         model = Business
         fields = [
@@ -200,70 +199,4 @@ class BusinessBankInfoSerializer(serializers.ModelSerializer):
                 return validate_card_number(value)
             except Exception as e:
                 raise serializers.ValidationError(str(e))
-        return value
-
-    def validate(self, data):
-        user = self.context['request'].user
-        if user.verified_name and data.get('bank_owner_name'):
-            if data['bank_owner_name'].strip() != user.verified_name.strip():
-                raise serializers.ValidationError({
-                    'bank_owner_name': 'نام صاحب حساب باید با نام تایید شده مطابقت داشته باشد'
-                })
-        return data
-
-    def update(self, instance, validated_data):
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.bank_info_registered = True
-        instance.save()
-        return instance
-
-
-class BusinessStatusSerializer(serializers.Serializer):
-    has_business = serializers.BooleanField()
-    business_id = serializers.IntegerField(allow_null=True)
-    status = serializers.CharField(allow_null=True)
-    status_display = serializers.CharField(allow_null=True)
-    rejection_reason = serializers.CharField(allow_null=True)
-    created_at = serializers.DateTimeField(allow_null=True)
-
-
-class BusinessListSerializer(serializers.ModelSerializer):
-    # ✅ FIX 3: استفاده از SerializerMethodField برای جلوگیری از AttributeError در صورت null بودن روابط
-    category_name = serializers.SerializerMethodField()
-    city_name = serializers.SerializerMethodField()
-    distance = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Business
-        fields = [
-            'id', 'name', 'category_name', 'city_name',
-            'address', 'logo', 'cover_image',
-            'rating', 'reviews_count',
-            'booking_slug', 'is_vip',
-            'created_at',
-            'distance',
-        ]
-
-    def get_category_name(self, obj):
-        return obj.category.name if obj.category else ''
-
-    def get_city_name(self, obj):
-        return obj.city.name if obj.city else ''
-
-    def get_distance(self, obj):
-        """فاصله به کیلومتر — فقط وقتی در queryset با .distance() annotate شده باشد"""
-        if hasattr(obj, 'distance') and obj.distance is not None:
-            return round(obj.distance.m / 1000, 2)
-        return None
-    
-
-class BusinessGalleryUploadSerializer(serializers.Serializer):
-    """Serializer آپلود تصویر گالری"""
-    image = serializers.ImageField()
-    sort_order = serializers.IntegerField(required=False, default=0)
-    
-    def validate_image(self, value):
-        if value.size > 5 * 1024 * 1024:  # 5MB
-            raise serializers.ValidationError('حجم تصویر نباید بیشتر از ۵ مگابایت باشد')
         return value
