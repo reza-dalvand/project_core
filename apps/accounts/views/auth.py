@@ -249,8 +249,10 @@ class LogoutView(APIView, StandardResponseMixin):
 #   National ID Verification
 # ═══════════════════════════════════════════════
 
+# apps/accounts/views/auth.py
+# فقط کلاس NationalIdVerificationView را پیدا کنید و متد post را جایگزین کنید
+
 class NationalIdVerificationView(APIView, StandardResponseMixin):
-    """استعلام کد ملی از سامانه شاهکار"""
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
@@ -265,35 +267,57 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
         national_id = serializer.validated_data['national_id']
 
         try:
-            result = ShahkarService.verify(national_id, request.user.phone)
+            from shared.national_id import get_national_id_verifier
+            verifier = get_national_id_verifier()
 
-            request.user.national_id = national_id
-            request.user.is_national_id_verified = True
-            request.user.verified_name = result.get('verified_name', '')
-            request.user.save(update_fields=[
-                'national_id', 'is_national_id_verified', 'verified_name',
-            ])
+            # ✅ FIX: شماره موبایل کاربر به فرمت صحیح ارسال شود
+            # متد _normalize_phone در verifier این کار را انجام می‌دهد
+            result = verifier.verify(
+                national_id=national_id,
+                phone=request.user.phone,
+                full_name=request.user.full_name,
+            )
 
-             # ✅ همگام‌سازی با کسب‌وکار تا فیلدهای سطح کسب‌وکار هم پر شوند
-            business = request.user.businesses.first()
-            if business:
-                business.national_id = national_id
-                business.is_national_id_verified = True
-                business.verified_name = result.get('verified_name', '')
-                business.save(update_fields=[
-                    'national_id', 'is_national_id_verified', 'verified_name',
+            if result.success:
+                # ذخیره در دیتابیس
+                request.user.national_id = national_id
+                request.user.is_national_id_verified = True
+                request.user.verified_name = result.verified_name
+                request.user.save(update_fields=[
+                    'national_id',
+                    'is_national_id_verified',
+                    'verified_name',
                 ])
 
-            return self.success_response(
-                data={
-                    'verified_name': result['verified_name'],
-                    'national_id': national_id,
-                    'phone_display': mask_phone(request.user.phone),
-                },
-                message='هویت شما با موفقیت تایید شد',
-            )
-        except ShahkarException as e:
-            return e.as_response()
+                # همگام‌سازی با کسب‌وکار
+                business = request.user.businesses.first()
+                if business:
+                    business.national_id = national_id
+                    business.is_national_id_verified = True
+                    business.verified_name = result.verified_name
+                    business.save(update_fields=[
+                        'national_id',
+                        'is_national_id_verified',
+                        'verified_name',
+                    ])
+
+                return self.success_response(
+                    data={
+                        'verified_name': result.verified_name,
+                        'national_id': national_id,
+                        'phone_display': mask_phone(request.user.phone),
+                    },
+                    message='هویت شما با موفقیت تایید شد',
+                )
+            else:
+                return self.error_response(
+                    message=result.error_message or (
+                        'کد ملی با شماره موبایل تطابق ندارد'
+                    ),
+                    code=result.error_code or 'MISMATCH',
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         except Exception as e:
             logger.exception(f"National ID verification error: {e}")
             return self.error_response(
@@ -302,7 +326,7 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
+        
 # ═══════════════════════════════════════════════
 #   Active Devices
 # ═══════════════════════════════════════════════
