@@ -73,15 +73,15 @@ class Business(BaseModel):
     # ═══════════ موقعیت جغرافیایی (PostGIS) ═══════════
     latitude = models.DecimalField(
         'عرض جغرافیایی',
-        max_digits=10,
-        decimal_places=7,
+        max_digits=18,      
+        decimal_places=10,
         null=True,
         blank=True,
     )
     longitude = models.DecimalField(
         'طول جغرافیایی',
-        max_digits=10,
-        decimal_places=7,
+        max_digits=18,     
+        decimal_places=10,  
         null=True,
         blank=True,
     )
