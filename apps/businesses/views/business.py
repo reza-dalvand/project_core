@@ -58,12 +58,48 @@ class BusinessListView(generics.ListAPIView, StandardResponseMixin):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        return Business.objects.filter(
+        queryset = Business.objects.filter(
             status=Business.Status.APPROVED,
             is_active=True,
-        ).select_related('category', 'city', 'province').order_by('-rating', '-created_at')
+        ).select_related('category', 'city', 'province')
 
+        # ۱. فیلتر دسته‌بندی
+        category_id = self.request.query_params.get('category_id')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
 
+        # ۲. فیلترهای مکانی (استان/شهر و GPS)
+        province_id = self.request.query_params.get('province_id')
+        city_id = self.request.query_params.get('city_id')
+        lat = self.request.query_params.get('lat')
+        lng = self.request.query_params.get('lng')
+
+        if lat and lng:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                from django.contrib.gis.db.models.functions import Distance
+                lat, lng = float(lat), float(lng)
+                radius = float(self.request.query_params.get('radius', 10))
+                point = Point(lng, lat, srid=4326)
+                
+                queryset = queryset.filter(
+                    location__isnull=False,
+                    location__distance_lte=(point, D(km=radius))
+                ).annotate(distance=Distance('location', point)).order_by('distance')
+            except (ValueError, TypeError, Exception):
+                queryset = queryset.order_by('-rating', '-created_at')
+        elif province_id:
+            queryset = queryset.filter(province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(city_id=city_id)
+            queryset = queryset.order_by('-rating', '-created_at')
+        else:
+            queryset = queryset.order_by('-rating', '-created_at')
+
+        return queryset
+
+    
 class BusinessStatusView(APIView, StandardResponseMixin):
     """وضعیت کسب‌وکار کاربر"""
     permission_classes = [permissions.IsAuthenticated]
