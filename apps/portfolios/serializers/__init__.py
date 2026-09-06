@@ -1,10 +1,6 @@
 """
 Serializers برای نمونه‌کارها
 """
-import os
-import requests
-import tempfile
-from django.core.files.base import ContentFile
 from rest_framework import serializers
 from apps.portfolios.models import Portfolio, PortfolioImage
 
@@ -24,26 +20,19 @@ class PortfolioImageSerializer(serializers.ModelSerializer):
         return None
 
 
-# apps/portfolios/serializers/__init__.py — فقط لیست‌سریالایزر
-
 class PortfolioListSerializer(serializers.ModelSerializer):
     """Serializer لیست نمونه‌کارها برای ویترین"""
-    business_name = serializers.CharField(
-        source='business.name', read_only=True
-    )
+    business_name = serializers.CharField(source='business.name', read_only=True)
     business_logo = serializers.SerializerMethodField()
-    # ✅ فیلد جدید: عکس صاحب کسب‌وکار
     business_owner_photo = serializers.SerializerMethodField()
     business_booking_slug = serializers.CharField(
         source='business.booking_slug', read_only=True
     )
-    category_name = serializers.CharField(
-        source='category.name', read_only=True
-    )
-    sub_service_name = serializers.CharField(
-        source='sub_service.name', read_only=True
-    )
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    sub_service_name = serializers.CharField(source='sub_service.name', read_only=True)
     images = PortfolioImageSerializer(many=True, read_only=True)
+    
+    # ✅ cover_image_url → از اولین عکس گالری
     cover_image_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -51,11 +40,11 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description',
             'business', 'business_name', 'business_logo',
-            'business_owner_photo',  # ✅ اضافه شد
+            'business_owner_photo',
             'business_booking_slug',
             'category', 'category_name',
             'sub_service', 'sub_service_name',
-            'cover_image', 'cover_image_url',
+            'cover_image_url',  # ✅ فقط URL محاسبه‌شده
             'images', 'created_at',
         ]
         read_only_fields = fields
@@ -66,7 +55,6 @@ class PortfolioListSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.business.logo.url)
         return None
 
-    # ✅ متد جدید
     def get_business_owner_photo(self, obj):
         request = self.context.get('request')
         if obj.business.owner_photo and request:
@@ -74,11 +62,14 @@ class PortfolioListSerializer(serializers.ModelSerializer):
         return None
 
     def get_cover_image_url(self, obj):
+        """✅ کاور = اولین عکس گالری (sort_order=0)"""
         request = self.context.get('request')
-        if obj.cover_image and request:
-            return request.build_absolute_uri(obj.cover_image.url)
+        first_image = obj.images.order_by('sort_order').first()
+        if first_image and first_image.image and request:
+            return request.build_absolute_uri(first_image.image.url)
         return None
-    
+
+
 class PortfolioDetailSerializer(PortfolioListSerializer):
     business_address = serializers.CharField(source='business.address', read_only=True)
     business_city = serializers.CharField(source='business.city.name', read_only=True)
@@ -91,8 +82,8 @@ class PortfolioDetailSerializer(PortfolioListSerializer):
 
 class PortfolioCreateSerializer(serializers.Serializer):
     """
-    Serializer ایجاد نمونه‌کار — فقط آپلود فایل
-    حداقل یک تصویر اجباری است.
+    Serializer ایجاد نمونه‌کار — بدون فیلد cover_image
+    اولین عکس آپلود‌شده → کاور (sort_order=0)
     """
     title = serializers.CharField(max_length=100)
     description = serializers.CharField(
@@ -101,10 +92,7 @@ class PortfolioCreateSerializer(serializers.Serializer):
     category = serializers.IntegerField(required=True)
     sub_service = serializers.IntegerField(required=True)
 
-    # ✅ تصویر کاور — اجباری
-    cover_image = serializers.ImageField(required=True)
-
-    # ✅ تصاویر گالری — حداقل ۱ فایل، حداکثر ۳
+    # ✅ فقط تصاویر گالری — اولین عکس = کاور
     images = serializers.ListField(
         child=serializers.ImageField(),
         required=True,
@@ -167,40 +155,38 @@ class PortfolioCreateSerializer(serializers.Serializer):
 
         category = validated_data.pop('_category')
         sub_service = validated_data.pop('_sub_service')
-        cover_image = validated_data.pop('cover_image')
         image_files = validated_data.pop('images', [])
 
+        # ✅ cover_image دیگر وجود ندارد
         portfolio = Portfolio.objects.create(
             business=business,
             category=category,
             sub_service=sub_service,
             title=validated_data.get('title', ''),
             description=validated_data.get('description', ''),
-            cover_image=cover_image,  # ✅ فایل واقعی
         )
 
-        # ذخیره تصاویر گالری
+        # ✅ اولین عکس = کاور (sort_order=0)
         for i, img_file in enumerate(image_files):
             PortfolioImage.objects.create(
                 portfolio=portfolio,
-                image=img_file,  # ✅ فایل واقعی
+                image=img_file,
                 sort_order=i,
             )
 
         return portfolio
 
 
-
-
 class PortfolioUpdateSerializer(serializers.Serializer):
-    """Serializer ویرایش نمونه‌کار — با پشتیبانی از فایل"""
+    """Serializer ویرایش نمونه‌کار — بدون فیلد cover_image"""
     title = serializers.CharField(max_length=100, required=False)
     description = serializers.CharField(
         max_length=300, required=False, allow_blank=True
     )
     category = serializers.IntegerField(required=False)
     sub_service = serializers.IntegerField(required=False)
-    cover_image = serializers.ImageField(required=False)
+
+    # ✅ فقط تصاویر گالری
     images = serializers.ListField(
         child=serializers.ImageField(),
         required=False,
@@ -225,7 +211,6 @@ class PortfolioUpdateSerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         from apps.categories.models import ServiceCategory, SubService
 
-        # ─── بروزرسانی فیلدهای ساده ───
         cat_id = validated_data.pop('category', None)
         sub_id = validated_data.pop('sub_service', None)
 
@@ -250,18 +235,9 @@ class PortfolioUpdateSerializer(serializers.Serializer):
         if 'description' in validated_data:
             instance.description = validated_data['description']
 
-        # ─── بروزرسانی کاور ───
-        cover_image = validated_data.pop('cover_image', None)
-        if cover_image:
-            # حذف فایل قبلی از دیسک
-            if instance.cover_image:
-                instance.cover_image.delete(save=False)
-            instance.cover_image = cover_image
-
         instance.save()
 
-        # ─── بروزرسانی تصاویر گالری ───
-        # ✅ فقط اگر تصاویر جدید ارسال شده باشند
+        # ✅ بروزرسانی تصاویر گالری
         image_files = validated_data.pop('images', None)
         if image_files is not None and len(image_files) > 0:
             # حذف تصاویر قبلی از دیسک
@@ -275,6 +251,5 @@ class PortfolioUpdateSerializer(serializers.Serializer):
                     image=img_file,
                     sort_order=i,
                 )
-        # ✅ اگر images ارسال نشده یا خالی باشد، تصاویر قبلی حفظ می‌شوند
 
         return instance
