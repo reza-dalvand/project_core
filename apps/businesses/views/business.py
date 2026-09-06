@@ -66,7 +66,11 @@ class BusinessListView(generics.ListAPIView, StandardResponseMixin):
         # ۱. فیلتر دسته‌بندی
         category_id = self.request.query_params.get('category_id')
         if category_id:
-            queryset = queryset.filter(category_id=category_id)
+            # ✅ اصلاح: فیلتر بر اساس ServiceCategory از طریق services
+            queryset = queryset.filter(
+                services__category_id=category_id,
+                services__is_active=True,
+            ).distinct()
 
         # ۲. فیلترهای مکانی (استان/شهر و GPS)
         province_id = self.request.query_params.get('province_id')
