@@ -1,5 +1,8 @@
+# apps/favorites/serializers/__init__.py
+# اطمینان از وجود FavoriteBusinessSerializer
+
 """
-Serializers برای علاقه‌مندی‌ها — نسخه نهایی
+Serializers برای علاقه‌مندی‌ها
 """
 from rest_framework import serializers
 from apps.favorites.models import FavoriteBusiness
@@ -29,14 +32,3 @@ class FavoriteBusinessSerializer(serializers.ModelSerializer):
         if obj.business.logo and request:
             return request.build_absolute_uri(obj.business.logo.url)
         return None
-
-
-# ❌ کلاس FavoritePostSerializer حذف شد
-
-
-class FavoriteToggleSerializer(serializers.Serializer):
-    """Serializer برای تغییر وضعیت علاقه‌مندی"""
-    favorite_type = serializers.ChoiceField(
-        choices=['business'],  # ✅ فقط business
-    )
-    object_id = serializers.IntegerField()

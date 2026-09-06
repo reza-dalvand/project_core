@@ -1,13 +1,15 @@
+# apps/portfolios/views/__init__.py
+# افزودن ۴ view جدید برای "my-portfolios"
+
 """
 Views برای نمونه‌کارها
 """
 import logging
 from rest_framework import permissions, status
 from rest_framework.views import APIView
-from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
-
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
@@ -22,146 +24,67 @@ from apps.portfolios.serializers import (
 logger = logging.getLogger(__name__)
 
 
-# apps/portfolios/views/__init__.py — فقط متد get
-
 class PortfolioListView(APIView, StandardResponseMixin):
-    """لیست عمومی نمونه‌کارها — برای ویترین"""
+    """لیست عمومی نمونه‌کارها"""
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
-        responses={200: PortfolioListSerializer(many=True)},
         tags=['Portfolios'],
         summary='لیست نمونه‌کارها (ویترین)',
     )
     def get(self, request):
-        import random
-
         queryset = Portfolio.objects.filter(
             business__status='approved',
             business__is_active=True,
-            is_active=True,
         ).select_related(
-            'business', 'business__city',
-            'category', 'sub_service',
+            'business', 'category', 'sub_service',
         ).prefetch_related('images').order_by('-created_at')
 
-        # فیلتر دسته‌بندی
         category_id = request.query_params.get('category_id')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
 
-        # فیلتر کسب‌وکار خاص
         business_id = request.query_params.get('business_id')
         if business_id:
             queryset = queryset.filter(business_id=business_id)
 
-                # همین الگو را اضافه کنید:
-        province_id = request.query_params.get('province_id')
-        city_id = request.query_params.get('city_id')
-        lat = request.query_params.get('lat')
-        lng = request.query_params.get('lng')
-
-        if lat and lng:
-            try:
-                from django.contrib.gis.geos import Point
-                from django.contrib.gis.measure import D
-                lat, lng = float(lat), float(lng)
-                radius = float(request.query_params.get('radius', 10))
-                point = Point(lng, lat, srid=4326)
-                queryset = queryset.filter(
-                    business__location__isnull=False,
-                    business__location__distance_lte=(point, D(km=radius))
-                )
-            except (ValueError, TypeError):
-                pass
-        elif province_id:
-            queryset = queryset.filter(business__province_id=province_id)
-            if city_id:
-                queryset = queryset.filter(business__city_id=city_id)
-                
-
-        # Pagination
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
-
-        # ✅ شافل رندوم
         if page is not None:
-            shuffled = list(page)
-            random.shuffle(shuffled)
-            serializer = PortfolioListSerializer(
-                shuffled, many=True, context={'request': request}
-            )
+            serializer = PortfolioListSerializer(page, many=True)
             return pagination.get_paginated_response(serializer.data)
 
-        shuffled = list(queryset)
-        random.shuffle(shuffled)
-        serializer = PortfolioListSerializer(
-            shuffled, many=True, context={'request': request}
-        )
-
+        serializer = PortfolioListSerializer(queryset, many=True)
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
         )
+
 
 class PortfolioDetailView(APIView, StandardResponseMixin):
     """جزئیات نمونه‌کار"""
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
-        responses={200: PortfolioDetailSerializer},
         tags=['Portfolios'],
         summary='جزئیات نمونه‌کار',
     )
     def get(self, request, pk):
         portfolio = get_object_or_404(
             Portfolio.objects.select_related(
-                'business', 'category', 'sub_service'
+                'business', 'category', 'sub_service',
             ).prefetch_related('images'),
             id=pk,
             business__status='approved',
             business__is_active=True,
         )
-        serializer = PortfolioDetailSerializer(
-            portfolio, context={'request': request}
-        )
+        serializer = PortfolioDetailSerializer(portfolio)
         return self.success_response(data=serializer.data)
 
 
-class BusinessPortfolioCreateView(APIView, StandardResponseMixin):
-    """ایجاد نمونه‌کار توسط کسب‌وکار"""
-    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
-
-    @extend_schema(
-        request=PortfolioCreateSerializer,
-        responses={201: PortfolioDetailSerializer},
-        tags=['Portfolios'],
-        summary='ایجاد نمونه‌کار',
-    )
-    def post(self, request):
-        serializer = PortfolioCreateSerializer(
-            data=request.data,
-            context={'request': request},
-        )
-        serializer.is_valid(raise_exception=True)
-        try:
-            portfolio = serializer.save()
-            return self.success_response(
-                data=PortfolioDetailSerializer(
-                    portfolio, context={'request': request}
-                ).data,
-                message='نمونه‌کار با موفقیت ایجاد شد',
-                status=status.HTTP_201_CREATED,
-            )
-        except Exception as e:
-            logger.error(f"Create portfolio error: {e}", exc_info=True)
-            return self.error_response(
-                message='خطا در ایجاد نمونه‌کار',
-                code='CREATE_ERROR',
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
+# ═══════════════════════════════════════════════
+#   My Portfolios (Business Management)
+# ═══════════════════════════════════════════════
 
 class BusinessPortfolioListView(APIView, StandardResponseMixin):
     """لیست نمونه‌کارهای کسب‌وکار من"""
@@ -175,29 +98,59 @@ class BusinessPortfolioListView(APIView, StandardResponseMixin):
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
+
         portfolios = Portfolio.objects.filter(
             business=business,
         ).select_related('category', 'sub_service').prefetch_related(
             'images'
         ).order_by('-created_at')
 
-        serializer = PortfolioListSerializer(
-            portfolios, many=True, context={'request': request}
-        )
+        serializer = PortfolioListSerializer(portfolios, many=True)
         return self.success_response(
             data=serializer.data,
             meta={'count': portfolios.count()},
         )
 
 
+class BusinessPortfolioCreateView(APIView, StandardResponseMixin):
+    """ایجاد نمونه‌کار توسط کسب‌وکار"""
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @extend_schema(
+        request=PortfolioCreateSerializer,
+        tags=['Portfolios'],
+        summary='ایجاد نمونه‌کار',
+    )
+    def post(self, request):
+        serializer = PortfolioCreateSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            portfolio = serializer.save()
+            return self.success_response(
+                data=PortfolioDetailSerializer(portfolio).data,
+                message='نمونه‌کار با موفقیت ایجاد شد',
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Create portfolio error: {e}")
+            return self.error_response(
+                message='خطا در ایجاد نمونه‌کار',
+                code='CREATE_ERROR',
+            )
+
+
 class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
     """ویرایش نمونه‌کار"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser, JSONParser] 
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @extend_schema(
         request=PortfolioUpdateSerializer,
-        responses={200: PortfolioDetailSerializer},
         tags=['Portfolios'],
         summary='ویرایش نمونه‌کار',
     )
@@ -205,23 +158,12 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
-        if not business:
-            return self.error_response(
-                message='کسب‌وکار تایید شده یافت نشد',
-                code='NO_BUSINESS',
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
-        try:
-            portfolio = Portfolio.objects.prefetch_related('images').get(
-                id=pk, business=business
-            )
-        except Portfolio.DoesNotExist:
-            return self.error_response(
-                message='نمونه‌کار یافت نشد',
-                code='PORTFOLIO_NOT_FOUND',
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        portfolio = get_object_or_404(
+            Portfolio.objects.prefetch_related('images'),
+            id=pk,
+            business=business,
+        )
 
         serializer = PortfolioUpdateSerializer(
             portfolio,
@@ -229,29 +171,19 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
             partial=True,
             context={'request': request},
         )
-
-        if not serializer.is_valid():
-            return self.error_response(
-                message='خطا در اعتبارسنجی داده‌ها',
-                code='VALIDATION_ERROR',
-                details=serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer.is_valid(raise_exception=True)
 
         try:
             updated = serializer.save()
             return self.success_response(
-                data=PortfolioDetailSerializer(
-                    updated, context={'request': request}
-                ).data,
+                data=PortfolioDetailSerializer(updated).data,
                 message='نمونه‌کار با موفقیت ویرایش شد',
             )
         except Exception as e:
-            logger.error(f"Update portfolio error: {e}", exc_info=True)
+            logger.error(f"Update portfolio error: {e}")
             return self.error_response(
                 message='خطا در ویرایش نمونه‌کار',
                 code='UPDATE_ERROR',
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
@@ -267,13 +199,12 @@ class BusinessPortfolioDeleteView(APIView, StandardResponseMixin):
         business = request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
-        try:
-            portfolio = Portfolio.objects.get(id=pk, business=business)
-            portfolio.delete()
-            return self.success_response(message='نمونه‌کار حذف شد')
-        except Portfolio.DoesNotExist:
-            return self.error_response(
-                message='نمونه‌کار یافت نشد',
-                code='PORTFOLIO_NOT_FOUND',
-                status=status.HTTP_404_NOT_FOUND,
-            )
+
+        portfolio = get_object_or_404(
+            Portfolio,
+            id=pk,
+            business=business,
+        )
+
+        portfolio.delete()
+        return self.success_response(message='نمونه‌کار حذف شد')
