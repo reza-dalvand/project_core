@@ -70,3 +70,42 @@ class Review(BaseModel):
         self.business.reviews_count = stats['count'] or 0
         self.business.rating = stats['avg'] or 0
         self.business.save(update_fields=['reviews_count', 'rating'])
+
+
+class ReviewTagVote(BaseModel):
+    """رای لایک/دیسلایک برای تگ‌های نظر"""
+    
+    class VoteType(models.TextChoices):
+        LIKE = 'like', 'لایک'
+        DISLIKE = 'dislike', 'دیسلایک'
+    
+    review = models.ForeignKey(
+        'Review',
+        on_delete=models.CASCADE,
+        related_name='tag_votes',
+        verbose_name='نظر',
+    )
+    tag_id = models.CharField(
+        'شناسه تگ',
+        max_length=50,
+    )
+    vote_type = models.CharField(
+        'نوع رای',
+        max_length=10,
+        choices=VoteType.choices,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='review_tag_votes',
+        verbose_name='کاربر',
+    )
+    
+    class Meta:
+        db_table = 'review_tag_votes'
+        verbose_name = '👍 رای تگ نظر'
+        verbose_name_plural = '👍 رای‌های تگ نظرات'
+        unique_together = ['review', 'tag_id', 'user']
+    
+    def __str__(self):
+        return f'{self.user.phone} - {self.tag_id} ({self.vote_type})'

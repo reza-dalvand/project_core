@@ -24,15 +24,43 @@ class ReviewService:
 
     @classmethod
     def can_review(cls, user, appointment) -> bool:
-        """بررسی امکان ثبت نظر"""
+        """بررسی امکان ثبت نظر — ۶ ساعت بعد از نوبت"""
         if appointment.customer != user:
             return False
         if appointment.status != Appointment.Status.DONE:
             return False
         if Review.objects.filter(appointment=appointment).exists():
             return False
+        
+        # ✅ FIX: بررسی ۶ ساعت بعد از نوبت
+        try:
+            import jdatetime
+            from datetime import datetime, timedelta
+            
+            # تبدیل تاریخ جلالی به میلادی
+            gregorian_date = jdatetime.date(
+                appointment.jy, appointment.jm, appointment.jd
+            ).togregorian()
+            
+            # ترکیب تاریخ و ساعت
+            apt_datetime = datetime.combine(gregorian_date, appointment.time_slot)
+            
+            # اضافه کردن ۶ ساعت
+            review_available_time = apt_datetime + timedelta(hours=6)
+            
+            # بررسی آیا ۶ ساعت گذشته است
+            from django.utils import timezone as django_timezone
+            now = django_timezone.now().replace(tzinfo=None)
+            
+            if now < review_available_time:
+                return False
+        except Exception:
+            # اگر خطایی رخ داد، اجازه نظردهی بده
+            pass
+        
         return True
 
+    
     @classmethod
     @transaction.atomic
     def create_review(
