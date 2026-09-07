@@ -31,3 +31,53 @@ class FavoriteBusiness(BaseModel):
         return f'{self.user.phone} ❤️ {self.business.name}'
 
 
+class FavoritePost(BaseModel):
+    """علاقه‌مندی به پست ویترین (ExplorePost)"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='favorite_posts',
+        verbose_name='کاربر',
+    )
+    post = models.ForeignKey(
+        'explore.ExplorePost',
+        on_delete=models.CASCADE,
+        related_name='favorited_by',
+        verbose_name='پست',
+    )
+
+    class Meta:
+        db_table = 'favorite_posts'
+        verbose_name = '❤️ علاقه‌مندی به پست'
+        verbose_name_plural = '❤️ علاقه‌مندی‌ها به پست‌ها'
+        unique_together = ['user', 'post']
+
+    def __str__(self):
+        return f'{self.user.phone} ❤️ {self.post.caption[:30]}'
+
+
+class FavoritePortfolio(BaseModel):
+    """علاقه‌مندی به نمونه‌کار (Portfolio)"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='favorite_portfolios',
+        verbose_name='کاربر',
+    )
+    portfolio = models.ForeignKey(
+        'portfolios.Portfolio',
+        on_delete=models.CASCADE,
+        related_name='favorited_by',
+        verbose_name='نمونه‌کار',
+    )
+
+    class Meta:
+        db_table = 'favorite_portfolios'
+        verbose_name = '❤️ علاقه‌مندی به نمونه‌کار'
+        verbose_name_plural = '❤️ علاقه‌مندی‌ها به نمونه‌کارها'
+        unique_together = ['user', 'portfolio']
+
+    def __str__(self):
+        return f'{self.user.phone} ❤️ {self.portfolio.title[:30]}'
+
+

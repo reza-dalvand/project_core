@@ -21,8 +21,8 @@ class FavoriteListView(APIView, StandardResponseMixin):
     لیست علاقه‌مندی‌ها
     فرمت پاسخ مطابق انتظار Frontend:
     {
-        businesses: [...],
-        posts: [...]
+      businesses: [...],
+      posts: [...]
     }
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -50,8 +50,74 @@ class FavoriteListView(APIView, StandardResponseMixin):
             businesses_data = serializer.data
 
         if favorite_type in (None, 'post'):
-            # FavoritePost حذف شده — لیست خالی برمی‌گردانیم
-            posts_data = []
+            # ✅ FIX: لیست Portfolioها و ExplorePostهای مورد علاقه
+            from apps.favorites.models import FavoritePortfolio, FavoritePost
+            from apps.portfolios.models import Portfolio
+            from apps.explore.models import ExplorePost
+            from apps.explore.serializers import ExplorePostListSerializer
+            from apps.portfolios.serializers import PortfolioListSerializer
+            
+            # Portfolioها
+            fav_portfolios = FavoritePortfolio.objects.filter(
+                user=request.user,
+                portfolio__is_active=True,
+            ).select_related(
+                'portfolio', 'portfolio__business', 'portfolio__category'
+            ).prefetch_related('portfolio__images')
+            
+            portfolios = [fav.portfolio for fav in fav_portfolios]
+            
+            if portfolios:
+                portfolio_data = PortfolioListSerializer(
+                    portfolios, many=True, context={'request': request}
+                ).data
+                
+                # ✅ FIX: تبدیل به فرمت مورد انتظار فرانت با همه تصاویر
+                for item in portfolio_data:
+                    images_list = []
+                    if item.get('images'):
+                        images_list = [img.get('image_url') or img.get('image') for img in item['images']]
+                    
+                    posts_data.append({
+                        'id': item.get('id'),
+                        'caption': item.get('title', ''),
+                        'businessName': item.get('business_name', ''),
+                        'businessLogo': item.get('business_logo'),
+                        'businessBookingSlug': item.get('business_booking_slug'),
+                        'images': images_list,  # ✅ آرایه کامل تصاویر
+                        'image': images_list[0] if images_list else None,  # برای backward compatibility
+                    })
+            
+            # ExplorePostها
+            fav_posts = FavoritePost.objects.filter(
+                user=request.user,
+                post__business__is_active=True,
+            ).select_related(
+                'post', 'post__business', 'post__main_category', 'post__sub_category'
+            ).prefetch_related('post__images')
+            
+            explore_posts = [fav.post for fav in fav_posts]
+            
+            if explore_posts:
+                post_data = ExplorePostListSerializer(
+                    explore_posts, many=True, context={'request': request}
+                ).data
+                
+                # ✅ FIX: تبدیل به فرمت مورد انتظار فرانت با همه تصاویر
+                for item in post_data:
+                    images_list = []
+                    if item.get('images'):
+                        images_list = [img.get('image_url') or img.get('image') for img in item['images']]
+                    
+                    posts_data.append({
+                        'id': item.get('id'),
+                        'caption': item.get('caption', ''),
+                        'businessName': item.get('business_name', ''),
+                        'businessLogo': item.get('business_logo'),
+                        'businessBookingSlug': item.get('business_booking_slug'),
+                        'images': images_list,  # ✅ آرایه کامل تصاویر
+                        'image': images_list[0] if images_list else None,  # برای backward compatibility
+                    })
 
         return self.success_response(
             data={
@@ -65,6 +131,7 @@ class FavoriteListView(APIView, StandardResponseMixin):
         )
 
 
+    
 class FavoriteToggleView(APIView, StandardResponseMixin):
     """تغییر وضعیت علاقه‌مندی"""
     permission_classes = [permissions.IsAuthenticated]
@@ -111,11 +178,58 @@ class FavoriteToggleView(APIView, StandardResponseMixin):
             )
 
         elif favorite_type == 'post':
-            # FavoritePost حذف شده
-            return self.error_response(
-                message='علاقه‌مندی به پست در حال حاضر پشتیبانی نمی‌شود',
-                code='NOT_SUPPORTED',
-            )
+            # ✅ FIX: ابتدا Portfolio را چک کن (ویترین از Portfolio می‌خواند)
+            # اگر پیدا نشد، ExplorePost را چک کن
+            from apps.portfolios.models import Portfolio
+            from apps.explore.models import ExplorePost
+            from apps.favorites.models import FavoritePortfolio, FavoritePost
+            
+            # اول Portfolio را چک کن
+            try:
+                portfolio = Portfolio.objects.get(id=object_id)
+                fav, created = FavoritePortfolio.objects.get_or_create(
+                    user=request.user,
+                    portfolio=portfolio,
+                )
+
+                if not created:
+                    fav.delete()
+                    return self.success_response(
+                        data={'is_favorited': False, 'type': 'portfolio'},
+                        message='از علاقه‌مندی‌ها حذف شد',
+                    )
+
+                return self.success_response(
+                    data={'is_favorited': True, 'type': 'portfolio'},
+                    message='به علاقه‌مندی‌ها اضافه شد',
+                )
+            except Portfolio.DoesNotExist:
+                pass
+
+            # اگر Portfolio نبود، ExplorePost را چک کن
+            try:
+                post = ExplorePost.objects.get(id=object_id)
+                fav, created = FavoritePost.objects.get_or_create(
+                    user=request.user,
+                    post=post,
+                )
+
+                if not created:
+                    fav.delete()
+                    return self.success_response(
+                        data={'is_favorited': False, 'type': 'post'},
+                        message='از علاقه‌مندی‌ها حذف شد',
+                    )
+
+                return self.success_response(
+                    data={'is_favorited': True, 'type': 'post'},
+                    message='به علاقه‌مندی‌ها اضافه شد',
+                )
+            except ExplorePost.DoesNotExist:
+                return self.error_response(
+                    message='پست یافت نشد',
+                    code='POST_NOT_FOUND',
+                )
 
         return self.error_response(
             message='نوع علاقه‌مندی نامعتبر است',
@@ -123,6 +237,7 @@ class FavoriteToggleView(APIView, StandardResponseMixin):
         )
 
 
+    
 class FavoriteCountView(APIView, StandardResponseMixin):
     """تعداد علاقه‌مندی‌ها"""
     permission_classes = [permissions.IsAuthenticated]
@@ -136,10 +251,19 @@ class FavoriteCountView(APIView, StandardResponseMixin):
             user=request.user,
         ).count()
 
+        # ✅ FIX: شمارش پست‌ها و نمونه‌کارها
+        from apps.favorites.models import FavoritePost, FavoritePortfolio
+        post_count = FavoritePost.objects.filter(
+            user=request.user,
+        ).count()
+        portfolio_count = FavoritePortfolio.objects.filter(
+            user=request.user,
+        ).count()
+
         return self.success_response(
             data={
                 'business': business_count,
-                'post': 0,
-                'total': business_count,
+                'post': post_count + portfolio_count,
+                'total': business_count + post_count + portfolio_count,
             },
         )
