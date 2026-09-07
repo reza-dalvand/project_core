@@ -154,9 +154,29 @@ class CustomerPaymentHistoryView(generics.ListAPIView, StandardResponseMixin):
     def get_queryset(self):
         return Transaction.objects.filter(
             customer=self.request.user
-        ).select_related('business', 'appointment').order_by('-created_at')
+        ).select_related('business', 'appointment', 'appointment__service').order_by('-created_at')
 
+    # ✅ FIX: override کردن list() برای جلوگیری از double-wrapping
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginator = self.paginator
+            return self.success_response(
+                data={
+                    'count': paginator.page.paginator.count,
+                    'next': paginator.get_next_link(),
+                    'previous': paginator.get_previous_link(),
+                    'results': serializer.data,
+                }
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return self.success_response(data=serializer.data)
 
+    
 class CustomerTransactionDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات تراکنش مشتری"""
     permission_classes = [IsAuthenticated]
@@ -185,11 +205,34 @@ class BusinessTransactionListView(generics.ListAPIView, StandardResponseMixin):
             is_active=True, status='approved'
         ).first()
 
+        if not business:
+            return Transaction.objects.none()
+
         return Transaction.objects.filter(
             business=business
         ).select_related('customer', 'appointment').order_by('-created_at')
 
+    # ✅ FIX: override کردن list()
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginator = self.paginator
+            return self.success_response(
+                data={
+                    'count': paginator.page.paginator.count,
+                    'next': paginator.get_next_link(),
+                    'previous': paginator.get_previous_link(),
+                    'results': serializer.data,
+                }
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return self.success_response(data=serializer.data)
 
+    
 class BusinessFinancialStatsView(APIView, StandardResponseMixin):
     """آمار مالی کسب‌وکار"""
     permission_classes = [IsAuthenticated, IsApprovedBusinessOwner]
