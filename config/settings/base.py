@@ -280,20 +280,37 @@ REST_FRAMEWORK = {
 }
 
 # ═══════════════════════════════════════════════
-#   JWT Settings
+#   JWT Settings — Sliding Token + Rotation
 # ═══════════════════════════════════════════════
 SIMPLE_JWT = {
+    # ─── Lifetime ───
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    
+    # ✅ جدید: Sliding Token — هر refresh، ۳۰ روز تمدید می‌شود
+    'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=30),
+    
+    # ─── Rotation & Security ───
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
+    
+    # ─── Algorithm ───
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    
+    # ✅ جدید: فعال‌سازی Sliding Token
+    'AUTH_TOKEN_CLASSES': (
+        'rest_framework_simplejwt.tokens.AccessToken',
+        'rest_framework_simplejwt.tokens.SlidingToken',
+    ),
+    'SLIDING_TOKEN_CLASSES': (
+        'rest_framework_simplejwt.tokens.SlidingToken',
+    ),
 }
 
 # ═══════════════════════════════════════════════

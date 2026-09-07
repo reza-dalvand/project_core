@@ -14,7 +14,7 @@ from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken, OutstandingToken,
 )
 from drf_spectacular.utils import extend_schema
-
+from rest_framework_simplejwt.tokens import SlidingToken
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import get_client_ip, get_device_info, mask_phone
 from apps.core.exceptions import OTPException, ShahkarException
@@ -89,13 +89,6 @@ class SendOTPView(APIView, StandardResponseMixin):
 #   Verify OTP
 # ═══════════════════════════════════════════════
 
-# apps/accounts/views/auth.py
-# فقط کلاس VerifyOTPView را پیدا کنید و متد post را جایگزین کنید:
-
-# apps/accounts/views/auth.py
-
-# ... (imports existing) ...
-
 class VerifyOTPView(APIView, StandardResponseMixin):
     """تایید کد OTP و ورود/ثبت‌نام"""
     permission_classes = [permissions.AllowAny]
@@ -153,7 +146,7 @@ class VerifyOTPView(APIView, StandardResponseMixin):
             )
 
             # 4. تولید JWT Token
-            refresh = RefreshToken.for_user(user)
+            refresh = SlidingToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
             access_token = refresh.access_token
@@ -174,7 +167,8 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     'access_token': str(access_token),
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
-                    'expires_in': int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                    'expires_in': int(settings.SIMPLE_JWT['SLIDING_TOKEN_LIFETIME'].total_seconds()),
+                    'refresh_expires_in': int(settings.SIMPLE_JWT['SLIDING_TOKEN_REFRESH_LIFETIME'].total_seconds()),
                     'user': UserProfileSerializer(user).data,
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
