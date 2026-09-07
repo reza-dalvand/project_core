@@ -132,21 +132,28 @@ class VerifyOTPView(APIView, StandardResponseMixin):
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
-            # 3. ثبت دستگاه (Device Tracking)
+             # 3. ثبت دستگاه (Device Tracking)
             device_info = get_device_info(request)
-            UserDevice.objects.update_or_create(
-                user=user,
-                device_type=device_info['device_type'],
-                device_name=device_info.get('device_name', ''),
-                defaults={
-                    'ip_address': get_client_ip(request),
-                    'os_info': device_info.get('os_version', ''),
-                    'is_current': True,
-                },
-            )
+            client_ip = get_client_ip(request)
 
-            # 4. تولید JWT Token
-            refresh = SlidingToken.for_user(user)
+            try:
+                UserDevice.objects.update_or_create(
+                    user=user,
+                    device_type=device_info['device_type'],
+                    defaults={
+                        'device_name': device_info.get('device_name') or f'{device_info["device_type"]} Device',
+                        'ip_address': client_ip or '127.0.0.1',  # ✅ FIX: None → fallback
+                        'os_info': device_info.get('os_info') or device_info.get('os_version') or 'Unknown',
+                        'location': 'Unknown',  # ✅ FIX: فیلد اجباری NOT NULL
+                        'is_current': True,
+                    },
+                )
+            except Exception as device_err:
+                # ✅ FIX: اگر ثبت دستگاه ناموفق بود، ورود نباید فیل شود
+                logger.warning(f"Device registration failed: {device_err}")
+
+             # 4. تولید JWT Token
+            refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
             access_token = refresh.access_token
@@ -167,13 +174,14 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     'access_token': str(access_token),
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
-                    'expires_in': int(settings.SIMPLE_JWT['SLIDING_TOKEN_LIFETIME'].total_seconds()),
-                    'refresh_expires_in': int(settings.SIMPLE_JWT['SLIDING_TOKEN_REFRESH_LIFETIME'].total_seconds()),
+                    'expires_in': int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                    'refresh_expires_in': int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                     'user': UserProfileSerializer(user).data,
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
             )
 
+        
         except OTPException as e:
             return e.as_response()
         except Exception as e:

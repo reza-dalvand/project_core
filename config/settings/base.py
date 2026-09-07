@@ -282,14 +282,12 @@ REST_FRAMEWORK = {
 # ═══════════════════════════════════════════════
 #   JWT Settings — Sliding Token + Rotation
 # ═══════════════════════════════════════════════
+from datetime import timedelta
+
 SIMPLE_JWT = {
     # ─── Lifetime ───
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    
-    # ✅ جدید: Sliding Token — هر refresh، ۳۰ روز تمدید می‌شود
-    'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=30),
     
     # ─── Rotation & Security ───
     'ROTATE_REFRESH_TOKENS': True,
@@ -299,19 +297,24 @@ SIMPLE_JWT = {
     # ─── Algorithm ───
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
+    
+    # ─── Token Classes ───
+    'AUTH_TOKEN_CLASSES': (
+        'rest_framework_simplejwt.tokens.AccessToken',
+    ),
+    # ✅ حذف یا کامنت کردن این خطوط:
+    # 'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
+    # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=30),
+    # 'SLIDING_TOKEN_CLASSES': (
+    #     'rest_framework_simplejwt.tokens.SlidingToken',
+    # ),
+    
+    # ─── Header & Claims ───
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    
-    # ✅ جدید: فعال‌سازی Sliding Token
-    'AUTH_TOKEN_CLASSES': (
-        'rest_framework_simplejwt.tokens.AccessToken',
-        'rest_framework_simplejwt.tokens.SlidingToken',
-    ),
-    'SLIDING_TOKEN_CLASSES': (
-        'rest_framework_simplejwt.tokens.SlidingToken',
-    ),
 }
+
 
 # ═══════════════════════════════════════════════
 #   External Services
