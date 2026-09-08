@@ -79,6 +79,13 @@ class Appointment(BaseModel):
         db_index=True,
     )
 
+    # ═══════════ زمان انجام خدمت (برای محاسبه ۶ ساعت نظردهی) ═══════════
+    done_at = models.DateTimeField(
+        "زمان انجام خدمت",
+        null=True,
+        blank=True,
+    )
+
     # ═══════════ تایید ═══════════
 
     verification_code = models.CharField(

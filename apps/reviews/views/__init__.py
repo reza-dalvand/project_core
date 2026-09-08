@@ -14,8 +14,7 @@ from apps.reviews.serializers import (
     ReviewListSerializer,
     ReviewDetailSerializer,
     CreateReviewSerializer,
-    CreateReviewReplySerializer,
-)
+    )
 from apps.reviews.services.review_service import ReviewService, ReviewException
 
 logger = logging.getLogger(__name__)
@@ -39,10 +38,10 @@ class CreateReviewView(APIView, StandardResponseMixin):
             review = ReviewService.create_review(
                 customer=request.user,
                 appointment_id=serializer.validated_data['appointment_id'],
-                rating=serializer.validated_data['rating'],
                 comment=serializer.validated_data.get('comment', ''),
-                tags=serializer.validated_data.get('tags', []),
+                tag_votes=serializer.validated_data.get('tag_votes', []), 
             )
+
 
             return self.success_response(
                 data=ReviewDetailSerializer(review).data,
@@ -137,12 +136,12 @@ class BusinessReviewReplyView(APIView, StandardResponseMixin):
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
 
     @extend_schema(
-        request=CreateReviewReplySerializer,
+        request=CreateReviewSerializer,
         tags=['Reviews - Business'],
         summary='ثبت پاسخ به نظر',
     )
     def post(self, request):
-        serializer = CreateReviewReplySerializer(data=request.data)
+        serializer = CreateReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -182,8 +181,14 @@ class BusinessReviewReplyView(APIView, StandardResponseMixin):
                 code='REPLY_ERROR',
             )
 
+
 class PendingReviewsView(APIView, StandardResponseMixin):
-    """لیست نوبت‌های آماده نظردهی (۶ ساعت بعد از نوبت)"""
+    """
+    لیست نوبت‌های آماده نظردهی
+    منطق جدید:
+    - برای هر کسب‌وکار که کاربر نظر نداده، آخرین نوبت DONE را برمی‌گرداند
+    - اگر کاربر برای کسب‌وکار نظر داده باشد، هیچ نوبتی از آن کسب‌وکار برگردانده نمی‌شود
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
@@ -193,119 +198,91 @@ class PendingReviewsView(APIView, StandardResponseMixin):
     def get(self, request):
         from apps.appointments.models import Appointment
         from apps.appointments.serializers import AppointmentListSerializer
-        import jdatetime
-        from datetime import datetime, timedelta
+        from apps.reviews.models import Review
+        from datetime import timedelta
         from django.utils import timezone as django_timezone
-        
-        # نوبت‌های انجام شده کاربر
+
+        # ✅ کسب‌وکارهایی که کاربر قبلاً برای آن‌ها نظر ثبت کرده
+        reviewed_business_ids = Review.objects.filter(
+            customer=request.user,
+        ).values_list('business_id', flat=True)
+
+        # ✅ نوبت‌های DONE کاربر که کسب‌وکارشان در لیست نظر داده‌شده‌ها نیست
         appointments = Appointment.objects.filter(
             customer=request.user,
             status=Appointment.Status.DONE,
-            has_review=False,
-        ).select_related('business', 'service').order_by('-created_at')
-        
+            done_at__isnull=False,
+        ).exclude(
+            business_id__in=reviewed_business_ids,
+        ).select_related('business', 'service').order_by('-done_at')
+
+        now = django_timezone.now()
         pending_reviews = []
-        now = django_timezone.now().replace(tzinfo=None)
-        
+        added_business_ids = set()  # فقط آخرین نوبت برای هر کسب‌وکار
+
         for apt in appointments:
-            try:
-                # تبدیل تاریخ جلالی به میلادی
-                gregorian_date = jdatetime.date(
-                    apt.jy, apt.jm, apt.jd
-                ).togregorian()
-                
-                # ترکیب تاریخ و ساعت
-                apt_datetime = datetime.combine(gregorian_date, apt.time_slot)
-                
-                # اضافه کردن ۶ ساعت
-                review_available_time = apt_datetime + timedelta(hours=6)
-                
-                # بررسی آیا ۶ ساعت گذشته است
-                if now >= review_available_time:
-                    pending_reviews.append(apt)
-            except Exception:
+            # فقط آخرین نوبت DONE برای هر کسب‌وکار
+            # (چون appointments مرتب شده بر اساس -done_at، اولین بار که می‌بینیم = آخرین)
+            if apt.business_id in added_business_ids:
                 continue
-        
+
+            review_available_time = apt.done_at + timedelta(hours=6)
+            if now >= review_available_time:
+                pending_reviews.append(apt)
+                added_business_ids.add(apt.business_id)
+
         serializer = AppointmentListSerializer(
             pending_reviews, many=True, context={'request': request}
         )
-        
+
         return self.success_response(
             data=serializer.data,
             meta={'count': len(pending_reviews)},
         )
 
 
+    
 class BusinessTagVotesView(APIView, StandardResponseMixin):
-    """دریافت تعداد لایک/دیسلایک تگ‌های یک کسب‌وکار"""
+    """دریافت آمار تگ‌ها — فقط آخرین رای هر کاربر شمرده می‌شود (منطق ویرایش)"""
     permission_classes = [permissions.AllowAny]
 
-    @extend_schema(
-        tags=['Reviews'],
-        summary='تعداد لایک/دیسلایک تگ‌ها',
-    )
     def get(self, request, business_id):
         from apps.reviews.models import ReviewTagVote
-        from django.db.models import Count, Q
 
-        # تمام نظرات این کسب‌وکار
-        review_ids = Review.objects.filter(
-            business_id=business_id,
-        ).values_list('id', flat=True)
+        # دریافت تمام رای‌های این کسب‌وکار به ترتیب جدیدترین
+        all_votes = ReviewTagVote.objects.filter(
+            review__business_id=business_id
+        ).select_related('review').order_by('-created_at')
 
-        # شمارش تگ‌ها از نظرات (تعداد دفعاتی که هر تگ انتخاب شده)
-        tag_select_counts = {}
-        reviews = Review.objects.filter(business_id=business_id)
-        for review in reviews:
-            for tag in (review.tags or []):
-                tag_select_counts[tag] = tag_select_counts.get(tag, 0) + 1
+        # ✅ استخراج آخرین رای هر کاربر برای هر تگ (جلوگیری از شمارش تکراری)
+        user_latest_votes = {} # key: (user_id, tag_id), value: vote_type
+        for vote in all_votes:
+            key = (vote.user_id, vote.tag_id)
+            if key not in user_latest_votes:
+                user_latest_votes[key] = vote.vote_type
 
-        # شمارش لایک/دیسلایک از ReviewTagVote
-        votes = ReviewTagVote.objects.filter(
-            review_id__in=review_ids,
-        ).values('tag_id').annotate(
-            likes=Count('id', filter=Q(vote_type='like')),
-            dislikes=Count('id', filter=Q(vote_type='dislike')),
-        )
+        all_tags = ['clean', 'punctual', 'quality', 'polite', 'fair_price', 'recommend']
+        result = {tag: {'selected_count': 0, 'likes': 0, 'dislikes': 0} for tag in all_tags}
 
-        vote_map = {}
-        for v in votes:
-            vote_map[v['tag_id']] = {
-                'likes': v['likes'],
-                'dislikes': v['dislikes'],
-            }
+        # محاسبه آمار نهایی
+        for (user_id, tag_id), vote_type in user_latest_votes.items():
+            if tag_id in result:
+                result[tag_id]['selected_count'] += 1
+                if vote_type == 'like':
+                    result[tag_id]['likes'] += 1
+                else:
+                    result[tag_id]['dislikes'] += 1
 
-        # ساخت پاسخ نهایی
-        all_tags = [
-            'clean', 'punctual', 'quality', 'polite', 'fair_price', 'recommend'
-        ]
-
-        result = {}
-        for tag_id in all_tags:
-            result[tag_id] = {
-                'selected_count': tag_select_counts.get(tag_id, 0),
-                'likes': vote_map.get(tag_id, {}).get('likes', 0),
-                'dislikes': vote_map.get(tag_id, {}).get('dislikes', 0),
-            }
-
-        # رای فعلی کاربر (اگر لاگین باشد)
+        # رای فعلی کاربر لاگین کرده (برای نمایش در مدال در صورت نیاز)
         user_votes = {}
         if request.user.is_authenticated:
-            my_votes = ReviewTagVote.objects.filter(
-                review_id__in=review_ids,
-                user=request.user,
-            ).values('tag_id', 'vote_type')
-            for mv in my_votes:
-                user_votes[mv['tag_id']] = mv['vote_type']
+            for (uid, tid), vtype in user_latest_votes.items():
+                if uid == request.user.id:
+                    user_votes[tid] = vtype
 
-        return self.success_response(
-            data={
-                'tag_stats': result,
-                'user_votes': user_votes,
-            },
-        )
+        return self.success_response(data={'tag_stats': result, 'user_votes': user_votes})
 
-
+    
 class ToggleTagVoteView(APIView, StandardResponseMixin):
     """ثبت/تغییر لایک یا دیسلایک تگ"""
     permission_classes = [permissions.IsAuthenticated]
@@ -340,22 +317,16 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
                 code='INVALID_TAG',
             )
 
-        # پیدا کردن یک نظر از این کسب‌وکار که این تگ را داشته باشد
+        # ✅ اصلاح باگ: پیدا کردن آخرین نظر خود کاربر برای این کسب‌وکار
         review = Review.objects.filter(
             business_id=business_id,
-            tags__contains=[tag_id],
-        ).first()
-
-        if not review:
-            # اگر هیچ نظری این تگ را نداشت، اولین نظر کسب‌وکار
-            review = Review.objects.filter(
-                business_id=business_id,
-            ).first()
+            customer=request.user,
+        ).order_by('-created_at').first()
 
         if not review:
             return self.error_response(
-                message='نظری برای این کسب‌وکار یافت نشد',
-                code='NO_REVIEWS',
+                message='شما هنوز نظری برای این کسب‌وکار ثبت نکرده‌اید',
+                code='NO_USER_REVIEW',
             )
 
         # بررسی رای قبلی
@@ -367,14 +338,12 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
 
         if existing_vote:
             if existing_vote.vote_type == vote_type:
-                # همان رای → حذف (toggle off)
                 existing_vote.delete()
                 return self.success_response(
                     data={'action': 'removed', 'vote_type': None},
                     message='رای حذف شد',
                 )
             else:
-                # رای مخالف → تغییر
                 existing_vote.vote_type = vote_type
                 existing_vote.save(update_fields=['vote_type'])
                 return self.success_response(
@@ -382,7 +351,6 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
                     message='رای تغییر کرد',
                 )
         else:
-            # رای جدید
             ReviewTagVote.objects.create(
                 review=review,
                 tag_id=tag_id,

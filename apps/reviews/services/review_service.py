@@ -1,10 +1,10 @@
 """
 Review Service — مدیریت نظرات و امتیازات
-ساده‌سازی شده با reply در خود Review
+منطق جدید: هر مشتری فقط یکبار برای هر کسب‌وکار نظر می‌دهد (اختیاری)
 """
 import logging
 from django.db import transaction
-from django.db.models import Avg, Count, Case, When, Value, IntegerField
+from django.db.models import Avg, Count, Case, When, IntegerField
 from django.utils import timezone
 
 from apps.reviews.models import Review
@@ -23,88 +23,90 @@ class ReviewService:
     """سرویس مدیریت نظرات"""
 
     @classmethod
+    def has_reviewed_business(cls, user, business) -> bool:
+        """آیا کاربر قبلاً برای این کسب‌وکار نظر ثبت کرده است؟"""
+        return Review.objects.filter(
+            customer=user,
+            business=business,
+        ).exists()
+
+    @classmethod
     def can_review(cls, user, appointment) -> bool:
-        """بررسی امکان ثبت نظر — ۶ ساعت بعد از نوبت"""
+        """
+        بررسی امکان ثبت نظر
+        قوانین:
+        - نوبت باید DONE باشد
+        - حداقل ۱ دقیقه از done_at گذشته باشد (برای تست)
+        - کاربر قبلاً برای این کسب‌وکار نظر نداده باشد
+        """
         if appointment.customer != user:
             return False
         if appointment.status != Appointment.Status.DONE:
             return False
-        if Review.objects.filter(appointment=appointment).exists():
+        if not appointment.done_at:
             return False
-        
-        # ✅ FIX: بررسی ۶ ساعت بعد از نوبت
-        try:
-            import jdatetime
-            from datetime import datetime, timedelta
-            
-            # تبدیل تاریخ جلالی به میلادی
-            gregorian_date = jdatetime.date(
-                appointment.jy, appointment.jm, appointment.jd
-            ).togregorian()
-            
-            # ترکیب تاریخ و ساعت
-            apt_datetime = datetime.combine(gregorian_date, appointment.time_slot)
-            
-            # اضافه کردن ۶ ساعت
-            review_available_time = apt_datetime + timedelta(hours=6)
-            
-            # بررسی آیا ۶ ساعت گذشته است
-            from django.utils import timezone as django_timezone
-            now = django_timezone.now().replace(tzinfo=None)
-            
-            if now < review_available_time:
-                return False
-        except Exception:
-            # اگر خطایی رخ داد، اجازه نظردهی بده
-            pass
-        
+
+        # بررسی ۱ دقیقه بعد از انجام خدمت (done_at)
+        from datetime import timedelta
+        from django.utils import timezone as django_timezone
+        now = django_timezone.now()
+        if now < appointment.done_at + timedelta(minutes=1):
+            return False
+
+        # ✅ قانون جدید: اگر قبلاً برای این کسب‌وکار نظر داده، مجاز نیست
+        if cls.has_reviewed_business(user, appointment.business):
+            return False
+
         return True
 
-    
     @classmethod
     @transaction.atomic
     def create_review(
         cls,
         customer,
         appointment_id: int,
-        rating: int,
         comment: str = '',
-        tags: list = None,
+        tag_votes: list = None,
     ) -> Review:
-        """ایجاد نظر جدید"""
-        if not (1 <= rating <= 5):
-            raise ReviewException(
-                message='امتیاز باید بین ۱ تا ۵ باشد',
-                code='INVALID_RATING',
-            )
+        """ایجاد نظر جدید — فقط یکبار برای هر کسب‌وکار"""
+        from apps.reviews.models import ReviewTagVote
 
         try:
             appointment = Appointment.objects.select_related(
                 'customer', 'business', 'service',
             ).get(id=appointment_id)
         except Appointment.DoesNotExist:
-            raise ReviewException(
-                message='نوبت مورد نظر یافت نشد',
-                code='APPOINTMENT_NOT_FOUND',
-            )
+            raise ReviewException(message='نوبت مورد نظر یافت نشد', code='APPOINTMENT_NOT_FOUND')
 
         if not cls.can_review(customer, appointment):
             if appointment.customer != customer:
-                raise ReviewException(
-                    message='شما مجاز به ثبت نظر برای این نوبت نیستید',
-                    code='REVIEW_NOT_ALLOWED',
-                )
+                raise ReviewException(message='شما مجاز به ثبت نظر برای این نوبت نیستید', code='REVIEW_NOT_ALLOWED')
             elif appointment.status != Appointment.Status.DONE:
                 raise AppointmentNotCompletedException()
+            elif cls.has_reviewed_business(customer, appointment.business):
+                raise ReviewException(
+                    message='شما قبلاً برای این کسب‌وکار نظر ثبت کرده‌اید',
+                    code='REVIEW_ALREADY_EXISTS_FOR_BUSINESS',
+                )
             else:
                 raise ReviewAlreadyExistsException()
 
         if comment and len(comment) > 300:
-            raise ReviewException(
-                message='متن نظر نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد',
-                code='COMMENT_TOO_LONG',
-            )
+            raise ReviewException(message='متن نظر نمی‌تواند بیشتر از ۳۰۰ کاراکتر باشد', code='COMMENT_TOO_LONG')
 
+        # محاسبه خودکار ستاره (Rating) بر اساس لایک/دیسلایک‌ها
+        tag_votes = tag_votes or []
+        likes = sum(1 for v in tag_votes if v.get('vote_type') == 'like')
+        dislikes = sum(1 for v in tag_votes if v.get('vote_type') == 'dislike')
+        total_votes = likes + dislikes
+
+        if total_votes > 0:
+            ratio = likes / total_votes
+            rating = round(1 + (ratio * 4))
+        else:
+            rating = 3
+
+        # ✅ ایجاد نظر جدید (بدون آپدیت قبلی)
         review = Review.objects.create(
             business=appointment.business,
             service=appointment.service,
@@ -112,19 +114,24 @@ class ReviewService:
             customer=customer,
             rating=rating,
             comment=comment.strip() if comment else '',
-            tags=tags or [],
+            tags=[],
         )
 
-        # بروزرسانی آمار کسب‌وکار
+        # ثبت رای‌های تگ
+        for vote in tag_votes:
+            ReviewTagVote.objects.create(
+                review=review,
+                tag_id=vote['tag_id'],
+                vote_type=vote['vote_type'],
+                user=customer,
+            )
+
+        # بروزرسانی وضعیت نوبت
+        appointment.has_review = True
+        appointment.save(update_fields=['has_review'])
+
         cls._update_business_stats(appointment.business)
-
-        # ارسال نوتیفیکیشن
         cls._notify_business(review)
-
-        logger.info(
-            f"Review created: customer={customer.phone}, "
-            f"business={appointment.business.name}, rating={rating}"
-        )
 
         return review
 
@@ -187,10 +194,7 @@ class ReviewService:
         page_size: int = 10,
         rating_filter: int = None,
     ) -> dict:
-        """
-        دریافت نظرات کسب‌وکار
-        با Conditional Aggregation برای توزیع امتیازات
-        """
+        """دریافت نظرات کسب‌وکار"""
         queryset = Review.objects.filter(
             business=business,
         ).select_related(
@@ -205,7 +209,6 @@ class ReviewService:
         end = start + page_size
         reviews = queryset[start:end]
 
-        # محاسبه توزیع امتیازات + میانگین در یک کوئری
         stats = Review.objects.filter(
             business=business,
         ).aggregate(

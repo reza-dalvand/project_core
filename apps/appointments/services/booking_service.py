@@ -184,8 +184,9 @@ class BookingService:
         appointment.status = Appointment.Status.DONE
         appointment.is_verified = True
         appointment.verified_at = timezone.now()
+        appointment.done_at = timezone.now()
         appointment.save(update_fields=[
-            'status', 'is_verified', 'verified_at', 'updated_at',
+            'status', 'is_verified', 'verified_at', 'done_at', 'updated_at',
         ])
         return True
 
