@@ -472,6 +472,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.notifications.tasks.cleanup_old_otp_codes',
         'schedule': crontab(hour=4, minute=0),
     },
+    'process-expired-appointments': {
+        'task': 'apps.appointments.tasks.process_expired_appointments',
+        'schedule': crontab(hour='*/6', minute=0),  # هر ۶ ساعت
+    },
 }
 
 

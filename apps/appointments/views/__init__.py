@@ -244,39 +244,6 @@ class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
         return self.success_response(data=serializer.data)
 
 
-class CancelAppointmentView(APIView, StandardResponseMixin):
-    """لغو نوبت توسط مشتری"""
-    permission_classes = [permissions.IsAuthenticated]
-
-    @extend_schema(
-        request=CancelAppointmentSerializer,
-        tags=['Appointments - Customer'],
-        summary='لغو نوبت',
-    )
-    def post(self, request, pk):
-        try:
-            appointment = Appointment.objects.get(id=pk, customer=request.user)
-        except Appointment.DoesNotExist:
-            return self.error_response(
-                message='نوبت مورد نظر یافت نشد',
-                code='APPOINTMENT_NOT_FOUND',
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        serializer = CancelAppointmentSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            BookingService.cancel_by_customer(
-                appointment=appointment,
-                reason_text=serializer.validated_data.get('reason_text', ''),
-            )
-            return self.success_response(
-                message='نوبت با موفقیت لغو شد. بیعانه ظرف ۴۸ ساعت به حساب شما واریز می‌شود.',
-            )
-        except BookingException as e:
-            return e.as_response()
-
 
 class CancelByBusinessView(APIView, StandardResponseMixin):
     """لغو نوبت توسط کسب‌وکار"""

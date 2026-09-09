@@ -4,7 +4,6 @@ from .views import (
     CustomerAppointmentsView,
     BusinessAppointmentsView,
     AppointmentDetailView,
-    CancelAppointmentView,
     CancelByBusinessView,
     VerifyServiceCodeView,
     RegenerateCodeView,
@@ -25,7 +24,6 @@ urlpatterns = [
     path('<int:pk>/', AppointmentDetailView.as_view(), name='appointment-detail'),
 
     # ═══════════ Customer Actions ═══════════
-    path('<int:pk>/cancel/', CancelAppointmentView.as_view(), name='cancel-appointment'),
     path('<int:pk>/regenerate-code/', RegenerateCodeView.as_view(), name='regenerate-code'),
 
     # ═══════════ Business Actions ═══════════
