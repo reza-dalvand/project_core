@@ -237,7 +237,16 @@ class ReviewService:
 
     @classmethod
     def _update_business_stats(cls, business) -> None:
-        """بروزرسانی آمار کسب‌وکار"""
+        """
+        بروزرسانی آمار کسب‌وکار
+        
+        ✅ قانون جدید:
+        - قبل از ۳ رای: امتیاز پیش‌فرض ۵.۰ نمایش داده می‌شود
+        - بعد از ۳ رای: میانگین واقعی نظرات محاسبه می‌شود
+        """
+        MIN_REVIEWS_THRESHOLD = 3
+        DEFAULT_RATING = 5.0
+
         stats = Review.objects.filter(
             business=business,
         ).aggregate(
@@ -245,9 +254,19 @@ class ReviewService:
             count=Count('id'),
         )
 
-        business.rating = stats['avg_rating'] or 0
-        business.reviews_count = stats['count'] or 0
+        count = stats['count'] or 0
+        avg = stats['avg_rating'] or 0
+
+        business.reviews_count = count
+        
+        # ✅ اگر کمتر از ۳ رای باشد، امتیاز پیش‌فرض ۵.۰
+        if count < MIN_REVIEWS_THRESHOLD:
+            business.rating = DEFAULT_RATING
+        else:
+            business.rating = avg
+        
         business.save(update_fields=['rating', 'reviews_count'])
+
 
     @classmethod
     def _notify_business(cls, review: Review) -> None:

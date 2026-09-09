@@ -60,15 +60,30 @@ class Review(BaseModel):
     def __str__(self):
         return f'{self.customer.phone} - {self.business.name} ({self.rating}★)'
 
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        from django.db.models import Avg
+        from django.db.models import Avg, Count
+
+        MIN_REVIEWS_THRESHOLD = 3
+        DEFAULT_RATING = 5.0
+
         stats = self.business.reviews.aggregate(
-            avg=models.Avg('rating'),
-            count=models.Count('id'),
+            avg=Avg('rating'),
+            count=Count('id'),
         )
-        self.business.reviews_count = stats['count'] or 0
-        self.business.rating = stats['avg'] or 0
+
+        count = stats['count'] or 0
+        avg = stats['avg'] or 0
+
+        self.business.reviews_count = count
+        
+        # ✅ اگر کمتر از ۳ رای باشد، امتیاز پیش‌فرض ۵.۰
+        if count < MIN_REVIEWS_THRESHOLD:
+            self.business.rating = DEFAULT_RATING
+        else:
+            self.business.rating = avg
+        
         self.business.save(update_fields=['reviews_count', 'rating'])
 
 
