@@ -143,6 +143,13 @@ color: #fff;
             <span>محتوا</span>
         </a>
 
+        <a href="{% url 'dashboard:ads_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'ads_list,ads_create,ads_edit' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'ads_list,ads_create,ads_edit' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">📢</span>
+            <span>تبلیغات</span>
+        </a>
+
         <a href="{% url 'dashboard:support' %}"
            class="{% if request.resolver_match.url_name|url_in:'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}active{% endif %}"
            {% if request.resolver_match.url_name|url_in:'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}aria-current="page"{% endif %}>

@@ -87,6 +87,7 @@ LOCAL_APPS = [
     'apps.explore.apps.ExploreConfig',
     # Ads
     'apps.ads.apps.AdsConfig',
+    'apps.ads_management.apps.AdsManagementConfig',
     # Features
     'apps.reminders.apps.RemindersConfig',
     'apps.favorites.apps.FavoritesConfig',

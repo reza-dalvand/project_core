@@ -18,6 +18,7 @@ from .views import (
     dashboard_search,  
     alerts, 
     bookings,     
+    ads,
 )
 
 app_name = 'dashboard'
@@ -138,6 +139,12 @@ urlpatterns = [
     path('businesses/<int:business_id>/suspend/', businesses.suspend_business_view, name='business_suspend'),
     path('businesses/<int:business_id>/reactivate/', businesses.reactivate_business_view, name='business_reactivate'),
 
+    # ─── تبلیغات (بنرهای اسلایدر) ───
+    path('ads/', ads.ads_list_view, name='ads_list'),
+    path('ads/create/', ads.ads_create_view, name='ads_create'),
+    path('ads/<int:banner_id>/edit/', ads.ads_edit_view, name='ads_edit'),
+    path('ads/<int:banner_id>/delete/', ads.ads_delete_view, name='ads_delete'),
+    path('ads/<int:banner_id>/toggle/', ads.ads_toggle_active_view, name='ads_toggle'),
     
     # ─── بهبودهای نهایی ───
     path('bulk/', bulk.bulk_view, name='bulk'),

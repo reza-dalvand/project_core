@@ -1,0 +1,137 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش بنر {{ banner.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">ویرایش بنر: {{ banner.title }}</h4>
+    <div>
+        <form method="post" action="{% url 'dashboard:ads_toggle' banner.id %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-{% if banner.is_active %}warning{% else %}success{% endif %}">
+                {% if banner.is_active %}غیرفعال کردن{% else %}فعال کردن{% endif %}
+            </button>
+        </form>
+        <a href="{% url 'dashboard:ads_list' %}" class="btn btn-outline-secondary">بازگشت</a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0" style="border-radius: 16px;">
+    <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">عنوان بنر <span class="text-danger">*</span></label>
+                    <input type="text" name="title" class="form-control" value="{{ banner.title }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">متن بج</label>
+                    <input type="text" name="badge" class="form-control" value="{{ banner.badge }}">
+                </div>
+                
+                <div class="col-12">
+                    <label class="form-label fw-bold">توضیحات</label>
+                    <input type="text" name="description" class="form-control" value="{{ banner.description }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">کسب‌وکار مقصد</label>
+                    <select name="business" class="form-select" id="businessSelect">
+                        <option value="">-- بدون کسب‌وکار (استفاده از لینک دلخواه) --</option>
+                        {% for biz in businesses %}
+                            <option value="{{ biz.id }}" {% if banner.business_id == biz.id %}selected{% endif %}>{{ biz.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">لینک دلخواه</label>
+                    <input type="url" name="custom_url" class="form-control" id="customUrlInput" value="{{ banner.custom_url }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">تغییر تصویر بنر</label>
+                    <input type="file" name="image" class="form-control" accept="image/*">
+                    {% if banner.image %}
+                        <div class="mt-2">
+                            <img src="{{ banner.image.url }}" alt="Current Banner" style="max-height: 80px; border-radius: 8px; border: 1px solid #ddd;">
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">ترتیب</label>
+                    <input type="number" name="order" class="form-control" value="{{ banner.order }}" min="0">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">تاریخ شروع</label>
+                    <input type="datetime-local" name="starts_at" class="form-control" value="{{ starts_at_val }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">تاریخ انقضا</label>
+                    <input type="datetime-local" name="expires_at" class="form-control" value="{{ expires_at_val }}">
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <button type="submit" class="btn btn-primary px-4">ذخیره تغییرات</button>
+            
+            <button type="button" class="btn btn-danger float-end" data-bs-toggle="modal" data-bs-target="#deleteEditModal">
+                حذف بنر
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- مودال تایید حذف (مخصوص صفحه ادیت) -->
+<div class="modal fade" id="deleteEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">تایید حذف بنر</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                آیا از حذف بنر <strong>"{{ banner.title }}"</strong> اطمینان دارید؟ <br>
+                <small class="text-muted">این عملیات قابل بازگشت نیست.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <form method="post" action="{% url 'dashboard:ads_delete' banner.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="confirm" value="yes">
+                    <button type="submit" class="btn btn-danger">بله، حذف شود</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const bizSelect = document.getElementById('businessSelect');
+    const urlInput = document.getElementById('customUrlInput');
+    
+    // تنظیم وضعیت اولیه هنگام لود صفحه
+    if(bizSelect.value) {
+        urlInput.disabled = true;
+    }
+
+    bizSelect.addEventListener('change', function() {
+        if(this.value) {
+            urlInput.value = '';
+            urlInput.disabled = true;
+        } else {
+            urlInput.disabled = false;
+        }
+    });
+    
+    urlInput.addEventListener('input', function() {
+        if(this.value) {
+            bizSelect.value = '';
+        }
+    });
+</script>
+{% endblock %}

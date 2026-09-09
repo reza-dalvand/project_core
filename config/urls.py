@@ -34,6 +34,9 @@ urlpatterns = [
         path('reminders/', include('apps.reminders.urls')),
         path('support/', include('apps.support.urls')),
 
+        path('ads/', include('apps.ads.urls')),
+        path('ads-management/', include('apps.ads_management.urls')),
+
         # ✅ فاز ۱: اندپوینت‌های کانفیگ
         path('config/', include('apps.core.urls')),
     ])),
