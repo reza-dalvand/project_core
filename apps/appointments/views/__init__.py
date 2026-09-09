@@ -449,3 +449,55 @@ class BusinessTodayAppointmentsView(generics.ListAPIView, StandardResponseMixin)
         ).select_related(
             'service', 'customer'
         ).order_by('time_slot')
+
+
+class CustomerAppointmentsStatsView(APIView, StandardResponseMixin):
+    """آمار نوبت‌های مشتری برای نمایش شمارنده روی تب‌ها"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['Appointments - Customer'],
+        summary='آمار نوبت‌های من',
+    )
+    def get(self, request):
+        from apps.core.utils import today_jalali_key
+        
+        qs = Appointment.objects.filter(customer=request.user)
+        today_key = today_jalali_key()
+
+        # نوبت‌های آینده: رزرو شده با تاریخ امروز یا بعد
+        upcoming_count = qs.filter(
+            date_key__gte=today_key,
+            status=Appointment.Status.RESERVED,
+        ).count()
+
+        # نوبت‌های گذشته: انجام شده + رزرو شده‌هایی که تاریخشان گذشته
+        past_count = qs.filter(
+            Q(status=Appointment.Status.DONE) |
+            Q(
+                status=Appointment.Status.RESERVED,
+                date_key__lt=today_key,
+            )
+        ).exclude(
+            status__in=[
+                Appointment.Status.CANCELLED_BY_SALON,
+                Appointment.Status.CANCELLED_BY_CUSTOMER,
+            ]
+        ).count()
+
+        # نوبت‌های لغو شده
+        cancelled_count = qs.filter(
+            status__in=[
+                Appointment.Status.CANCELLED_BY_SALON,
+                Appointment.Status.CANCELLED_BY_CUSTOMER,
+            ]
+        ).count()
+
+        stats = {
+            'upcoming': upcoming_count,
+            'past': past_count,
+            'cancelled': cancelled_count,
+            'total': upcoming_count + past_count + cancelled_count,
+        }
+
+        return self.success_response(data=stats)
