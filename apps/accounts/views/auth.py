@@ -123,10 +123,16 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
+            # ✅ NEW: بررسی وضعیت تعلیق — کاربر وارد می‌شود اما با flag تعلیق
+            # توکن تولید می‌شود ولی در سمت فرانت مدال تعلیق نمایش داده می‌شود
+            is_suspended = user.is_suspended
+            suspension_reason = user.suspension_reason if is_suspended else ''
+
             # اگر کاربر قدیمی است اما هنوز وریفای نشده
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
+
 
             # آپدیت آخرین ورود
             user.last_login = timezone.now()
@@ -177,6 +183,8 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     'expires_in': int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
                     'refresh_expires_in': int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                     'user': UserProfileSerializer(user).data,
+                    'is_suspended': is_suspended,
+                    'suspension_reason': suspension_reason,
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
             )

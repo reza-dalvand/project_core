@@ -79,6 +79,34 @@ class User(AbstractBaseUser, PermissionsMixin):
     default=True,
     )
 
+        # ═══════════ وضعیت تعلیق (تخلفات) ═══════════
+    is_suspended = models.BooleanField(
+        'تعلیق شده (تخلف)',
+        default=False,
+        db_index=True,
+        help_text='کاربر تعلیق‌شده می‌تواند لاگین کند اما دسترسی به APIها ندارد',
+    )
+    suspension_reason = models.TextField(
+        'دلیل تعلیق',
+        blank=True,
+        default='',
+        help_text='دلیلی که ادمین برای تعلیق کاربر ثبت کرده است',
+    )
+    suspended_at = models.DateTimeField(
+        'زمان تعلیق',
+        null=True,
+        blank=True,
+    )
+    suspended_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='suspended_users',
+        verbose_name='تعلیق‌کننده',
+        help_text='ادمینی که کاربر را تعلیق کرده است',
+    )
+
     # ═══════════ تاریخ‌ها ═══════════
     date_joined = models.DateTimeField(
         'تاریخ عضویت',

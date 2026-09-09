@@ -51,6 +51,30 @@
                     ✏️ ویرایش اطلاعات
                 </a>
 
+                {% if user_obj.is_suspended %}
+                    <!-- ✅ کاربر تعلیق‌شده: دکمه رفع تعلیق -->
+                    <form method="post" action="{% url 'dashboard:user_unsuspend' user_obj.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ رفع تعلیق کاربر
+                        </button>
+                    </form>
+                    <div class="alert alert-warning mt-2 mb-0 py-2 px-3" style="font-size: 0.85rem;">
+                        <strong>⚠️ تعلیق شده:</strong> {{ user_obj.suspension_reason }}
+                        <br>
+                        <small class="text-muted">
+                            تاریخ: {{ user_obj.suspended_at|date:"Y/m/d H:i" }}
+                        </small>
+                    </div>
+                {% else %}
+                    <!-- ✅ کاربر عادی: دکمه تعلیق -->
+                    <button type="button" class="btn btn-warning w-100"
+                            data-bs-toggle="modal" data-bs-target="#suspendModal"
+                            {% if user_obj.is_superuser %}disabled{% endif %}>
+                        🚫 تعلیق کاربر
+                    </button>
+                {% endif %}
+
                 <form method="post" action="{% url 'dashboard:user_toggle_active' user_obj.id %}">
                     {% csrf_token %}
                     {% if user_obj.is_active %}
@@ -335,4 +359,48 @@ function confirmDeleteUser(userId, phone) {
     }
 }
 </script>
+
+<!-- مودال تعلیق کاربر -->
+<div class="modal fade" id="suspendModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'dashboard:user_suspend' user_obj.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">🚫 تعلیق کاربر</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        کاربر <strong>{{ user_obj.full_name }}</strong> ({{ user_obj.phone }})
+                        پس از تعلیق، فقط می‌تواند وارد اپلیکیشن شود و پیام تعلیق را ببیند.
+                        دسترسی به سایر امکانات تا زمان رفع تعلیق مسدود خواهد شد.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            دلیل تعلیق <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="reason" class="form-control" rows="3"
+                                  placeholder="مثال: نقض قوانین، ارسال محتوای نامناسب، ..."
+                                  required maxlength="500"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmSuspend" required>
+                        <label class="form-check-label" for="confirmSuspend">
+                            از تعلیق این کاربر اطمینان دارم
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        انصراف
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        🚫 تعلیق کاربر
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

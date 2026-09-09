@@ -41,6 +41,8 @@ urlpatterns = [
     path('users/<int:user_id>/toggle/', users.user_toggle_active_view, name='user_toggle_active'),
     path('users/<int:user_id>/delete/', users.user_delete_view, name='user_delete'),
     path('users/<int:user_id>/notify/', users.user_notify_view, name='user_notify'),
+    path('users/<int:user_id>/suspend/', users.user_suspend_view, name='user_suspend'),
+    path('users/<int:user_id>/unsuspend/', users.user_unsuspend_view, name='user_unsuspend'),
 
     # ─── کسب‌وکارها ───
     path('businesses/', businesses.businesses_list_view, name='businesses_list'),

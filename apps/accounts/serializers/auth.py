@@ -57,21 +57,19 @@ class VerifyOTPSerializer(serializers.Serializer):
         return value
 
 
-# apps/accounts/serializers/auth.py
-# جایگزین کلاس‌های UserProfileSerializer و UpdateProfileSerializer
 
 class UserProfileSerializer(serializers.ModelSerializer):
     """
-    Serializer پروفایل کاربر — نسخه نهایی هماهنگ با فرانت
+    Serializer پروفایل کاربر — نسخه نهایی هماهنگ با فرانت + پشتیبانی از تعلیق
     فیلدها طوری طراحی شده‌اند که response-normalizer فرانت
     آن‌ها را به camelCase تبدیل کند:
-      phone_display → phoneDisplay
-      full_name → fullName
-      is_national_id_verified → isNationalIdVerified
-      verified_name → verifiedName
-      date_joined → dateJoined
+    phone_display → phoneDisplay
+    full_name → fullName
+    is_suspended → isSuspended
+    suspension_reason → suspensionReason
     """
     phone_display = serializers.SerializerMethodField()
+    # ✅ FIX: استفاده از source='get_full_name' به جای 'full_name'
     full_name = serializers.CharField(source='get_full_name', read_only=True)
 
     class Meta:
@@ -88,16 +86,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'is_national_id_verified',
             'verified_name',
             'date_joined',
+            # ✅ فیلدهای جدید تعلیق
+            'is_suspended',
+            'suspension_reason',
+            'suspended_at',
         ]
         read_only_fields = [
             'id', 'phone', 'is_verified',
             'is_national_id_verified', 'verified_name', 'date_joined',
+            'is_suspended', 'suspension_reason', 'suspended_at',
         ]
 
     def get_phone_display(self, obj):
+        from apps.core.utils import mask_phone
         return mask_phone(obj.phone)
 
-
+        
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
     """Serializer بروزرسانی پروفایل"""

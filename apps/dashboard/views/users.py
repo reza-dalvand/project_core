@@ -19,6 +19,8 @@ from django.core.exceptions import ValidationError
 from django.db import DatabaseError
 from apps.dashboard.decorators import admin_login_required, role_required
 from apps.core.validators import validate_iranian_phone
+from django.utils import timezone
+
 
 logger = logging.getLogger(__name__)
 
@@ -540,6 +542,141 @@ def user_toggle_active_view(request, user_id):
         except Exception as e:
             logger.error(f"User toggle unexpected error: {e}")
             messages.error(request, 'خطای غیرمنتظره در تغییر وضعیت کاربر.')
+
+    return redirect(
+        reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+    )
+
+
+# ═══════════════════════════════════════════════
+#   تعلیق کاربر
+# ═══════════════════════════════════════════════
+@role_required('super_admin', 'app_admin')
+@admin_login_required
+def user_suspend_view(request, user_id):
+    """تعلیق کاربر به دلیل تخلف"""
+    user = get_object_or_404(User, id=user_id)
+
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '').strip()
+
+        if not reason:
+            messages.error(request, 'دلیل تعلیق الزامی است.')
+            return redirect(
+                reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+            )
+
+        # جلوگیری از تعلیق خودتان
+        admin_phone = request.session.get('dashboard_admin_phone')
+        if user.phone == admin_phone:
+            messages.error(request, 'نمی‌توانید حساب خودتان را تعلیق کنید.')
+            return redirect(
+                reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+            )
+
+        # جلوگیری از تعلیق سوپریوزر
+        if user.is_superuser:
+            messages.error(request, 'نمی‌توانید حساب سوپرادمین را تعلیق کنید.')
+            return redirect(
+                reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+            )
+
+        try:
+            admin_user = User.objects.filter(phone=admin_phone).first()
+            user.is_suspended = True
+            user.suspension_reason = reason
+            user.suspended_at = timezone.now()
+            user.suspended_by = admin_user
+            user.save(update_fields=[
+                'is_suspended', 'suspension_reason',
+                'suspended_at', 'suspended_by',
+            ])
+
+            # ارسال نوتیفیکیشن به کاربر
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.send(
+                    user=user,
+                    type='system',
+                    title='⚠️ حساب کاربری شما تعلیق شد',
+                    body=(
+                        f'حساب کاربری شما به دلیل "{reason}" تعلیق شده است. '
+                        f'برای رفع تعلیق با پشتیبانی تماس بگیرید.'
+                    ),
+                    data={'action': 'suspended'},
+                    channels=['in_app'],
+                )
+            except Exception as notif_err:
+                logger.warning(f"Suspension notification failed: {notif_err}")
+
+            logger.info(
+                f"Admin suspended user {user.phone} "
+                f"by {admin_phone} — reason: {reason}"
+            )
+            messages.success(
+                request,
+                f'کاربر {user.phone} با موفقیت تعلیق شد.'
+            )
+        except Exception as e:
+            logger.error(f"User suspend error: {e}", exc_info=True)
+            messages.error(request, 'خطا در تعلیق کاربر.')
+
+    return redirect(
+        reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+    )
+
+
+# ═══════════════════════════════════════════════
+#   رفع تعلیق کاربر
+# ═══════════════════════════════════════════════
+@role_required('super_admin', 'app_admin')
+@admin_login_required
+def user_unsuspend_view(request, user_id):
+    """رفع تعلیق کاربر"""
+    user = get_object_or_404(User, id=user_id)
+
+    if request.method == 'POST':
+        if not user.is_suspended:
+            messages.warning(request, 'این کاربر تعلیق نیست.')
+            return redirect(
+                reverse('dashboard:user_detail', kwargs={'user_id': user.id})
+            )
+
+        try:
+            user.is_suspended = False
+            user.suspension_reason = ''
+            user.suspended_at = None
+            user.suspended_by = None
+            user.save(update_fields=[
+                'is_suspended', 'suspension_reason',
+                'suspended_at', 'suspended_by',
+            ])
+
+            # ارسال نوتیفیکیشن به کاربر
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.send(
+                    user=user,
+                    type='system',
+                    title='✅ حساب کاربری شما فعال شد',
+                    body='تعلیق حساب کاربری شما برداشته شد. اکنون می‌توانید از تمام امکانات اپلیکیشن استفاده کنید.',
+                    data={'action': 'unsuspended'},
+                    channels=['in_app'],
+                )
+            except Exception as notif_err:
+                logger.warning(f"Unsuspend notification failed: {notif_err}")
+
+            admin_phone = request.session.get('dashboard_admin_phone')
+            logger.info(
+                f"Admin unsuspended user {user.phone} by {admin_phone}"
+            )
+            messages.success(
+                request,
+                f'تعلیق کاربر {user.phone} با موفقیت برداشته شد.'
+            )
+        except Exception as e:
+            logger.error(f"User unsuspend error: {e}", exc_info=True)
+            messages.error(request, 'خطا در رفع تعلیق کاربر.')
 
     return redirect(
         reverse('dashboard:user_detail', kwargs={'user_id': user.id})
