@@ -25,6 +25,7 @@ class Notification(models.Model):
         BUSINESS_REJECTED = 'business_rejected', 'رد کسب‌وکار'
         SYSTEM = 'system', 'سیستمی'
         PROMO = 'promo', 'تبلیغاتی'
+        BUSINESS_SUSPENDED = 'business_suspended', 'تعلیق کسب‌وکار'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

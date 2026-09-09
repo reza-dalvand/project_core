@@ -72,6 +72,13 @@ class BookingService:
         if business.status != Business.Status.APPROVED:
             raise BusinessNotApprovedException()
 
+        # ✅ جلوگیری از رزرو برای کسب‌وکارهای تعلیق‌شده
+        if business.is_suspended:
+            raise BookingException(
+                message='این کسب‌وکار در حال حاضر تعلیق است و امکان رزرو وجود ندارد',
+                code='BUSINESS_SUSPENDED',
+            )
+
         try:
             time_slot = datetime.strptime(time_slot_str, '%H:%M').time()
         except ValueError:

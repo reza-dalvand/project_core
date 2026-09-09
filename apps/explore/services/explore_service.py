@@ -24,6 +24,7 @@ class ExploreService:
         qs = ExplorePost.objects.filter(
             business__status='approved',
             business__is_active=True,
+            business__is_suspended=False,
         ).select_related(
             'business', 'main_category', 'sub_category',
         ).prefetch_related('images').order_by('-is_pinned', '-created_at')

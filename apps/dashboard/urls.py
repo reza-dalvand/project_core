@@ -132,11 +132,19 @@ urlpatterns = [
     path('bookings/services/<int:service_id>/toggle/', bookings.service_toggle_active_view, name='service_toggle_active'),
     path('bookings/schedules/', bookings.schedules_list_view, name='schedules_list'),
 
+    # ─── متخلفین ───
+    path('violators/', businesses.violators_list_view, name='violators_list'),
+    path('violators/send-sms/', businesses.violators_send_sms_view, name='violators_send_sms'),
+    path('businesses/<int:business_id>/suspend/', businesses.suspend_business_view, name='business_suspend'),
+    path('businesses/<int:business_id>/reactivate/', businesses.reactivate_business_view, name='business_reactivate'),
 
+    
     # ─── بهبودهای نهایی ───
     path('bulk/', bulk.bulk_view, name='bulk'),
     path('export/', export.export_view, name='export'),
     path('audit-log/', audit_log.audit_log_view, name='audit_log'),
     path('search/', dashboard_search.dashboard_search_view, name='dashboard_search'),
     path('alerts/', alerts.alerts_view, name='alerts'),
+
+
 ]

@@ -20,7 +20,22 @@
                 {% endif %}
             </h4>
             <p class="text-center text-muted mb-3">{{ business.category.name }}</p>
-
+            {% if business.is_suspended %}
+                <div class="alert alert-warning text-center mb-3">
+                    <strong>🚫 این کسب‌وکار تعلیق شده است</strong>
+                    <br>
+                    <small>دلیل: {{ business.suspension_reason }}</small>
+                    <br>
+                    <small>تاریخ تعلیق: {{ business.suspended_at|date:"Y/m/d H:i" }}</small>
+                    <hr class="my-2">
+                    <form method="post" action="{% url 'dashboard:business_reactivate' business.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success">
+                            ✅ فعال‌سازی مجدد
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
             <div class="text-center mb-3">
                 {% if business.status == 'pending' %}
                     <span class="status-badge status-pending">در انتظار تایید</span>

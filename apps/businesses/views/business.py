@@ -61,6 +61,7 @@ class BusinessListView(generics.ListAPIView, StandardResponseMixin):
         queryset = Business.objects.filter(
             status=Business.Status.APPROVED,
             is_active=True,
+             is_suspended=False,
         ).select_related('category', 'city', 'province')
 
         # ۱. فیلتر دسته‌بندی
@@ -304,6 +305,7 @@ class PublicBusinessDetailView(APIView, StandardResponseMixin):
                 booking_slug=booking_slug,
                 status='approved',
                 is_active=True,
+                is_suspended=False, 
             )
         except Business.DoesNotExist:
             return self.error_response(

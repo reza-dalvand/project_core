@@ -476,6 +476,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.appointments.tasks.process_expired_appointments',
         'schedule': crontab(hour='*/6', minute=0),  # هر ۶ ساعت
     },
+    'detect-excessive-cancellations': {
+        'task': 'apps.appointments.tasks.detect_excessive_cancellations',
+        'schedule': crontab(hour=2, minute=0),  # هر روز ساعت ۲ بامداد
+    },
 }
 
 

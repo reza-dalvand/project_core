@@ -115,6 +115,13 @@ color: #fff;
             <span>کسب‌وکارها</span>
         </a>
 
+        <a href="{% url 'dashboard:violators_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'violators_list' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'violators_list' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">⚠️</span>
+            <span>متخلفین</span>
+        </a>
+
         <a href="{% url 'dashboard:bookings' %}"
            class="{% if request.resolver_match.url_name|url_in:'bookings,appointments_list,appointment_detail,appointment_cancel,appointment_status_change,services_list,service_detail,service_toggle_active,schedules_list' %}active{% endif %}"
            {% if request.resolver_match.url_name|url_in:'bookings,appointments_list,appointment_detail,appointment_cancel,appointment_status_change,services_list,service_detail,service_toggle_active,schedules_list' %}aria-current="page"{% endif %}>

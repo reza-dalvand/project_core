@@ -56,8 +56,10 @@ class SearchService:
         Returns:
             QuerySet از کسب‌وکارهای یافت شده
         """
-        qs = Business.objects.filter(status=Business.Status.APPROVED)
-
+        qs = Business.objects.filter(
+            status=Business.Status.APPROVED,
+            is_suspended=False, 
+        )
         if province_id:
             qs = qs.filter(province_id=province_id)
         if city_id:
@@ -314,6 +316,7 @@ class SearchService:
         businesses = Business.objects.filter(
             status=Business.Status.APPROVED,
             is_active=True,
+            is_suspended=False,
             location__distance_lte=(point, distance_filter),
         ).distance(point).order_by('distance')[:20]
 

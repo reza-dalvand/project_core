@@ -184,3 +184,54 @@ def _notify_business_auto_confirm(appointment):
             f"[EXPIRY] Failed to notify business for "
             f"appointment #{appointment.id}: {e}"
         )
+
+
+# در فایل apps/appointments/tasks.py اضافه شود:
+
+@shared_task(name='apps.appointments.tasks.detect_excessive_cancellations')
+def detect_excessive_cancellations():
+    """
+    تشخیص خودکار تخلف: ۵ لغو توسط سالن در ۲ روز گذشته
+    این تسک فقط تخلف را ثبت می‌کند تا در لیست متخلفین داشبورد نمایش داده شود.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Count
+    from apps.appointments.models import Appointment
+    from apps.businesses.models import BusinessViolation
+
+    THRESHOLD = 5
+    DAYS = 2
+    cutoff = timezone.now() - timedelta(days=DAYS)
+
+    # فقط لغوهای توسط سالن ملاک هستند
+    violators = Appointment.objects.filter(
+        status=Appointment.Status.CANCELLED_BY_SALON,
+        cancelled_at__gte=cutoff
+    ).values('business').annotate(
+        cancel_count=Count('id')
+    ).filter(cancel_count__gte=THRESHOLD)
+
+    created_count = 0
+    for v in violators:
+        biz_id = v['business']
+        count = v['cancel_count']
+        
+        # جلوگیری از ثبت تکراری برای یک بازه (اگر قبلاً فلگ شده و رسیدگی نشده)
+        already_flagged = BusinessViolation.objects.filter(
+            business_id=biz_id,
+            is_resolved=False,
+            created_at__gte=cutoff
+        ).exists()
+        
+        if not already_flagged:
+            BusinessViolation.objects.create(
+                business_id=biz_id,
+                cancellation_count=count,
+                period_start=cutoff,
+                period_end=timezone.now(),
+            )
+            created_count += 1
+
+    logger.info(f"[VIOLATION] Detected {created_count} new business violations.")
+    return {'new_violations_detected': created_count}

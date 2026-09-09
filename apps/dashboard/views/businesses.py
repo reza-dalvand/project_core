@@ -16,14 +16,14 @@ from django.urls import reverse
 from django.utils.text import slugify
 
 from apps.appointments.models import Appointment
-from apps.businesses.models import Business, BusinessGallery
+from apps.businesses.models import Business, BusinessGallery, BusinessViolation
 from apps.categories.models import BusinessCategory
 from apps.dashboard.decorators import admin_login_required, role_required
 from apps.dashboard.services.audit_service import DashboardAuditService
 from apps.dashboard.services.cache_service import DashboardCacheService
 from apps.locations.models import City, Province
 from apps.services.models import Service
-
+from apps.notifications.services import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -1097,3 +1097,159 @@ def business_appointment_cancel_view(
             kwargs={"business_id": business_id},
         )
     )
+
+
+@role_required('super_admin', 'app_admin', 'support_admin')
+@admin_login_required
+def violators_list_view(request):
+    """لیست کسب‌وکارهای متخلف (نیازمند بررسی ادمین)"""
+    violations = BusinessViolation.objects.filter(
+        is_resolved=False
+    ).select_related('business', 'business__owner').order_by('-created_at')
+    
+    context = {'violations': violations}
+    return render(request, 'dashboard/businesses/violators_list.html', context)
+
+
+@role_required('super_admin', 'app_admin')
+@admin_login_required
+def suspend_business_view(request, business_id):
+    """تعلیق دستی کسب‌وکار توسط ادمین"""
+    business = get_object_or_404(Business, id=business_id)
+    
+    if request.method == 'POST':
+        reason = request.POST.get('reason', 'لغوهای مکرر و بدون هماهنگی').strip()
+        
+        business.is_suspended = True
+        business.suspension_reason = reason
+        business.suspended_at = timezone.now()
+        business.save(update_fields=['is_suspended', 'suspension_reason', 'suspended_at'])
+        
+        # رسیدگی شده标记 شود
+        BusinessViolation.objects.filter(business=business, is_resolved=False).update(is_resolved=True)
+        
+        # ثبت در لاگ حسابرسی
+        DashboardAuditService.log(
+            request=request,
+            action='business.suspended',
+            target_type='business',
+            target_id=business.id,
+            target_name=business.name,
+            details={'reason': reason},
+            severity='critical',
+        )
+        
+        # ارسال اعلان به صاحب کسب‌وکار (در اپ پیام می‌گیره)
+        try:
+            NotificationService.send(
+                user=business.owner,
+                type='system',
+                title='کسب‌وکار شما تعلیق شد ⚠️',
+                body=(
+                    f'کسب‌وکار "{business.name}" به دلیل '
+                    f'{reason} تعلیق شده است. '
+                    f'برای رفع تعلیق با پشتیبانی تماس بگیرید.'
+                ),
+                data={'business_id': business.id},
+                channels=['in_app'],
+            )
+        except Exception as e:
+            logger.error(f"Failed to send suspension notification: {e}")
+
+    return redirect(reverse('dashboard:violators_list'))
+
+
+@role_required('super_admin', 'app_admin')
+@admin_login_required
+def reactivate_business_view(request, business_id):
+    """فعال‌سازی مجدد کسب‌وکار تعلیق شده"""
+    business = get_object_or_404(Business, id=business_id)
+    
+    if request.method == 'POST':
+        business.is_suspended = False
+        business.suspension_reason = ''
+        business.suspended_at = None
+        business.save(update_fields=['is_suspended', 'suspension_reason', 'suspended_at'])
+        
+        DashboardAuditService.log(
+            request=request,
+            action='business.reactivated',
+            target_type='business',
+            target_id=business.id,
+            target_name=business.name,
+            severity='warning',
+        )
+
+                # ارسال اعلان فعال‌سازی مجدد
+        try:
+            NotificationService.send(
+                user=business.owner,
+                type='system',
+                title='کسب‌وکار شما فعال شد ✅',
+                body=(
+                    f'کسب‌وکار "{business.name}" مجدداً فعال شد '
+                    f'و مشتریان می‌توانند نوبت رزرو کنند.'
+                ),
+                data={'business_id': business.id},
+                channels=['in_app'],
+            )
+        except Exception as e:
+            logger.error(f"Failed to send reactivation notification: {e}")
+        
+        messages.success(request, f'کسب‌وکار "{business.name}" مجدداً فعال شد.')
+        return redirect(reverse('dashboard:business_detail', kwargs={'business_id': business.id}))
+
+    return redirect(reverse('dashboard:violators_list'))
+
+
+@role_required('super_admin', 'app_admin', 'support_admin')
+@admin_login_required
+def violators_send_sms_view(request):
+    """ارسال پیامک گروهی به کسب‌وکارهای متخلف"""
+    if request.method != 'POST':
+        return redirect(reverse('dashboard:violators_list'))
+
+    message_text = request.POST.get('message', '').strip()
+
+    if not message_text:
+        messages.error(request, 'متن پیامک نمی‌تواند خالی باشد.')
+        return redirect(reverse('dashboard:violators_list'))
+
+    violations = BusinessViolation.objects.filter(
+        is_resolved=False
+    ).select_related('business', 'business__owner')
+
+    sent_count = 0
+    for violation in violations:
+        try:
+            NotificationService.send(
+                user=violation.business.owner,
+                type='system',
+                title='هشدار: لغوهای مکرر نوبت',
+                body=message_text,
+                data={'business_id': violation.business.id},
+                channels=['in_app'],
+            )
+            sent_count += 1
+        except Exception as e:
+            logger.error(
+                f"Failed to send violation SMS to "
+                f"{violation.business.owner.phone}: {e}"
+            )
+
+    messages.success(
+        request,
+        f'پیامک برای {sent_count} کسب‌وکار ارسال شد.'
+    )
+
+    DashboardAuditService.log(
+        request=request,
+        action='business.violation_sms_sent',
+        target_type='business_violation',
+        target_id=None,
+        target_name=f'{sent_count} کسب‌وکار',
+        details={'message': message_text},
+        severity='warning',
+    )
+
+    return redirect(reverse('dashboard:violators_list'))
