@@ -124,6 +124,9 @@ class BusinessStatusView(APIView, StandardResponseMixin):
                     'status_display': business.get_status_display(),
                     'rejection_reason': business.rejection_reason if business.status == Business.Status.REJECTED else None,
                     'created_at': business.created_at,
+                    'is_suspended': business.is_suspended,
+                    'suspension_reason': business.suspension_reason if business.is_suspended else '',
+                
                 }
             )
         else:

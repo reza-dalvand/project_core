@@ -57,7 +57,7 @@ urlpatterns = [
     path('businesses/<int:business_id>/gallery/<int:gallery_id>/delete/', businesses.business_gallery_delete_view, name='business_gallery_delete'),
     path('businesses/<int:business_id>/services/<int:service_id>/toggle/', businesses.business_service_toggle_view, name='business_service_toggle'),
     path('businesses/<int:business_id>/appointments/<int:appointment_id>/cancel/', businesses.business_appointment_cancel_view, name='business_appointment_cancel'),
-
+    path('businesses/<int:business_id>/send-sms/', businesses.business_send_sms_view, name='business_send_sms'),
     # ─── مالی ───
     path('financial/', financial.financial_index_view, name='financial'),
     path('financial/transactions/', financial.transactions_list_view, name='transactions_list'),

@@ -79,6 +79,22 @@
                         </button>
                     </form>
                 {% endif %}
+                <!--تعلیق / رفع تعلیق کسب‌وکار -->
+                {% if business.is_suspended %}
+                    <form method="post" action="{% url 'dashboard:business_reactivate' business.id %}"
+                          onsubmit="return confirm('آیا از رفع تعلیق «{{ business.name|escapejs }}» مطمئن هستید؟');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ رفع تعلیق کسب‌وکار
+                        </button>
+                    </form>
+                {% else %}
+                    <button type="button" class="btn btn-outline-danger w-100"
+                            data-bs-toggle="modal" data-bs-target="#suspendModal">
+                        🚫 تعلیق کسب‌وکار
+                    </button>
+                {% endif %}
+
 
                 <form method="post" action="{% url 'dashboard:business_toggle_vip' business.id %}">
                     {% csrf_token %}
@@ -177,6 +193,90 @@
                 </div>
             </div>
         </div>
+
+                <!-- ✅ NEW: ارسال پیامک به صاحب کسب‌وکار -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📨 ارسال پیامک به صاحب کسب‌وکار</h5>
+            <form method="post" action="{% url 'dashboard:business_send_sms' business.id %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        گیرنده: <code>{{ business.owner.phone }}</code> ({{ business.owner.full_name }})
+                    </label>
+                    <textarea class="form-control" name="message" rows="3"
+                              placeholder="متن پیامک را وارد کنید... (حداکثر ۵۰۰ کاراکتر)"
+                              maxlength="500" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">📤 ارسال پیامک</button>
+            </form>
+        </div>
+
+        <!-- تاریخچه پیامک‌ها -->
+        {% if sms_history %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📋 تاریخچه پیامک‌های ارسالی</h5>
+            <div class="list-group list-group-flush">
+                {% for sms in sms_history %}
+                <div class="list-group-item px-0 py-3 border-bottom">
+                    <small class="text-muted">📅 {{ sms.created_at|date:"Y/m/d H:i" }}</small>
+                    <p class="small mb-0 mt-1" style="white-space: pre-line;">{{ sms.body }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+                <!--ارسال پیامک به صاحب کسب‌وکار -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📨 ارسال پیامک به صاحب کسب‌وکار</h5>
+            <form method="post" action="{% url 'dashboard:business_send_sms' business.id %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        گیرنده: <code>{{ business.owner.phone }}</code> 
+                        ({{ business.owner.full_name }})
+                    </label>
+                    <textarea 
+                        class="form-control" 
+                        name="message" 
+                        rows="3" 
+                        placeholder="متن پیامک را وارد کنید... (حداکثر ۵۰۰ کاراکتر)"
+                        maxlength="500"
+                        required></textarea>
+                    <small class="text-muted">
+                        این پیام به صورت نوتیفیکیشن درون‌برنامه‌ای و پیامک برای صاحب کسب‌وکار ارسال می‌شود.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    📤 ارسال پیامک
+                </button>
+            </form>
+        </div>
+
+        <!-- ✅ NEW: تاریخچه پیامک‌های ارسالی -->
+        {% if sms_history %}
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📋 تاریخچه پیامک‌ها ({{ sms_history|length }})</h5>
+            <div class="list-group list-group-flush">
+                {% for sms in sms_history %}
+                <div class="list-group-item px-0 py-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <small class="text-muted">
+                            📅 {{ sms.created_at|date:"Y/m/d H:i" }}
+                        </small>
+                        <span class="badge bg-light text-dark border">
+                            ارسالی توسط ادمین
+                        </span>
+                    </div>
+                    <div class="fw-semibold">{{ sms.title }}</div>
+                    <p class="text-muted small mb-0 mt-1" style="white-space: pre-line;">
+                        {{ sms.body }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
 
         <!-- ✅ فاز ۲ + ۳: اطلاعات بانکی — با ماسک‌سازی -->
         {% if business.bank_info_registered %}
@@ -423,6 +523,37 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
                 <button type="button" class="btn btn-danger" onclick="submitReject()">رد کسب‌وکار</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── مودال تعلیق کسب‌وکار ─── -->
+<div class="modal fade" id="suspendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'dashboard:business_suspend' business.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">🚫 تعلیق کسب‌وکار</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">کسب‌وکار <strong>{{ business.name }}</strong> پس از تعلیق:</p>
+                    <ul class="small text-muted mb-3">
+                        <li>از نتایج جستجو و لیست‌های عمومی حذف می‌شود</li>
+                        <li>امکان رزرو نوبت جدید برای مشتریان وجود ندارد</li>
+                        <li>صاحب کسب‌وکار پیام تعلیق را در اپلیکیشن مشاهده می‌کند</li>
+                    </ul>
+                    <label class="form-label">دلیل تعلیق (الزامی)</label>
+                    <textarea class="form-control" name="reason" rows="3"
+                              placeholder="مثال: لغوهای مکرر نوبت، عدم حضور در ساعت کاری، ..."
+                              required maxlength="500"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">🚫 تعلیق کسب‌وکار</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

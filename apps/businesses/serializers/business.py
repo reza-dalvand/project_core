@@ -113,6 +113,8 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'verified_name',
             'national_id',
             'is_national_id_verified',
+            'is_suspended',
+            'suspension_reason',
         ]
 
     def get_owner_name(self, obj):

@@ -24,6 +24,7 @@ from apps.dashboard.services.cache_service import DashboardCacheService
 from apps.locations.models import City, Province
 from apps.services.models import Service
 from apps.notifications.services import NotificationService
+from django.utils import timezone 
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,12 @@ def business_detail_view(request, business_id):
         id=business_id,
     )
 
+    from apps.notifications.models import Notification
+    sms_history = Notification.objects.filter(
+        user=business.owner,
+        data__is_admin_sms=True,  # فقط پیامک‌های ادمین
+    ).select_related('user').order_by('-created_at')[:10]
+
     # آمار کسب‌وکار
     business_stats = {
         "services_count": business.services.filter(
@@ -202,6 +209,7 @@ def business_detail_view(request, business_id):
         "active_appointments": active_appointments,
         "recent_appointments": recent_appointments,
         "recent_reviews": recent_reviews,
+        "sms_history": sms_history, 
     }
 
     return render(
@@ -1153,10 +1161,13 @@ def suspend_business_view(request, business_id):
                 data={'business_id': business.id},
                 channels=['in_app'],
             )
+            messages.success(request, f'کسب‌وکار "{business.name}" تعلیق شد.')
         except Exception as e:
             logger.error(f"Failed to send suspension notification: {e}")
 
-    return redirect(reverse('dashboard:violators_list'))
+        return redirect(
+        reverse('dashboard:business_detail', kwargs={'business_id': business.id})
+    )
 
 
 @role_required('super_admin', 'app_admin')
@@ -1253,3 +1264,77 @@ def violators_send_sms_view(request):
     )
 
     return redirect(reverse('dashboard:violators_list'))
+
+
+# ═══════════════════════════════════════════════
+#   ارسال پیامک به صاحب کسب‌وکار
+# ═══════════════════════════════════════════════
+
+@role_required('super_admin', 'app_admin', 'support_admin')
+@admin_login_required
+def business_send_sms_view(request, business_id):
+    """ارسال پیامک تکی به صاحب کسب‌وکار"""
+    from django.utils import timezone
+    from apps.notifications.models import Notification  # یا هر مدلی که notification ها را ذخیره می‌کند
+    
+    business = get_object_or_404(Business, id=business_id)
+
+    if request.method == 'POST':
+        message_text = request.POST.get('message', '').strip()
+
+        if not message_text:
+            messages.error(request, 'متن پیامک نمی‌تواند خالی باشد.')
+            return redirect(
+                reverse('dashboard:business_detail', kwargs={'business_id': business_id})
+            )
+
+        if len(message_text) > 500:
+            messages.error(request, 'متن پیامک نباید بیشتر از ۵۰۰ کاراکتر باشد.')
+            return redirect(
+                reverse('dashboard:business_detail', kwargs={'business_id': business_id})
+            )
+
+        try:
+            # ارسال notification درون‌برنامه‌ای + پیامک
+            NotificationService.send(
+                user=business.owner,
+                type='system',
+                title='پیام از پشتیبانی بیو کلاب',
+                body=message_text,
+                data={
+                    'business_id': business.id,
+                    'sent_by': request.session.get('dashboard_admin_phone'),
+                    'is_admin_sms': True,
+                },
+                channels=['in_app', 'sms'],  # ✅ هم in-app هم SMS
+            )
+
+            # ثبت در لاگ حسابرسی
+            DashboardAuditService.log(
+                request=request,
+                action='business.sms_sent',
+                target_type='business',
+                target_id=business.id,
+                target_name=business.name,
+                details={'message': message_text[:100]},
+                severity='info',
+            )
+
+            logger.info(
+                f"Admin sent SMS to business {business.id} "
+                f"({business.owner.phone}) by "
+                f"{request.session.get('dashboard_admin_phone')}"
+            )
+
+            messages.success(
+                request,
+                f'پیامک با موفقیت به {business.owner.phone} ارسال شد.'
+            )
+
+        except Exception as e:
+            logger.error(f"Send SMS to business error: {e}", exc_info=True)
+            messages.error(request, 'خطا در ارسال پیامک. لطفاً دوباره تلاش کنید.')
+
+    return redirect(
+        reverse('dashboard:business_detail', kwargs={'business_id': business_id})
+    )
