@@ -6,6 +6,7 @@ import pytest
 from datetime import timedelta
 from django.urls import reverse
 from django.utils import timezone
+from django.test import override_settings
 
 
 # ═══════════════════════════════════════════════
@@ -513,11 +514,9 @@ class TestDashboardRateLimiting:
         response = client.post(url, {'phone': non_admin_phone})
         assert response.status_code == 200
         content = response.content.decode()
-        print("HTML CONTENT:", content)
+        
+        # حالا این assertion به درستی Pass می‌شود
         assert 'تعداد تلاش‌های شما بیش از حد مجاز است' in content            
-        # # ✅ اصلاح: بررسی وجود کلمات کلیدی به جای تطبیق دقیق رشته
-        # assert 'بیش از حد مجاز' in content or 'مسدود' in content or 'تلاش' in content, \
-        #     f"پیام محدودیت نرخ در صفحه یافت نشد. محتوای برگشتی: {content[:200]}"
 
     def test_rate_limit_resets_after_timeout(self, client):
         """بعد از انقضای تایمر، ورود دوباره مجاز شود"""
@@ -527,7 +526,7 @@ class TestDashboardRateLimiting:
         non_admin_phone = '09128888888'
 
         # پر کردن کش با مقدار منقضی شده
-        cache.set(f'dashboard_login_lock:{non_admin_phone}', 5, timeout=1)
+        cache.set(f'dashboard_login_lock:{non_admin_phone}', True, timeout=1)
         import time
         time.sleep(2)
 
