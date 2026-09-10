@@ -364,7 +364,7 @@ def system_settings_view(request):
         if not config:
             config = AppConfig()
 
-        # ─── ✅ FIX ۳.۶.۱: اعتبارسنجی فرمت نسخه ───
+        # ─── ۳.۶.۱: اعتبارسنجی فرمت نسخه ───
         latest_version = request.POST.get(
             'latest_version', config.latest_version
         ).strip()
@@ -391,6 +391,11 @@ def system_settings_view(request):
         config.latest_version = latest_version
         config.min_required_version = min_required_version
         config.is_force_update = request.POST.get('is_force_update') == 'on'
+        
+        # فاز جدید: کنترل نمایش مدال آپدیت در اندروید
+        config.android_force_update_enabled = request.POST.get('android_force_update_enabled') == 'on'
+        config.android_optional_update_enabled = request.POST.get('android_optional_update_enabled') == 'on'
+        
         config.update_title = request.POST.get(
             'update_title', config.update_title
         )

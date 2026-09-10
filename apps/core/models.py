@@ -38,6 +38,19 @@ class AppConfig(models.Model):
         'آپدیت اجباری',
         default=False,
     )
+
+    android_force_update_enabled = models.BooleanField(
+        'نمایش مدال آپدیت اجباری در اندروید',
+        default=True,
+        help_text='اگر غیرفعال باشد، مدال آپدیت اجباری در اندروید نمایش داده نمی‌شود',
+    )
+    android_optional_update_enabled = models.BooleanField(
+        'نمایش مدال آپدیت اختیاری در اندروید',
+        default=True,
+        help_text='اگر غیرفعال باشد، مدال آپدیت اختیاری در اندروید نمایش داده نمی‌شود',
+    )
+
+
     update_title = models.CharField(
         'عنوان آپدیت',
         max_length=200,
