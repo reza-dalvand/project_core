@@ -10,6 +10,7 @@
             </div>
             <form method="post">
                 {% csrf_token %}
+
                 <!-- ─── نسخه اپلیکیشن ─── -->
                 <h6 class="fw-bold mb-3 mt-3">📦 نسخه اپلیکیشن</h6>
                 <div class="row mb-3">
@@ -31,19 +32,12 @@
                         <label class="form-check-label" for="forceUpdate">آپدیت اجباری</label>
                     </div>
                 </div>
-                                <div class="mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="is_force_update" id="forceUpdate"
-                               {% if config.is_force_update %}checked{% endif %}>
-                        <label class="form-check-label" for="forceUpdate">آپدیت اجباری</label>
-                    </div>
-                </div>
-                
-                <!-- ✅ فاز جدید: کنترل نمایش مدال آپدیت در اندروید -->
+
+                <!-- ✅ کنترل نمایش مدال آپدیت در اندروید -->
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="android_force_update_enabled" 
+                            <input class="form-check-input" type="checkbox" name="android_force_update_enabled"
                                    id="androidForceUpdateEnabled"
                                    {% if config.android_force_update_enabled %}checked{% endif %}>
                             <label class="form-check-label" for="androidForceUpdateEnabled">
@@ -56,7 +50,7 @@
                     </div>
                     <div class="col-md-6">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="android_optional_update_enabled" 
+                            <input class="form-check-input" type="checkbox" name="android_optional_update_enabled"
                                    id="androidOptionalUpdateEnabled"
                                    {% if config.android_optional_update_enabled %}checked{% endif %}>
                             <label class="form-check-label" for="androidOptionalUpdateEnabled">
@@ -68,9 +62,7 @@
                         </div>
                     </div>
                 </div>
-                
-                <div class="mb-3">
-                <label class="form-label">عنوان آپدیت</label>
+
                 <div class="mb-3">
                     <label class="form-label">عنوان آپدیت</label>
                     <input type="text" class="form-control" name="update_title"
@@ -80,7 +72,8 @@
                     <label class="form-label">پیام آپدیت</label>
                     <textarea class="form-control" name="update_message" rows="2">{{ config.update_message|default:'' }}</textarea>
                 </div>
-                <!-- ✅ فاز ۷: فروشگاه -->
+
+                <!-- فروشگاه -->
                 <hr>
                 <h6 class="fw-bold mb-3">🏪 فروشگاه</h6>
                 <div class="row mb-3">
@@ -95,7 +88,8 @@
                                value="{{ config.store_name|default:'بیو کلاب وب' }}">
                     </div>
                 </div>
-                <!-- ✅ فاز ۷: چنج‌لاگ -->
+
+                <!-- چنج‌لاگ -->
                 <hr>
                 <h6 class="fw-bold mb-3">📝 چنج‌لاگ (تغییرات نسخه)</h6>
                 <div class="mb-3">
@@ -107,14 +101,30 @@
                         فرمت: <code>[{"icon": "✨", "text": "توضیح تغییر"}]</code>
                     </small>
                 </div>
+
                 <!-- ─── حالت تعمیرات ─── -->
                 <hr>
                 <h6 class="fw-bold mb-3">🔧 حالت تعمیرات</h6>
-                <div class="mb-3">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="is_maintenance" id="maintenance"
-                               {% if config.is_maintenance %}checked{% endif %}>
-                        <label class="form-check-label" for="maintenance">حالت تعمیرات فعال</label>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_maintenance" id="maintenance"
+                                   {% if config.is_maintenance %}checked{% endif %}>
+                            <label class="form-check-label" for="maintenance">حالت تعمیرات فعال</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_maintenance_modal_enabled"
+                                   id="maintenanceModalEnabled"
+                                   {% if config.is_maintenance_modal_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="maintenanceModalEnabled">
+                                🖥️📱 نمایش مدال تعمیرات (وب + اندروید)
+                            </label>
+                            <small class="form-text text-muted d-block mt-1">
+                                اگر غیرفعال باشد، حتی در حالت تعمیرات مدال به کاربران نمایش داده نمی‌شود
+                            </small>
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">

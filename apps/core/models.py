@@ -83,6 +83,11 @@ class AppConfig(models.Model):
         'حالت تعمیرات فعال',
         default=False,
     )
+    is_maintenance_modal_enabled = models.BooleanField(
+        'نمایش مدال تعمیرات',
+        default=True,
+        help_text='اگر غیرفعال باشد، حتی در حالت تعمیرات مدال نمایش داده نمی‌شود (هم وب و هم اندروید)',
+    )
     maintenance_title = models.CharField(
         'عنوان تعمیرات',
         max_length=200,

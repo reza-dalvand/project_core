@@ -78,6 +78,7 @@ class MaintenanceStatusView(APIView, StandardResponseMixin):
             return self.success_response(
                 data={
                     'is_maintenance': False,
+                    'is_maintenance_modal_enabled': False,
                     'title': '',
                     'message': '',
                     'estimated_end': '',
@@ -89,6 +90,7 @@ class MaintenanceStatusView(APIView, StandardResponseMixin):
         return self.success_response(
             data={
                 'is_maintenance': config.is_maintenance,
+                'is_maintenance_modal_enabled': config.is_maintenance_modal_enabled,
                 'title': config.maintenance_title,
                 'message': config.maintenance_message,
                 'estimated_end': config.maintenance_estimated_end,

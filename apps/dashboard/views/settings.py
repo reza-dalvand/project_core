@@ -430,6 +430,7 @@ def system_settings_view(request):
 
         # ─── حالت تعمیرات ───
         config.is_maintenance = request.POST.get('is_maintenance') == 'on'
+        config.is_maintenance_modal_enabled = request.POST.get('is_maintenance_modal_enabled') == 'on'
         config.maintenance_title = request.POST.get(
             'maintenance_title', config.maintenance_title
         )
