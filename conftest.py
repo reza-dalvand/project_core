@@ -130,23 +130,28 @@ def mock_otp(monkeypatch):
 
 @pytest.fixture
 def mock_shahkar(monkeypatch):
-    """Mock کردن Shahkar Service — نسخه کامل"""
+    """Mock کردن National ID Verifier — نسخه صحیح"""
 
-    class MockShahkar:
-        @classmethod
-        def verify(cls, national_id, phone, full_name=None):
-            return {
-                'success': True,
-                'verified_name': full_name or 'نام تایید شده',
-                'national_id': national_id,
-            }
+    class MockVerificationResult:
+        def __init__(self, national_id, full_name=None):
+            self.success = True
+            self.verified_name = full_name or 'نام تایید شده'
+            self.national_id = national_id
+            self.error_message = None
+            self.error_code = None
 
-    from apps.accounts.services import shahkar_service
-    from apps.accounts.views import auth as auth_views
+    class MockVerifier:
+        def verify(self, national_id, phone, full_name=None):
+            return MockVerificationResult(national_id, full_name)
 
-    monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
-    monkeypatch.setattr(auth_views, 'ShahkarService', MockShahkar)
-    return MockShahkar
+    def mock_get_verifier():
+        return MockVerifier()
+
+    # ✅ FIX: پچ کردن مسیر واقعی که View استفاده می‌کند
+    import shared.national_id
+    monkeypatch.setattr(shared.national_id, 'get_national_id_verifier', mock_get_verifier)
+
+    return MockVerifier
 
 
 # ═══════════════════════════════════════════════

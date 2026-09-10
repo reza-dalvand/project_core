@@ -203,7 +203,7 @@ class TestSchedule:
 
 @pytest.mark.django_db
 class TestAppointment:
-    """تست مدل Appointment جدید"""
+    """تست مدل Appointment — لغو توسط مشتری حذف شده"""
 
     def test_create_appointment(self, test_appointment):
         assert test_appointment.date_key is not None
@@ -217,14 +217,22 @@ class TestAppointment:
         assert 1 <= test_appointment.jm <= 12
         assert 1 <= test_appointment.jd <= 31
 
-    def test_cancel_by_customer(self, test_appointment):
-        test_appointment.cancel_by_customer('تغییر برنامه')
-        assert test_appointment.status == 'cancelled_by_customer'
-        assert test_appointment.cancellation_reason == 'تغییر برنامه'
+    def test_cancel_by_salon(self, test_appointment):
+        """لغو توسط سالن — جایگزین تست حذف‌شده لغو مشتری"""
+        test_appointment.cancel_by_salon('تعطیلی سالن')
+        assert test_appointment.status == 'cancelled_by_salon'
+        assert test_appointment.cancellation_reason == 'تعطیلی سالن'
         assert test_appointment.cancelled_at is not None
 
+    def test_cancel_by_salon_sets_timestamp(self, test_appointment):
+        """لغو توسط سالن باید زمان لغو را ثبت کند"""
+        from django.utils import timezone
+        test_appointment.cancel_by_salon('تست')
+        assert test_appointment.cancelled_at is not None
+        assert test_appointment.cancelled_at <= timezone.now()
+
     def test_trust_based_no_code(self, customer_user, approved_business, test_service):
-        """نوبت اعتمادی کد '0000' دارد"""
+        """نوبت اعتمادی کد خالی دارد"""
         from apps.appointments.models import Appointment
         import jdatetime
         future_date = jdatetime.date.today() + jdatetime.timedelta(days=30)
@@ -245,6 +253,7 @@ class TestAppointment:
         assert apt.is_trust_based is True
 
 
+        
 @pytest.mark.django_db
 class TestTransaction:
     """تست مدل Transaction جدید"""

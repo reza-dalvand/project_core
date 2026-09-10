@@ -284,7 +284,11 @@ def login_view(request):
 def verify_otp_view(request):
     """صفحه تایید کد — مرحله دوم"""
     phone = request.session.get('dashboard_otp_phone')
-    if not phone:
+    role = request.session.get('dashboard_otp_role')
+    
+    # ✅ FIX: اگر شماره یا نقش در سشن نباشد، کاربر را به لاگین برگردان
+    if not phone or not role:
+        messages.error(request, 'سشن شما نامعتبر است. لطفاً دوباره وارد شوید.')
         return redirect(reverse('dashboard:login'))
 
     if request.session.get('dashboard_admin_logged_in'):

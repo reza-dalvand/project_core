@@ -16,29 +16,32 @@ urlpatterns = [
     # ═══════ Dashboard ═══════
     path('dashboard/', include('apps.dashboard.urls')),
     # ═══════ REST API ═══════
-    path('api/v1/', include([
-        path('accounts/', include('apps.accounts.urls')),
-        path('categories/', include('apps.categories.urls')),
-        path('locations/', include('apps.locations.urls')),
-        path('businesses/', include('apps.businesses.urls')),
-        path('services/', include('apps.services.urls')),
-        path('schedules/', include('apps.schedules.urls')),
-        path('appointments/', include('apps.appointments.urls')),
-        path('payments/', include('apps.payments.urls')),
-        path('reviews/', include('apps.reviews.urls')),
-        path('favorites/', include('apps.favorites.urls')),
-        path('notifications/', include('apps.notifications.urls')),
-        path('search/', include('apps.search.urls')),
-        path('portfolios/', include('apps.portfolios.urls')),
-        path('reminders/', include('apps.reminders.urls')),
-        path('support/', include('apps.support.urls')),
+        path('api/v1/', include([
+            path('accounts/', include('apps.accounts.urls')),
+            path('categories/', include('apps.categories.urls')),
+            path('locations/', include('apps.locations.urls')),
+            path('businesses/', include('apps.businesses.urls')),
+            path('services/', include('apps.services.urls')),
+            path('schedules/', include('apps.schedules.urls')),
+            path('appointments/', include('apps.appointments.urls')),
+            path('payments/', include('apps.payments.urls')),
+            path('reviews/', include('apps.reviews.urls')),
+            path('favorites/', include('apps.favorites.urls')),
+            path('notifications/', include('apps.notifications.urls')),
+            path('search/', include('apps.search.urls')),
+            path('portfolios/', include('apps.portfolios.urls')),
+            path('reminders/', include('apps.reminders.urls')),
+            path('support/', include('apps.support.urls')),
+            
+            # ✅ FIX: اضافه کردن Namespace اپ explore
+            path('explore/', include('apps.explore.urls')),
 
-        path('ads/', include('apps.ads.urls')),
-        path('ads-management/', include('apps.ads_management.urls')),
+            path('ads/', include('apps.ads.urls')),
+            path('ads-management/', include('apps.ads_management.urls')),
 
-        # ✅ فاز ۱: اندپوینت‌های کانفیگ
-        path('config/', include('apps.core.urls')),
-    ])),
+            # ✅ فاز ۱: اندپوینت‌های کانفیگ
+            path('config/', include('apps.core.urls')),
+        ])),
 ]
 
 # ═══════ Media & Static در توسعه ═══════

@@ -116,21 +116,24 @@ class TestProfile:
         assert response.status_code == 401
 
 
-@pytest.mark.django_db
-class TestNationalId:
-    def test_verify_national_id(self, authenticated_customer_client, mock_shahkar):
-        url = reverse('accounts:national-id-verify')
-        response = authenticated_customer_client.post(url, {
-            'national_id': '0012345679',
-        })
-        assert response.status_code == 200
+    @pytest.mark.django_db
+    class TestNationalId:
+        def test_verify_national_id(self, authenticated_customer_client, mock_shahkar):
+            url = reverse('accounts:national-id-verify')
+            response = authenticated_customer_client.post(url, {
+                'national_id': '0012345679',
+                'full_name': 'کاربر تست',  # <-- اضافه کردن این فیلد
+            })
+            assert response.status_code == 200
 
-    def test_verify_national_id_invalid_format(self, authenticated_customer_client):
-        url = reverse('accounts:national-id-verify')
-        response = authenticated_customer_client.post(url, {
-            'national_id': '123',
-        })
-        assert response.status_code == 400
+
+        def test_verify_national_id_invalid_format(self, authenticated_customer_client):
+            url = reverse('accounts:national-id-verify')
+            response = authenticated_customer_client.post(url, {
+                'national_id': '123',
+                'full_name': 'کاربر تست',  
+            })
+            assert response.status_code == 400
 
 
 @pytest.mark.django_db

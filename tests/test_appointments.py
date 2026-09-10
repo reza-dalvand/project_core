@@ -1,5 +1,6 @@
 """
 تست‌های نوبت‌ها — با تاریخ جلالی
+✅ لغو توسط مشتری حذف شده — فقط لغو توسط سالن وجود دارد
 """
 import pytest
 from datetime import time
@@ -87,14 +88,7 @@ class TestBusinessAppointments:
 
 @pytest.mark.django_db
 class TestCancelAppointment:
-    def test_cancel_by_customer(self, authenticated_customer_client, test_appointment):
-        url = reverse('appointments:cancel-appointment', kwargs={'pk': test_appointment.id})
-        response = authenticated_customer_client.post(url, {
-            'reason_text': 'تغییر برنامه',
-        })
-        assert response.status_code == 200
-        test_appointment.refresh_from_db()
-        assert test_appointment.status == 'cancelled_by_customer'
+    """فقط لغو توسط سالن/کسب‌وکار — لغو توسط مشتری حذف شده"""
 
     def test_cancel_by_business(self, authenticated_business_client, test_appointment):
         url = reverse('appointments:cancel-by-business', kwargs={'pk': test_appointment.id})
@@ -104,6 +98,8 @@ class TestCancelAppointment:
         assert response.status_code == 200
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'cancelled_by_salon'
+        assert test_appointment.cancellation_reason == 'تعطیلی سالن'
+        assert test_appointment.cancelled_at is not None
 
 
 @pytest.mark.django_db
@@ -133,3 +129,6 @@ class TestAppointmentStats:
         data = response.json()['data']
         assert 'total' in data
         assert 'reserved' in data
+        assert 'done' in data
+        assert 'cancelled' in data
+        assert 'today' in data
