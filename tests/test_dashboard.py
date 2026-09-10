@@ -513,10 +513,11 @@ class TestDashboardRateLimiting:
         response = client.post(url, {'phone': non_admin_phone})
         assert response.status_code == 200
         content = response.content.decode()
-        
-        # ✅ اصلاح: بررسی وجود کلمات کلیدی به جای تطبیق دقیق رشته
-        assert 'بیش از حد مجاز' in content or 'مسدود' in content or 'تلاش' in content, \
-            f"پیام محدودیت نرخ در صفحه یافت نشد. محتوای برگشتی: {content[:200]}"
+        print("HTML CONTENT:", content)
+        assert 'تعداد تلاش‌های شما بیش از حد مجاز است' in content            
+        # # ✅ اصلاح: بررسی وجود کلمات کلیدی به جای تطبیق دقیق رشته
+        # assert 'بیش از حد مجاز' in content or 'مسدود' in content or 'تلاش' in content, \
+        #     f"پیام محدودیت نرخ در صفحه یافت نشد. محتوای برگشتی: {content[:200]}"
 
     def test_rate_limit_resets_after_timeout(self, client):
         """بعد از انقضای تایمر، ورود دوباره مجاز شود"""
