@@ -1,0 +1,90 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش کسب‌وکار{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش: {{ business.name }}</h4>
+                <a href="{% url 'dashboard:business_detail' business.id %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">نام کسب‌وکار <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name"
+                               value="{{ business.name }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">تلفن تماس</label>
+                        <input type="tel" class="form-control" name="phone"
+                               value="{{ business.phone }}">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">نوع کسب‌وکار</label>
+                        <select class="form-select" name="category">
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}"
+                                    {% if business.category_id == cat.id %}selected{% endif %}>
+                                    {{ cat.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">استان</label>
+                        <select class="form-select" name="province">
+                            {% for prov in provinces %}
+                                <option value="{{ prov.id }}"
+                                    {% if business.province_id == prov.id %}selected{% endif %}>
+                                    {{ prov.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">شهر</label>
+                        <select class="form-select" name="city">
+                            {% for city in cities %}
+                                <option value="{{ city.id }}"
+                                    {% if business.city_id == city.id %}selected{% endif %}>
+                                    {{ city.name }} ({{ city.province.name }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">آدرس <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="address" rows="2" required>{{ business.address }}</textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">ساعات کاری</label>
+                    <input type="text" class="form-control" name="working_hours"
+                           value="{{ business.working_hours }}">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">درباره کسب‌وکار</label>
+                    <textarea class="form-control" name="about" rows="3">{{ business.about }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

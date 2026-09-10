@@ -54,6 +54,23 @@ class ServiceListView(generics.ListCreateAPIView, StandardResponseMixin):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # بازخوانی با relations برای پاسخ کامل
+        service = Service.objects.select_related(
+            'category', 'sub_service', 'business'
+        ).get(pk=serializer.instance.pk)
+
+        return self.success_response(
+            data=ServiceListSerializer(service).data,
+            message='خدمت با موفقیت ایجاد شد',
+            status=201,
+        )
+
     def perform_create(self, serializer):
         business = self.request.user.businesses.filter(
             is_active=True, status='approved'
@@ -101,6 +118,22 @@ class ServiceDetailView(generics.RetrieveUpdateDestroyAPIView, StandardResponseM
     )
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        service = Service.objects.select_related(
+            'category', 'sub_service', 'business'
+        ).get(pk=instance.pk)
+
+        return self.success_response(
+            data=ServiceListSerializer(service).data,
+            message='خدمت با موفقیت بروزرسانی شد',
+        )
 
     @extend_schema(
         summary='حذف خدمت',

@@ -1,0 +1,47 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ارسال اعلان{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">🔔 ارسال اعلان</h4>
+                <a href="{% url 'dashboard:notifications_list' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">شماره تلفن کاربر <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" name="user_phone"
+                           placeholder="09123456789" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">نوع اعلان</label>
+                    <select class="form-select" name="type">
+                        {% for value, label in type_choices %}
+                            <option value="{{ value }}" {% if value == 'system' %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">عنوان <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="title"
+                           placeholder="عنوان اعلان" required maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="body" rows="3"
+                              placeholder="متن اعلان..." required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    📨 ارسال اعلان
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

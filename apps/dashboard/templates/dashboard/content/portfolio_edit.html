@@ -1,0 +1,76 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش نمونه‌کار{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش نمونه‌کار: {{ portfolio.title }}</h4>
+                <a href="{% url 'dashboard:portfolios_list' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">عنوان <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="title" value="{{ portfolio.title }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">کسب‌وکار</label>
+                        <input type="text" class="form-control" value="{{ portfolio.business.name }}" disabled>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">توضیحات</label>
+                    <textarea class="form-control" name="description" rows="2">{{ portfolio.description }}</textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">دسته‌بندی</label>
+                        <select class="form-select" name="category">
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if portfolio.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">زیرخدمت</label>
+                        <select class="form-select" name="sub_service">
+                            {% for sub in sub_services %}
+                                <option value="{{ sub.id }}" {% if portfolio.sub_service_id == sub.id %}selected{% endif %}>{{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">تغییر تصویر کاور</label>
+                    <input type="file" class="form-control" name="cover_image" accept="image/*">
+                </div>
+                {% if portfolio.images.all %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">تصاویر گالری</label>
+                    <div class="row g-2">
+                        {% for img in portfolio.images.all %}
+                        <div class="col-4">
+                            <div class="position-relative">
+                                <img src="{{ img.image.url }}" class="img-fluid rounded" style="height:80px;width:100%;object-fit:cover;">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" name="delete_images" value="{{ img.id }}" id="del_pimg_{{ img.id }}">
+                                    <label class="form-check-label small text-danger" for="del_pimg_{{ img.id }}">حذف</label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">افزودن تصاویر جدید (حداکثر ۳)</label>
+                    <input type="file" class="form-control" name="images" multiple accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">💾 ذخیره تغییرات</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

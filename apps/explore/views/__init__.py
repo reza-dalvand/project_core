@@ -75,6 +75,30 @@ class ExplorePostListView(APIView, StandardResponseMixin):
         if business_id:
             queryset = queryset.filter(business_id=business_id)
 
+
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+
+        if lat and lng:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                lat, lng = float(lat), float(lng)
+                radius = float(request.query_params.get('radius', 10))
+                point = Point(lng, lat, srid=4326)
+                queryset = queryset.filter(
+                    business__location__isnull=False,
+                    business__location__distance_lte=(point, D(km=radius))
+                )
+            except (ValueError, TypeError):
+                pass
+        elif province_id:
+            queryset = queryset.filter(business__province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(business__city_id=city_id)
+
         # Pagination
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
@@ -87,6 +111,7 @@ class ExplorePostListView(APIView, StandardResponseMixin):
         serializer = ExplorePostListSerializer(
             queryset, many=True, context={'request': request}
         )
+
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},

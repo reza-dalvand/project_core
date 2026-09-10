@@ -202,8 +202,9 @@ def get_device_info(request):
         device_type = 'android'
     elif 'iPhone' in user_agent or 'iPad' in user_agent or 'iOS' in user_agent:
         device_type = 'ios'
-    elif 'Mozilla' in user_agent or 'Chrome' in user_agent or 'Safari' in user_agent:
-        device_type = 'web'
+    else:
+        # ✅ FIX: 'web' → 'desktop' (هماهنگ با DeviceType.choices مدل)
+        device_type = 'desktop'
 
     app_version = request.META.get('HTTP_X_APP_VERSION', '')
     device_name = request.META.get('HTTP_X_DEVICE_NAME', '')
@@ -211,7 +212,8 @@ def get_device_info(request):
 
     return {
         'device_type': device_type,
-        'device_name': device_name,
-        'os_version': os_version,
+        # ✅ FIX: اگر device_name خالی بود، مقدار پیش‌فرض
+        'device_name': device_name or f'{device_type.capitalize()} Device',
+        'os_info': os_version or 'Unknown',
         'app_version': app_version,
     }

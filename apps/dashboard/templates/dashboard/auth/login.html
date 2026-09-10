@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود به پنل مدیریت | بیو کلاب</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Vazirmatn', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #F5F0EC 0%, #EFE7E1 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 16px 48px rgba(44, 37, 33, 0.12);
+            border: 1px solid #EEE5DF;
+        }
+        .login-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #A88B7D, #8D7468);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+            color: #fff;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #A88B7D, #8D7468);
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 700;
+        }
+        .btn-primary:hover {
+            background: #8D7468;
+        }
+        .form-control {
+            border-radius: 14px;
+            padding: 12px 16px;
+            border: 1.5px solid #DDD2CB;
+        }
+        .form-control:focus {
+            border-color: #A88B7D;
+            box-shadow: 0 0 0 4px rgba(168, 139, 125, 0.12);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-logo">🌸</div>
+        <h1 class="text-center fw-bold mb-2" style="font-size: 22px;">پنل مدیریت بیو کلاب</h1>
+        <p class="text-center text-muted mb-4" style="font-size: 14px;">ورود امن با کد پیامکی</p>
+
+        {% if error %}
+            <div class="alert alert-danger py-2" style="font-size: 13px;">{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <label class="form-label fw-semibold" style="font-size: 13px;">شماره موبایل</label>
+            <input type="tel" name="phone" class="form-control text-center" 
+                   placeholder="09123456789" value="{{ phone }}"
+                   autocomplete="tel" inputmode="tel" required autofocus>
+            <button type="submit" class="btn btn-primary w-100 mt-3">
+                دریافت کد ورود
+            </button>
+        </form>
+
+        <p class="text-center mt-4" style="font-size: 12px; color: #8B7F78;">
+            فقط شماره‌هایی که دسترسی مدیریت دارند می‌توانند وارد شوند.
+        </p>
+    </div>
+</body>
+</html>

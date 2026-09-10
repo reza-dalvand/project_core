@@ -2,11 +2,13 @@
 Views برای مدیریت نوبت‌ها — با تاریخ جلالی
 """
 import logging
+import jdatetime
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django.utils import timezone
+
 from apps.core.mixins import StandardResponseMixin
 from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
@@ -48,7 +50,6 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 jm=serializer.validated_data['jm'],
                 jd=serializer.validated_data['jd'],
                 time_slot_str=serializer.validated_data['time_slot'],
-                # ✅ فاز ۳: ارسال وضعیت اعتماد
                 is_trust_based=serializer.validated_data.get('trust_based', False),
             )
 
@@ -69,9 +70,9 @@ class CreateAppointmentView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        
+
 class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
-    """لیست نوبت‌های مشتری"""
+    """لیست نوبت‌های مشتری با فیلتر وضعیت"""
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AppointmentListSerializer
     pagination_class = StandardResultsSetPagination
@@ -82,7 +83,7 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
                 name='status',
                 type=str,
                 required=False,
-                enum=['upcoming', 'past', 'all'],
+                enum=['upcoming', 'past', 'cancelled', 'all'],
             ),
         ],
         tags=['Appointments - Customer'],
@@ -99,15 +100,36 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         today_key = today_jalali_key()
 
         if status_filter == 'upcoming':
+            # ✅ نوبت‌های آینده: رزرو شده با تاریخ امروز یا بعد
             qs = qs.filter(
                 date_key__gte=today_key,
                 status=Appointment.Status.RESERVED,
             )
         elif status_filter == 'past':
-            qs = qs.filter(date_key__lt=today_key)
+            # ✅ نوبت‌های گذشته: انجام شده + رزرو شده‌هایی که تاریخشان گذشته
+            # لغو شده‌ها اینجا نمایش داده نمی‌شوند
+            qs = qs.filter(
+                Q(status=Appointment.Status.DONE) |
+                Q(
+                    status=Appointment.Status.RESERVED,
+                    date_key__lt=today_key,
+                )
+            ).exclude(
+                status__in=[
+                    Appointment.Status.CANCELLED_BY_SALON,
+                    Appointment.Status.CANCELLED_BY_CUSTOMER,
+                ]
+            )
+        elif status_filter == 'cancelled':
+            # ✅ نوبت‌های لغو شده: همه لغو شده‌ها صرف‌نظر از تاریخ
+            qs = qs.filter(
+                status__in=[
+                    Appointment.Status.CANCELLED_BY_SALON,
+                    Appointment.Status.CANCELLED_BY_CUSTOMER,
+                ]
+            )
 
         return qs
-
 
 class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
     """لیست نوبت‌های کسب‌وکار با فیلترهای پیشرفته"""
@@ -117,46 +139,16 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter(
-                name='status',
-                type=str,
-                required=False,
-                enum=['all', 'reserved', 'cancelled', 'done'],
-                description='فیلتر وضعیت',
-            ),
-            OpenApiParameter(
-                name='search',
-                type=str,
-                required=False,
-                description='جستجو در نام مشتری، شماره تلفن یا خدمت',
-            ),
-            # 🆕 فاز ۴: فیلتر تاریخ
-            OpenApiParameter(
-                name='date_filter',
-                type=str,
-                required=False,
-                enum=['today', 'week', 'month', 'all'],
-                description='فیلتر بازه زمانی',
-            ),
-            OpenApiParameter(
-                name='date_from',
-                type=str,
-                required=False,
-                description='تاریخ شروع (فرمت: 1405/04/01)',
-            ),
-            OpenApiParameter(
-                name='date_to',
-                type=str,
-                required=False,
-                description='تاریخ پایان (فرمت: 1405/04/31)',
-            ),
+            OpenApiParameter(name='status', type=str, required=False, enum=['all', 'reserved', 'cancelled', 'done']),
+            OpenApiParameter(name='search', type=str, required=False),
+            OpenApiParameter(name='date_filter', type=str, required=False, enum=['today', 'week', 'month', 'all']),
+            OpenApiParameter(name='date_from', type=str, required=False),
+            OpenApiParameter(name='date_to', type=str, required=False),
         ],
         tags=['Appointments - Business'],
         summary='نوبت‌های کسب‌وکار من',
     )
     def get_queryset(self):
-        import jdatetime
-
         business = self.request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
@@ -181,7 +173,7 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         elif status_filter == 'done':
             qs = qs.filter(status=Appointment.Status.DONE)
 
-        # ─── 🆕 فاز ۴: فیلتر بازه زمانی ───
+        # ─── فیلتر بازه زمانی ───
         date_filter = self.request.query_params.get('date_filter')
         if date_filter:
             today = jdatetime.date.today()
@@ -192,26 +184,17 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
             elif date_filter == 'week':
                 week_end = today + jdatetime.timedelta(days=7)
-                # ✅ اصلاح
                 week_end_key = f'{week_end.year}/{week_end.month:02d}/{week_end.day:02d}'
                 qs = qs.filter(date_key__gte=today_key, date_key__lte=week_end_key)
 
             elif date_filter == 'month':
-                # ✅ اصلاح
-                month_start = jdatetime.date(today.year, today.month, 1)
-                month_start_key = f'{month_start.year}/{month_start.month:02d}/01'
-
-                if today.month == 12:
-                    next_month = jdatetime.date(today.year + 1, 1, 1)
-                else:
-                    next_month = jdatetime.date(today.year, today.month + 1, 1)
-
-                month_end = next_month - jdatetime.timedelta(days=1)
-                # ✅ اصلاح
-                month_end_key = f'{month_end.year}/{month_end.month:02d}/{month_end.day:02d}'
+                # ✅ اصلاح شده: استفاده از تابع دقیق طول ماه جلالی
+                month_start_key = f'{today.year}/{today.month:02d}/01'
+                month_end_day = jdatetime.jalaali_month_length(today.year, today.month)
+                month_end_key = f'{today.year}/{today.month:02d}/{month_end_day:02d}'
                 qs = qs.filter(date_key__gte=month_start_key, date_key__lte=month_end_key)
 
-        # ─── 🆕 فاز ۴: فیلتر بازه دلخواه ───
+        # ─── فیلتر بازه دلخواه ───
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
         if date_from:
@@ -230,7 +213,8 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
             )
 
         return qs
-    
+
+
 class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات نوبت"""
     permission_classes = [permissions.IsAuthenticated]
@@ -239,16 +223,12 @@ class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Appointment.objects.select_related(
-            'service', 'business', 'customer'
-        )
+        qs = Appointment.objects.select_related('service', 'business', 'customer')
 
         if user.is_authenticated:
             user_business = user.businesses.filter(is_active=True).first()
             if user_business:
-                return qs.filter(
-                    Q(customer=user) | Q(business=user_business)
-                )
+                return qs.filter(Q(customer=user) | Q(business=user_business))
             return qs.filter(customer=user)
 
         return qs.none()
@@ -264,43 +244,7 @@ class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
         return self.success_response(data=serializer.data)
 
 
-class CancelAppointmentView(APIView, StandardResponseMixin):
-    """لغو نوبت توسط مشتری"""
-    permission_classes = [permissions.IsAuthenticated]
 
-    @extend_schema(
-        request=CancelAppointmentSerializer,
-        tags=['Appointments - Customer'],
-        summary='لغو نوبت',
-    )
-    def post(self, request, pk):
-        try:
-            appointment = Appointment.objects.get(
-                id=pk,
-                customer=request.user,
-            )
-        except Appointment.DoesNotExist:
-            return self.error_response(
-                message='نوبت مورد نظر یافت نشد',
-                code='APPOINTMENT_NOT_FOUND',
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        serializer = CancelAppointmentSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            BookingService.cancel_by_customer(
-                appointment=appointment,
-                reason_text=serializer.validated_data.get('reason_text', ''),
-            )
-            return self.success_response(
-                message='نوبت با موفقیت لغو شد. بیعانه ظرف ۴۸ ساعت به حساب شما واریز می‌شود.',
-            )
-        except BookingException as e:
-            return e.as_response()
-
-        
 class CancelByBusinessView(APIView, StandardResponseMixin):
     """لغو نوبت توسط کسب‌وکار"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
@@ -311,15 +255,10 @@ class CancelByBusinessView(APIView, StandardResponseMixin):
         summary='لغو نوبت توسط سالن',
     )
     def post(self, request, pk):
-        business = request.user.businesses.filter(
-            is_active=True, status='approved'
-        ).first()
+        business = request.user.businesses.filter(is_active=True, status='approved').first()
 
         try:
-            appointment = Appointment.objects.get(
-                id=pk,
-                business=business,
-            )
+            appointment = Appointment.objects.get(id=pk, business=business)
         except Appointment.DoesNotExist:
             return self.error_response(
                 message='نوبت مورد نظر یافت نشد',
@@ -331,10 +270,7 @@ class CancelByBusinessView(APIView, StandardResponseMixin):
         serializer.is_valid(raise_exception=True)
 
         try:
-            appointment.cancel_by_salon(
-                reason=serializer.validated_data.get('reason_text', ''),
-            )
-
+            appointment.cancel_by_salon(reason=serializer.validated_data.get('reason_text', ''))
             return self.success_response(
                 message='نوبت لغو شد. بیعانه به مشتری مسترد می‌شود.',
             )
@@ -352,15 +288,10 @@ class VerifyServiceCodeView(APIView, StandardResponseMixin):
         summary='تایید انجام خدمت',
     )
     def post(self, request, pk):
-        business = request.user.businesses.filter(
-            is_active=True, status='approved'
-        ).first()
+        business = request.user.businesses.filter(is_active=True, status='approved').first()
 
         try:
-            appointment = Appointment.objects.get(
-                id=pk,
-                business=business,
-            )
+            appointment = Appointment.objects.get(id=pk, business=business)
         except Appointment.DoesNotExist:
             return self.error_response(
                 message='نوبت مورد نظر یافت نشد',
@@ -370,13 +301,25 @@ class VerifyServiceCodeView(APIView, StandardResponseMixin):
 
         serializer = VerifyServiceCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        entered_code = serializer.validated_data['code']
 
         try:
-            success = BookingService.verify_service_code(
-                appointment=appointment,
-                entered_code=serializer.validated_data['code'],
-                verified_by=request.user,
-            )
+            # ✅ هندل کردن نوبت‌های اعتمادی (Trust-Based)
+            # در نوبت‌های اعتمادی کد تولید نمی‌شود (خالی است) و فرانت ممکن است 0000 بفرستد
+            if appointment.is_trust_based:
+                # برای نوبت اعتمادی، کد را مستقیماً روی همان مقدار پیش‌فرض یا 0000 ست می‌کنیم تا BookingService ارور ندهد
+                code_to_verify = appointment.verification_code or '0000'
+                success = BookingService.verify_service_code(
+                    appointment=appointment,
+                    entered_code=code_to_verify,
+                    verified_by=request.user,
+                )
+            else:
+                success = BookingService.verify_service_code(
+                    appointment=appointment,
+                    entered_code=entered_code,
+                    verified_by=request.user,
+                )
 
             if success:
                 return self.success_response(
@@ -385,7 +328,8 @@ class VerifyServiceCodeView(APIView, StandardResponseMixin):
                         'status': appointment.status,
                         'verified_at': appointment.verified_at,
                     },
-                    message='خدمت تایید شد. بیعانه به حساب شما واریز می‌شود.',
+                    # ✅ پیام جدید و دقیق درخواستی
+                    message='خدمت با موفقیت انجام شد و بیعانه آزاد شد.',
                 )
             else:
                 return self.error_response(
@@ -395,6 +339,13 @@ class VerifyServiceCodeView(APIView, StandardResponseMixin):
                 )
         except BookingException as e:
             return e.as_response()
+        except Exception as e:
+            logger.exception(f"Verify code error: {e}")
+            return self.error_response(
+                message='خطا در تایید کد خدمت',
+                code='VERIFY_ERROR',
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class RegenerateCodeView(APIView, StandardResponseMixin):
@@ -407,10 +358,7 @@ class RegenerateCodeView(APIView, StandardResponseMixin):
     )
     def post(self, request, pk):
         try:
-            appointment = Appointment.objects.get(
-                id=pk,
-                customer=request.user,
-            )
+            appointment = Appointment.objects.get(id=pk, customer=request.user)
         except Appointment.DoesNotExist:
             return self.error_response(
                 message='نوبت مورد نظر یافت نشد',
@@ -418,12 +366,18 @@ class RegenerateCodeView(APIView, StandardResponseMixin):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # جلوگیری از تولید کد برای نوبت‌های اعتمادی
+        if appointment.is_trust_based:
+            return self.error_response(
+                message='این نوبت بر اساس اعتماد است و نیازی به کد تایید ندارد.',
+                code='TRUST_BASED_APPOINTMENT',
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             new_code = BookingService.regenerate_verification_code(appointment)
             return self.success_response(
-                data={
-                    'verification_code': new_code,
-                },
+                data={'verification_code': new_code},
                 message='کد تایید جدید تولید شد',
             )
         except BookingException as e:
@@ -441,9 +395,7 @@ class AppointmentStatsView(APIView, StandardResponseMixin):
     def get(self, request):
         from apps.core.utils import today_jalali_key
 
-        business = request.user.businesses.filter(
-            is_active=True, status='approved'
-        ).first()
+        business = request.user.businesses.filter(is_active=True, status='approved').first()
 
         today_key = today_jalali_key()
         appointments = Appointment.objects.filter(business=business)
@@ -459,6 +411,93 @@ class AppointmentStatsView(APIView, StandardResponseMixin):
                 ]
             ).count(),
             'today': appointments.filter(date_key=today_key).count(),
+        }
+
+        return self.success_response(data=stats)
+    
+
+# ═══════ در انتهای فایل، قبل از آخرین کلاس یا بعد از آن اضافه شود ═══════
+
+class BusinessTodayAppointmentsView(generics.ListAPIView, StandardResponseMixin):
+    """
+    نوبت‌های فعال امروز کسب‌وکار
+    فقط نوبت‌های با وضعیت reserved برای تاریخ امروز
+    برای ویجت داشبورد مدیریت
+    """
+    permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
+    serializer_class = AppointmentListSerializer
+
+    @extend_schema(
+        tags=['Appointments - Business'],
+        summary='نوبت‌های فعال امروز',
+        description='نوبت‌های رزرو شده امروز برای نمایش در داشبورد مدیریت',
+    )
+    def get_queryset(self):
+        import jdatetime
+
+        business = self.request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+
+        today = jdatetime.date.today()
+        today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
+
+        return Appointment.objects.filter(
+            business=business,
+            status=Appointment.Status.RESERVED,
+            date_key=today_key,
+        ).select_related(
+            'service', 'customer'
+        ).order_by('time_slot')
+
+
+class CustomerAppointmentsStatsView(APIView, StandardResponseMixin):
+    """آمار نوبت‌های مشتری برای نمایش شمارنده روی تب‌ها"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['Appointments - Customer'],
+        summary='آمار نوبت‌های من',
+    )
+    def get(self, request):
+        from apps.core.utils import today_jalali_key
+        
+        qs = Appointment.objects.filter(customer=request.user)
+        today_key = today_jalali_key()
+
+        # نوبت‌های آینده: رزرو شده با تاریخ امروز یا بعد
+        upcoming_count = qs.filter(
+            date_key__gte=today_key,
+            status=Appointment.Status.RESERVED,
+        ).count()
+
+        # نوبت‌های گذشته: انجام شده + رزرو شده‌هایی که تاریخشان گذشته
+        past_count = qs.filter(
+            Q(status=Appointment.Status.DONE) |
+            Q(
+                status=Appointment.Status.RESERVED,
+                date_key__lt=today_key,
+            )
+        ).exclude(
+            status__in=[
+                Appointment.Status.CANCELLED_BY_SALON,
+                Appointment.Status.CANCELLED_BY_CUSTOMER,
+            ]
+        ).count()
+
+        # نوبت‌های لغو شده
+        cancelled_count = qs.filter(
+            status__in=[
+                Appointment.Status.CANCELLED_BY_SALON,
+                Appointment.Status.CANCELLED_BY_CUSTOMER,
+            ]
+        ).count()
+
+        stats = {
+            'upcoming': upcoming_count,
+            'past': past_count,
+            'cancelled': cancelled_count,
+            'total': upcoming_count + past_count + cancelled_count,
         }
 
         return self.success_response(data=stats)

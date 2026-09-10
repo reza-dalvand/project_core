@@ -28,10 +28,7 @@ class Portfolio(BaseModel):
     )
     title = models.CharField('عنوان', max_length=100)
     description = models.TextField('توضیحات', blank=True, max_length=300, default='')
-    cover_image = models.ImageField(
-        'تصویر کاور',
-        upload_to='portfolios/covers/',
-    )
+
 
     class Meta:
         db_table = 'portfolios'
@@ -41,6 +38,11 @@ class Portfolio(BaseModel):
 
     def __str__(self):
         return f'{self.business.name} - {self.title}'
+
+    @property
+    def cover(self):
+        """اولین عکس گالری به‌عنوان کاور"""
+        return self.images.order_by('sort_order').first()
 
 
 class PortfolioImage(BaseModel):

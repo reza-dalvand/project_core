@@ -38,9 +38,30 @@ class PushDeviceAdmin(AppStaffMixin, admin.ModelAdmin):
 
 @admin.register(SMSTemplate)
 class SMSTemplateAdmin(AppAdminMixin, admin.ModelAdmin):
-    list_display = ['name', 'type', 'provider_template_id', 'is_active', 'updated_at']
-    list_filter = ['type', 'is_active']
+    # ✅ FIX: send_method به list_display اضافه شد
+    list_display = [
+        'name', 'type', 'send_method',
+        'provider_template_id', 'is_active', 'updated_at',
+    ]
+    # ✅ FIX: send_method به list_filter اضافه شد
+    list_filter = ['type', 'send_method', 'is_active']
     search_fields = ['name', 'pattern']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('📝 اطلاعات قالب', {
+            'fields': ('type', 'name', 'provider_template_id'),
+        }),
+        ('📄 متن و متغیرها', {
+            'fields': ('pattern', 'variables'),
+        }),
+        ('⚙️ تنظیمات ارسال', {
+            'fields': ('send_method', 'is_active'),
+        }),
+        ('📅 تاریخ', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
 
 
 @admin.register(SMSLog)

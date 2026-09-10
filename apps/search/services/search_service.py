@@ -39,8 +39,8 @@ class SearchService:
 
     @classmethod
     def search_businesses(cls, query, province_id=None, city_id=None,
-                          category_id=None, min_rating=0, has_discount=False,
-                          limit=20):
+                      category_id=None, min_rating=0, has_discount=False,
+                      limit=20, lat=None, lng=None, radius=10):
         """
         جستجو در کسب‌وکارها
         
@@ -56,8 +56,10 @@ class SearchService:
         Returns:
             QuerySet از کسب‌وکارهای یافت شده
         """
-        qs = Business.objects.filter(status=Business.Status.APPROVED)
-
+        qs = Business.objects.filter(
+            status=Business.Status.APPROVED,
+            is_suspended=False, 
+        )
         if province_id:
             qs = qs.filter(province_id=province_id)
         if city_id:
@@ -98,8 +100,8 @@ class SearchService:
         )[:limit]
 
     @classmethod
-    def search_services(cls, query, business_id=None, category_id=None,
-                        min_price=0, max_price=None, has_discount=False,
+    def search_services(cls, query, business_id=None, category_id=None, province_id=None, city_id=None,
+                        min_price=0, max_price=None, has_discount=False, lat=None, lng=None,
                         limit=20):
         """
         جستجو در خدمات
@@ -314,6 +316,7 @@ class SearchService:
         businesses = Business.objects.filter(
             status=Business.Status.APPROVED,
             is_active=True,
+            is_suspended=False,
             location__distance_lte=(point, distance_filter),
         ).distance(point).order_by('distance')[:20]
 

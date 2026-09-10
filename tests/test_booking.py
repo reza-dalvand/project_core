@@ -1,5 +1,6 @@
 """
 تست‌های سیستم رزرو نوبت — با تاریخ جلالی
+✅ لغو توسط مشتری حذف شده — فقط لغو توسط سالن وجود دارد
 """
 import pytest
 from datetime import time
@@ -147,20 +148,20 @@ class TestBookingService:
                 time_slot_str='10:00',
             )
 
-    def test_cancel_by_customer(self, test_appointment):
-        """تست لغو نوبت توسط مشتری"""
-        test_appointment.cancel_by_customer('تغییر برنامه')
-        test_appointment.refresh_from_db()
-        assert test_appointment.status == 'cancelled_by_customer'
-        assert test_appointment.cancellation_reason == 'تغییر برنامه'
-        assert test_appointment.cancelled_at is not None
-
     def test_cancel_by_salon(self, test_appointment):
         """تست لغو نوبت توسط سالن"""
         test_appointment.cancel_by_salon('تعطیلی')
         test_appointment.refresh_from_db()
         assert test_appointment.status == 'cancelled_by_salon'
         assert test_appointment.cancelled_at is not None
+
+    def test_cancel_by_salon_updates_status(self, test_appointment):
+        """لغو توسط سالن وضعیت را تغییر می‌دهد"""
+        assert test_appointment.status == Appointment.Status.RESERVED
+        test_appointment.cancel_by_salon('دلیل تست')
+        test_appointment.refresh_from_db()
+        assert test_appointment.status == Appointment.Status.CANCELLED_BY_SALON
+        assert test_appointment.cancellation_reason == 'دلیل تست'
 
     def test_regenerate_code_cooldown(self, test_appointment):
         """تست cooldown تولید مجدد کد"""
@@ -245,21 +246,6 @@ class TestBookingAPI:
         response = authenticated_business_client.get(url)
         assert response.status_code == 200
 
-    def test_cancel_appointment_api(
-        self, authenticated_customer_client, test_appointment,
-    ):
-        """تست API لغو نوبت"""
-        url = reverse(
-            'appointments:cancel-appointment',
-            kwargs={'pk': test_appointment.id},
-        )
-        response = authenticated_customer_client.post(url, {
-            'reason_text': 'تغییر برنامه',
-        })
-        assert response.status_code == 200
-        test_appointment.refresh_from_db()
-        assert test_appointment.status == 'cancelled_by_customer'
-
     def test_cancel_by_business_api(
         self, authenticated_business_client, test_appointment,
     ):
@@ -311,3 +297,4 @@ class TestBookingAPI:
         assert 'total' in data
         assert 'reserved' in data
         assert 'done' in data
+        assert 'cancelled' in data

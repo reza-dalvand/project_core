@@ -22,6 +22,7 @@ from apps.payments.serializers import (
     SettlementSerializer,
     SettlementRequestSerializer,
     BusinessFinancialStatsSerializer,
+    VerifyPaymentSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,66 @@ class InitiatePaymentView(APIView, StandardResponseMixin):
             )
 
 
+class VerifyPaymentView(APIView, StandardResponseMixin):
+    """
+    تایید پرداخت توسط فرانت‌اند
+    فرانت‌اند پس از بازگشت از درگاه، Authority و Status را به این اندپوینت ارسال می‌کند
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=VerifyPaymentSerializer,
+        tags=['Payment'],
+        summary='تایید پرداخت (فراخوانی توسط فرانت‌اند)',
+    )
+    def post(self, request):
+        serializer = VerifyPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        authority = serializer.validated_data['authority']
+        gateway_status = serializer.validated_data.get('status', '')
+
+        try:
+            tx = Transaction.objects.select_related('appointment').get(
+                gateway_transaction_id=authority,
+                customer=request.user,
+            )
+        except Transaction.DoesNotExist:
+            return self.error_response(
+                message='تراکنش یافت نشد یا متعلق به شما نیست',
+                code='TRANSACTION_NOT_FOUND',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if gateway_status == 'OK':
+            try:
+                result = PaymentService.verify_payment(
+                    track_id=authority,
+                    expected_amount=tx.amount,
+                )
+                return self.success_response(
+                    data={
+                        'tracking_code': tx.tracking_code,
+                        'amount': tx.amount,
+                        'ref_number': result.get('ref_number'),
+                    },
+                    message='پرداخت با موفقیت تایید شد',
+                )
+            except Exception as e:
+                error_code = getattr(e, 'code', 'VERIFY_ERROR')
+                return self.error_response(
+                    message=str(e),
+                    code=error_code,
+                )
+        else:
+            # Status == NOK یا هر چیز دیگر
+            tx.status = Transaction.Status.FAILED
+            tx.save(update_fields=['status'])
+            return self.error_response(
+                message='پرداخت توسط شما لغو شد یا ناموفق بود',
+                code='PAYMENT_FAILED',
+            )
+
 class CustomerPaymentHistoryView(generics.ListAPIView, StandardResponseMixin):
     """تاریخچه پرداخت‌های مشتری"""
     permission_classes = [IsAuthenticated]
@@ -93,9 +154,29 @@ class CustomerPaymentHistoryView(generics.ListAPIView, StandardResponseMixin):
     def get_queryset(self):
         return Transaction.objects.filter(
             customer=self.request.user
-        ).select_related('business', 'appointment').order_by('-created_at')
+        ).select_related('business', 'appointment', 'appointment__service').order_by('-created_at')
 
+    # ✅ FIX: override کردن list() برای جلوگیری از double-wrapping
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginator = self.paginator
+            return self.success_response(
+                data={
+                    'count': paginator.page.paginator.count,
+                    'next': paginator.get_next_link(),
+                    'previous': paginator.get_previous_link(),
+                    'results': serializer.data,
+                }
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return self.success_response(data=serializer.data)
 
+    
 class CustomerTransactionDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات تراکنش مشتری"""
     permission_classes = [IsAuthenticated]
@@ -124,11 +205,34 @@ class BusinessTransactionListView(generics.ListAPIView, StandardResponseMixin):
             is_active=True, status='approved'
         ).first()
 
+        if not business:
+            return Transaction.objects.none()
+
         return Transaction.objects.filter(
             business=business
         ).select_related('customer', 'appointment').order_by('-created_at')
 
+    # ✅ FIX: override کردن list()
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginator = self.paginator
+            return self.success_response(
+                data={
+                    'count': paginator.page.paginator.count,
+                    'next': paginator.get_next_link(),
+                    'previous': paginator.get_previous_link(),
+                    'results': serializer.data,
+                }
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return self.success_response(data=serializer.data)
 
+    
 class BusinessFinancialStatsView(APIView, StandardResponseMixin):
     """آمار مالی کسب‌وکار"""
     permission_classes = [IsAuthenticated, IsApprovedBusinessOwner]

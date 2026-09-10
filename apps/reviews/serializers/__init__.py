@@ -37,17 +37,16 @@ class ReviewDetailSerializer(ReviewListSerializer):
 
 
 class CreateReviewSerializer(serializers.Serializer):
-    """Serializer برای ایجاد نظر"""
+    """Serializer برای ایجاد نظر — بدون ستاره، با رای تگ‌ها"""
     appointment_id = serializers.IntegerField()
-    rating = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(
         required=False,
         allow_blank=True,
         max_length=300,
         default='',
     )
-    tags = serializers.ListField(
-        child=serializers.CharField(),
+    tag_votes = serializers.ListField(
+        child=serializers.DictField(), # [{'tag_id': 'clean', 'vote_type': 'like'}, ...]
         required=False,
         default=list,
     )
@@ -59,16 +58,13 @@ class CreateReviewSerializer(serializers.Serializer):
         except Appointment.DoesNotExist:
             raise serializers.ValidationError('نوبت مورد نظر یافت نشد')
         return value
-
-
-class CreateReviewReplySerializer(serializers.Serializer):
-    """Serializer برای پاسخ کسب‌وکار"""
-    review_id = serializers.IntegerField()
-    reply = serializers.CharField(min_length=10, max_length=300)
-
-    def validate_review_id(self, value):
-        try:
-            Review.objects.get(id=value)
-        except Review.DoesNotExist:
-            raise serializers.ValidationError('نظر مورد نظر یافت نشد')
+        
+    def validate_tag_votes(self, value):
+        valid_tags = ['clean', 'punctual', 'quality', 'polite', 'fair_price', 'recommend']
+        valid_types = ['like', 'dislike']
+        for vote in value:
+            if vote.get('tag_id') not in valid_tags:
+                raise serializers.ValidationError(f"تگ {vote.get('tag_id')} نامعتبر است")
+            if vote.get('vote_type') not in valid_types:
+                raise serializers.ValidationError(f"نوع رای {vote.get('vote_type')} نامعتبر است")
         return value

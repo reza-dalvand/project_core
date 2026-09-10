@@ -1,0 +1,62 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش قالب{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش قالب: {{ template.name }}</h4>
+                <a href="{% url 'dashboard:sms_templates' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">نوع قالب</label>
+                        <input type="text" class="form-control" value="{{ template.get_type_display }}" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">نام قالب</label>
+                        <input type="text" class="form-control" name="name" value="{{ template.name }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">شناسه در کاوه‌نگار</label>
+                        <input type="text" class="form-control" name="provider_template_id"
+                               value="{{ template.provider_template_id }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن قالب</label>
+                    <textarea class="form-control" name="pattern" rows="4">{{ template.pattern }}</textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">متغیرها (با کاما جدا کنید)</label>
+                        <input type="text" class="form-control" name="variables" value="{{ variables_str }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">روش ارسال</label>
+                        <select class="form-select" name="send_method">
+                            {% for value, label in send_method_choices %}
+                                <option value="{{ value }}" {% if template.send_method == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="isActive"
+                               {% if template.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="isActive">فعال</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

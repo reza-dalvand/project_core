@@ -130,23 +130,28 @@ def mock_otp(monkeypatch):
 
 @pytest.fixture
 def mock_shahkar(monkeypatch):
-    """Mock کردن Shahkar Service — نسخه کامل"""
+    """Mock کردن National ID Verifier — نسخه صحیح"""
 
-    class MockShahkar:
-        @classmethod
-        def verify(cls, national_id, phone, full_name=None):
-            return {
-                'success': True,
-                'verified_name': full_name or 'نام تایید شده',
-                'national_id': national_id,
-            }
+    class MockVerificationResult:
+        def __init__(self, national_id, full_name=None):
+            self.success = True
+            self.verified_name = full_name or 'نام تایید شده'
+            self.national_id = national_id
+            self.error_message = None
+            self.error_code = None
 
-    from apps.accounts.services import shahkar_service
-    from apps.accounts.views import auth as auth_views
+    class MockVerifier:
+        def verify(self, national_id, phone, full_name=None):
+            return MockVerificationResult(national_id, full_name)
 
-    monkeypatch.setattr(shahkar_service, 'ShahkarService', MockShahkar)
-    monkeypatch.setattr(auth_views, 'ShahkarService', MockShahkar)
-    return MockShahkar
+    def mock_get_verifier():
+        return MockVerifier()
+
+    # ✅ FIX: پچ کردن مسیر واقعی که View استفاده می‌کند
+    import shared.national_id
+    monkeypatch.setattr(shared.national_id, 'get_national_id_verifier', mock_get_verifier)
+
+    return MockVerifier
 
 
 # ═══════════════════════════════════════════════
@@ -274,3 +279,105 @@ def test_appointment(customer_user, approved_business, test_service):
         total_price=450000,
         deposit_amount=100000,
     )
+
+
+
+
+
+# ═══════════════════════════════════════════════
+#   فیکسچرهای داشبورد ادمین — فاز ۶
+# ═══════════════════════════════════════════════
+from django.utils import timezone as django_timezone
+
+
+@pytest.fixture
+def dashboard_admin_role(db):
+    """نقش سوپر ادمین داشبورد"""
+    from apps.dashboard.models import AdminRole
+    role, _ = AdminRole.objects.get_or_create(
+        name=AdminRole.Role.SUPER_ADMIN,
+        defaults={
+            'description': 'دسترسی کامل به تمام بخش‌ها',
+            'permissions': ['users', 'businesses', 'financial',
+                            'content', 'support', 'settings'],
+        },
+    )
+    return role
+
+
+@pytest.fixture
+def dashboard_app_admin_role(db):
+    """نقش ادمین اپلیکیشن داشبورد"""
+    from apps.dashboard.models import AdminRole
+    role, _ = AdminRole.objects.get_or_create(
+        name=AdminRole.Role.APP_ADMIN,
+        defaults={
+            'description': 'دسترسی به بخش کاربران و کسب‌وکارها',
+            'permissions': ['users', 'businesses'],
+        },
+    )
+    return role
+
+
+@pytest.fixture
+def dashboard_admin_user(db):
+    """کاربر ادمین داشبورد"""
+    return User.objects.create_user(
+        phone='09121111111',
+        first_name='ادمین',
+        last_name='داشبورد',
+        is_staff=True,
+        is_verified=True,
+    )
+
+
+@pytest.fixture
+def dashboard_admin_profile(dashboard_admin_user, dashboard_admin_role):
+    """پروفایل ادمین داشبورد (AdminUser)"""
+    from apps.dashboard.models import AdminUser
+    admin, _ = AdminUser.objects.get_or_create(
+        user=dashboard_admin_user,
+        defaults={
+            'role': dashboard_admin_role,
+            'is_active': True,
+        },
+    )
+    return admin
+
+
+@pytest.fixture
+def dashboard_client(client, dashboard_admin_user, dashboard_admin_profile):
+    """
+    کلاینت با سشن داشبورد فعال (نقش super_admin)
+    شبیه‌سازی ورود موفق به داشبورد بدون نیاز به OTP
+    """
+    session = client.session
+    session['dashboard_admin_logged_in'] = True
+    session['dashboard_admin_phone'] = dashboard_admin_user.phone
+    session['dashboard_role'] = 'super_admin'
+    session['dashboard_login_time'] = django_timezone.now().isoformat()
+    session.save()
+    return client
+
+
+@pytest.fixture
+def dashboard_app_admin_client(client, dashboard_admin_user, dashboard_app_admin_role):
+    """
+    کلاینت با سشن داشبورد فعال (نقش app_admin)
+    برای تست محدودیت‌های دسترسی
+    """
+    from apps.dashboard.models import AdminUser
+    AdminUser.objects.get_or_create(
+        user=dashboard_admin_user,
+        defaults={
+            'role': dashboard_app_admin_role,
+            'is_active': True,
+        },
+    )
+    session = client.session
+    session['dashboard_admin_logged_in'] = True
+    session['dashboard_admin_phone'] = dashboard_admin_user.phone
+    session['dashboard_role'] = 'app_admin'
+    session['dashboard_login_time'] = django_timezone.now().isoformat()
+    session.save()
+    return client

@@ -1,0 +1,38 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ارسال پیامک{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">📱 ارسال پیامک</h4>
+                <a href="{% url 'dashboard:sms_logs' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت به لاگ‌ها
+                </a>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">شماره تلفن <span class="text-danger">*</span></label>
+                    <input type="tel" class="form-control" name="user_phone"
+                           placeholder="09123456789" required>
+                    <small class="text-muted">کاربر باید قبلاً ثبت‌نام کرده باشد</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">متن پیامک <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="message" rows="3"
+                              placeholder="متن پیامک..." required maxlength="500"></textarea>
+                    <small class="text-muted">حداکثر ۵۰۰ کاراکتر</small>
+                </div>
+                <div class="alert alert-info">
+                    <strong>ℹ️ نکته:</strong> پیامک از طریق سرویس کاوه‌نگار ارسال می‌شود.
+                    هزینه ارسال به اعتبار پنل کاوه‌نگار اضافه می‌شود.
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    📨 ارسال پیامک
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

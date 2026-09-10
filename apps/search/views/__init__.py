@@ -1,5 +1,12 @@
+# apps/search/views/__init__.py — GlobalSearchView با فیلتر موقعیت مکانی سراسری
+
 """
-Views برای جستجوی یکپارچه — نسخه نهایی
+Views برای جستجوی یکپارچه — نسخه نهایی با فیلتر موقعیت سراسری
+
+پارامترهای موقعیت مکانی (اولویت با مختصات):
+  - اگر `lat` + `lng` ارسال شود → فیلتر شعاعی (اولویت بالاتر)
+  - اگر `province_id` / `city_id` ارسال شود → فیلتر استان/شهر
+  - اگر هیچ‌کدام نباشد → بدون فیلتر مکانی
 """
 import logging
 from rest_framework import permissions, status
@@ -16,7 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 class GlobalSearchView(APIView, StandardResponseMixin):
-    """جستجوی یکپارچه در کسب‌وکارها و خدمات"""
+    """
+    جستجوی یکپارچه در کسب‌وکارها و خدمات
+
+    ✅ پشتیبانی از فیلتر موقعیت مکانی سراسری:
+    - `lat` + `lng` + `radius` → فیلتر بر اساس فاصله (اولویت بالاتر)
+    - `province_id` + `city_id` → فیلتر بر اساس استان/شهر
+    - اگر هیچ‌کدام ارسال نشود → بدون فیلتر مکانی
+    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(
@@ -32,17 +46,38 @@ class GlobalSearchView(APIView, StandardResponseMixin):
             ),
             OpenApiParameter(
                 name='limit', type=int, required=False,
-                description='حداکثر تعداد نتایج',
+                description='حداکثر تعداد نتایج (پیش‌فرض: ۱۰، حداکثر: ۵۰)',
+            ),
+            # ─── 🆕 فیلتر موقعیت مکانی سراسری ───
+            OpenApiParameter(
+                name='lat', type=float, required=False,
+                description='عرض جغرافیایی کاربر (اولویت بالاتر از استان/شهر)',
+            ),
+            OpenApiParameter(
+                name='lng', type=float, required=False,
+                description='طول جغرافیایی کاربر',
+            ),
+            OpenApiParameter(
+                name='radius', type=float, required=False,
+                description='شعاع جستجو بر حسب کیلومتر (پیش‌فرض: ۱۰)',
+            ),
+            OpenApiParameter(
+                name='province_id', type=int, required=False,
+                description='شناسه استان برای فیلتر مکانی',
+            ),
+            OpenApiParameter(
+                name='city_id', type=int, required=False,
+                description='شناسه شهر برای فیلتر مکانی (نیازمند استان)',
             ),
         ],
         tags=['Search'],
-        summary='جستجوی یکپارچه',
+        summary='جستجوی یکپارچه (با فیلتر موقعیت مکانی سراسری)',
     )
     def get(self, request):
         query = request.query_params.get('query', '').strip()
         category = request.query_params.get('category', 'all')
-        limit = int(request.query_params.get('limit', 10))
 
+        # ─── اعتبارسنجی عبارت جستجو ───
         if len(query) < SearchService.MIN_QUERY_LENGTH:
             return self.error_response(
                 message='عبارت جستجو باید حداقل ۲ کاراکتر باشد',
@@ -50,20 +85,81 @@ class GlobalSearchView(APIView, StandardResponseMixin):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # ─── اعتبارسنجی حد ───
         try:
+            limit = int(request.query_params.get('limit', 10))
             limit = max(1, min(limit, 50))
         except (ValueError, TypeError):
             limit = 10
 
-        if category == 'businesses':
-            businesses = list(SearchService.search_businesses(query, limit=limit))
-            services = []
-        elif category == 'services':
-            businesses = []
-            services = list(SearchService.search_services(query, limit=limit))
-        else:
-            businesses = list(SearchService.search_businesses(query, limit=limit))
-            services = list(SearchService.search_services(query, limit=limit))
+        # ═══════════════════════════════════════════
+        #    🆕 استخراج پارامترهای موقعیت مکانی
+        # ═══════════════════════════════════════════
+        lat = request.query_params.get('lat')
+        lng = request.query_params.get('lng')
+        radius = request.query_params.get('radius', 10)
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+
+        # ساخت دیکشنری پارامترهای مکانی برای پاس دادن به سرویس
+        location_params = {}
+        if lat and lng:
+            # ✅ اولویت با مختصات جغرافیایی
+            try:
+                lat = float(lat)
+                lng = float(lng)
+                radius = float(radius)
+                radius = max(0.5, min(radius, 50))
+                location_params['lat'] = lat
+                location_params['lng'] = lng
+                location_params['radius'] = radius
+            except (ValueError, TypeError):
+                pass  # مختصات نامعتبر → بدون فیلتر مکانی
+        elif province_id:
+            # ✅ فیلتر استان/شهر
+            try:
+                location_params['province_id'] = int(province_id)
+                if city_id:
+                    location_params['city_id'] = int(city_id)
+            except (ValueError, TypeError):
+                pass  # شناسه نامعتبر → بدون فیلتر مکانی
+
+        # ═══════════════════════════════════════════
+        #    اجرای جستجو
+        # ═══════════════════════════════════════════
+        try:
+            if category == 'businesses':
+                businesses = list(
+                    SearchService.search_businesses(
+                        query, limit=limit, **location_params
+                    )
+                )
+                services = []
+            elif category == 'services':
+                businesses = []
+                services = list(
+                    SearchService.search_services(
+                        query, limit=limit, **location_params
+                    )
+                )
+            else:
+                businesses = list(
+                    SearchService.search_businesses(
+                        query, limit=limit, **location_params
+                    )
+                )
+                services = list(
+                    SearchService.search_services(
+                        query, limit=limit, **location_params
+                    )
+                )
+        except Exception as e:
+            logger.error(f"Search error: {e}", exc_info=True)
+            return self.error_response(
+                message='خطا در انجام جستجو',
+                code='SEARCH_ERROR',
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         total = len(businesses) + len(services)
 
@@ -71,7 +167,7 @@ class GlobalSearchView(APIView, StandardResponseMixin):
         if request.user.is_authenticated:
             SearchService._save_history(request.user, query, total)
 
-        # ✅ FIX فاز ۹: سریالایز کردن نتایج
+        # ✅ سریالایز کردن نتایج
         from apps.search.serializers import (
             SearchResultBusinessSerializer,
             SearchResultServiceSerializer,
@@ -93,7 +189,7 @@ class GlobalSearchView(APIView, StandardResponseMixin):
             },
         )
 
-    
+
 class SearchSuggestionsView(APIView, StandardResponseMixin):
     """پیشنهادات جستجو (Autocomplete)"""
     permission_classes = [permissions.AllowAny]
@@ -143,8 +239,11 @@ class SearchHistoryView(APIView, StandardResponseMixin):
         summary='تاریخچه جستجو',
     )
     def get(self, request):
-        limit = int(request.query_params.get('limit', 20))
-        limit = max(1, min(limit, 50))
+        try:
+            limit = int(request.query_params.get('limit', 20))
+            limit = max(1, min(limit, 50))
+        except (ValueError, TypeError):
+            limit = 20
 
         history = SearchService.get_user_history(request.user, limit=limit)
 
@@ -167,7 +266,6 @@ class SearchHistoryView(APIView, StandardResponseMixin):
         item_id = request.query_params.get('id')
 
         if item_id:
-            # حذف یک آیتم خاص
             try:
                 deleted_count, _ = SearchHistory.objects.filter(
                     id=int(item_id),
@@ -191,11 +289,11 @@ class SearchHistoryView(APIView, StandardResponseMixin):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
-            # حذف کل تاریخچه
             SearchService.clear_user_history(request.user)
             return self.success_response(
                 message='تاریخچه جستجو حذف شد',
             )
+
 
 class NearbyView(APIView, StandardResponseMixin):
     """
@@ -231,7 +329,6 @@ class NearbyView(APIView, StandardResponseMixin):
     def get(self, request):
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
-        radius = float(request.query_params.get('radius', 10))
         category_id = request.query_params.get('category_id')
 
         if not lat or not lng:
@@ -243,7 +340,8 @@ class NearbyView(APIView, StandardResponseMixin):
 
         try:
             lat, lng = float(lat), float(lng)
-            radius = max(0.5, min(radius, 50))  # بین ۰.۵ تا ۵۰ کیلومتر
+            radius = float(request.query_params.get('radius', 10))
+            radius = max(0.5, min(radius, 50))
         except (ValueError, TypeError):
             return self.error_response(
                 message='مختصات جغرافیایی نامعتبر است',
@@ -257,7 +355,10 @@ class NearbyView(APIView, StandardResponseMixin):
         from apps.businesses.models import Business
         from apps.ads.models import ModelRequest, LineRental
         from apps.businesses.serializers.business import BusinessListSerializer
-        from apps.ads.serializers import ModelRequestListSerializer, LineRentalListSerializer
+        from apps.ads.serializers import (
+            ModelRequestListSerializer,
+            LineRentalListSerializer,
+        )
 
         point = Point(lng, lat, srid=4326)
         distance_filter = D(km=radius)
@@ -266,17 +367,21 @@ class NearbyView(APIView, StandardResponseMixin):
         businesses = Business.objects.filter(
             status=Business.Status.APPROVED,
             is_active=True,
+            location__isnull=False,
             location__distance_lte=(point, distance_filter),
         ).distance(point).order_by('distance')[:20]
 
-        # فیلتر دسته‌بندی
         if category_id:
-            businesses = businesses.filter(category_id=category_id)
+            businesses = businesses.filter(
+                services__category_id=category_id,
+                services__is_active=True,
+            ).distinct()
 
         # ─── مدلینگ‌های نزدیک ───
         model_requests = ModelRequest.objects.filter(
             business__status='approved',
             business__is_active=True,
+            location__isnull=False,
             location__distance_lte=(point, distance_filter),
         ).distance(point).order_by('distance')[:10]
 
@@ -284,6 +389,7 @@ class NearbyView(APIView, StandardResponseMixin):
         line_rentals = LineRental.objects.filter(
             business__status='approved',
             business__is_active=True,
+            location__isnull=False,
             location__distance_lte=(point, distance_filter),
         ).distance(point).order_by('distance')[:10]
 

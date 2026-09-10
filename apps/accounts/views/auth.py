@@ -14,7 +14,7 @@ from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken, OutstandingToken,
 )
 from drf_spectacular.utils import extend_schema
-
+from rest_framework_simplejwt.tokens import SlidingToken
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import get_client_ip, get_device_info, mask_phone
 from apps.core.exceptions import OTPException, ShahkarException
@@ -61,7 +61,6 @@ class SendOTPView(APIView, StandardResponseMixin):
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         phone = serializer.validated_data['phone']
 
         try:
@@ -77,24 +76,18 @@ class SendOTPView(APIView, StandardResponseMixin):
                 message=f'کد تایید به شماره {mask_phone(phone)} ارسال شد',
             )
         except OTPException as e:
+            # ✅ FIX: خطاهای ارسال پیامک هم اینجا هندل می‌شوند
             return e.as_response()
         except Exception as e:
             logger.exception(f"Send OTP error: {e}")
             return self.error_response(
-                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید',
+                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
                 code='OTP_SEND_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 # ═══════════════════════════════════════════════
 #   Verify OTP
 # ═══════════════════════════════════════════════
-
-# apps/accounts/views/auth.py
-# فقط کلاس VerifyOTPView را پیدا کنید و متد post را جایگزین کنید:
-
-# apps/accounts/views/auth.py
-
-# ... (imports existing) ...
 
 class VerifyOTPView(APIView, StandardResponseMixin):
     """تایید کد OTP و ورود/ثبت‌نام"""
@@ -130,29 +123,42 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
+            # ✅ NEW: بررسی وضعیت تعلیق — کاربر وارد می‌شود اما با flag تعلیق
+            # توکن تولید می‌شود ولی در سمت فرانت مدال تعلیق نمایش داده می‌شود
+            is_suspended = user.is_suspended
+            suspension_reason = user.suspension_reason if is_suspended else ''
+
             # اگر کاربر قدیمی است اما هنوز وریفای نشده
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
 
+
             # آپدیت آخرین ورود
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
-            # 3. ثبت دستگاه (Device Tracking)
+             # 3. ثبت دستگاه (Device Tracking)
             device_info = get_device_info(request)
-            UserDevice.objects.update_or_create(
-                user=user,
-                device_type=device_info['device_type'],
-                device_name=device_info.get('device_name', ''),
-                defaults={
-                    'ip_address': get_client_ip(request),
-                    'os_info': device_info.get('os_version', ''),
-                    'is_current': True,
-                },
-            )
+            client_ip = get_client_ip(request)
 
-            # 4. تولید JWT Token
+            try:
+                UserDevice.objects.update_or_create(
+                    user=user,
+                    device_type=device_info['device_type'],
+                    defaults={
+                        'device_name': device_info.get('device_name') or f'{device_info["device_type"]} Device',
+                        'ip_address': client_ip or '127.0.0.1',  # ✅ FIX: None → fallback
+                        'os_info': device_info.get('os_info') or device_info.get('os_version') or 'Unknown',
+                        'location': 'Unknown',  # ✅ FIX: فیلد اجباری NOT NULL
+                        'is_current': True,
+                    },
+                )
+            except Exception as device_err:
+                # ✅ FIX: اگر ثبت دستگاه ناموفق بود، ورود نباید فیل شود
+                logger.warning(f"Device registration failed: {device_err}")
+
+             # 4. تولید JWT Token
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
@@ -175,11 +181,15 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     'refresh_token': str(refresh),
                     'token_type': 'Bearer',
                     'expires_in': int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                    'refresh_expires_in': int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                     'user': UserProfileSerializer(user).data,
+                    'is_suspended': is_suspended,
+                    'suspension_reason': suspension_reason,
                 },
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
             )
 
+        
         except OTPException as e:
             return e.as_response()
         except Exception as e:
@@ -249,8 +259,10 @@ class LogoutView(APIView, StandardResponseMixin):
 #   National ID Verification
 # ═══════════════════════════════════════════════
 
+# apps/accounts/views/auth.py
+# فقط کلاس NationalIdVerificationView را پیدا کنید و متد post را جایگزین کنید
+
 class NationalIdVerificationView(APIView, StandardResponseMixin):
-    """استعلام کد ملی از سامانه شاهکار"""
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
@@ -265,25 +277,57 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
         national_id = serializer.validated_data['national_id']
 
         try:
-            result = ShahkarService.verify(national_id, request.user.phone)
+            from shared.national_id import get_national_id_verifier
+            verifier = get_national_id_verifier()
 
-            request.user.national_id = national_id
-            request.user.is_national_id_verified = True
-            request.user.verified_name = result.get('verified_name', '')
-            request.user.save(update_fields=[
-                'national_id', 'is_national_id_verified', 'verified_name',
-            ])
-
-            return self.success_response(
-                data={
-                    'verified_name': result['verified_name'],
-                    'national_id': national_id,
-                    'phone_display': mask_phone(request.user.phone),
-                },
-                message='هویت شما با موفقیت تایید شد',
+            # ✅ FIX: شماره موبایل کاربر به فرمت صحیح ارسال شود
+            # متد _normalize_phone در verifier این کار را انجام می‌دهد
+            result = verifier.verify(
+                national_id=national_id,
+                phone=request.user.phone,
+                full_name=request.user.full_name,
             )
-        except ShahkarException as e:
-            return e.as_response()
+
+            if result.success:
+                # ذخیره در دیتابیس
+                request.user.national_id = national_id
+                request.user.is_national_id_verified = True
+                request.user.verified_name = result.verified_name
+                request.user.save(update_fields=[
+                    'national_id',
+                    'is_national_id_verified',
+                    'verified_name',
+                ])
+
+                # همگام‌سازی با کسب‌وکار
+                business = request.user.businesses.first()
+                if business:
+                    business.national_id = national_id
+                    business.is_national_id_verified = True
+                    business.verified_name = result.verified_name
+                    business.save(update_fields=[
+                        'national_id',
+                        'is_national_id_verified',
+                        'verified_name',
+                    ])
+
+                return self.success_response(
+                    data={
+                        'verified_name': result.verified_name,
+                        'national_id': national_id,
+                        'phone_display': mask_phone(request.user.phone),
+                    },
+                    message='هویت شما با موفقیت تایید شد',
+                )
+            else:
+                return self.error_response(
+                    message=result.error_message or (
+                        'کد ملی با شماره موبایل تطابق ندارد'
+                    ),
+                    code=result.error_code or 'MISMATCH',
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         except Exception as e:
             logger.exception(f"National ID verification error: {e}")
             return self.error_response(
@@ -292,7 +336,7 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-
+        
 # ═══════════════════════════════════════════════
 #   Active Devices
 # ═══════════════════════════════════════════════

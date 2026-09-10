@@ -1,0 +1,349 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}مدیریت مالی{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-2);
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-blocked { background: #FFF3CD; color: #856404; }
+    .status-settling { background: #D1ECF1; color: #0C5460; }
+    .status-settled { background: #D4EDDA; color: #155724; }
+    .status-refunded { background: #F8D7DA; color: #721C24; }
+    .status-failed { background: #F8D7DA; color: #721C24; }
+    .status-pending { background: #FFF3CD; color: #856404; }
+    .status-processing { background: #D1ECF1; color: #0C5460; }
+    .status-completed { background: #D4EDDA; color: #155724; }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+    }
+    .quick-link:hover {
+        background: rgba(168, 139, 125, 0.1);
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ─── هدر ─── -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">💰 مدیریت مالی</h2>
+        <p class="text-muted mb-0">تراکنش‌ها، تسویه‌ها و آمار مالی</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'dashboard:transactions_list' %}" class="btn btn-outline-primary btn-sm">
+            📋 تراکنش‌ها
+        </a>
+        <a href="{% url 'dashboard:settlements_list' %}" class="btn btn-outline-primary btn-sm">
+            🏧 تسویه‌ها
+        </a>
+    </div>
+</div>
+
+<!-- ─── آمار تراکنش‌ها ─── -->
+<div class="section-title">📊 آمار تراکنش‌ها</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(168, 139, 125, 0.1); color: #8D7468;">📋</div>
+            <div class="stat-value">{{ tx_stats.total_count|default:"0" }}</div>
+            <div class="stat-label">کل تراکنش‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #F57F17;">🔒</div>
+            <div class="stat-value">{{ tx_stats.blocked_count|default:"0" }}</div>
+            <div class="stat-label">بلوکه</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">⏳</div>
+            <div class="stat-value">{{ tx_stats.settling_count|default:"0" }}</div>
+            <div class="stat-label">در حال تسویه</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">✅</div>
+            <div class="stat-value">{{ tx_stats.settled_count|default:"0" }}</div>
+            <div class="stat-label">تسویه شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(244, 67, 54, 0.1); color: #C62828;">↩️</div>
+            <div class="stat-value">{{ tx_stats.refunded_count|default:"0" }}</div>
+            <div class="stat-label">مسترد شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(158, 158, 158, 0.1); color: #616161;">❌</div>
+            <div class="stat-value">{{ tx_stats.failed_count|default:"0" }}</div>
+            <div class="stat-label">ناموفق</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── مبالغ ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label mb-1">مبلغ کل تراکنش‌ها</div>
+            <div class="stat-value">{{ tx_stats.total_amount|default:"0"|floatformat:0 }} تومان</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label mb-1">مبلغ بلوکه</div>
+            <div class="stat-value">{{ tx_stats.blocked_amount|default:"0"|floatformat:0 }} تومان</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label mb-1">مبلغ تسویه شده</div>
+            <div class="stat-value">{{ tx_stats.settled_amount|default:"0"|floatformat:0 }} تومان</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-label mb-1">کمیسیون بیو کلاب</div>
+            <div class="stat-value">{{ tx_stats.total_fee|default:"0"|floatformat:0 }} تومان</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── آمار تسویه‌ها ─── -->
+<div class="section-title">🏧 آمار تسویه‌ها</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1); color: #F57F17;">⏳</div>
+            <div class="stat-value">{{ settlement_stats.pending_count|default:"0" }}</div>
+            <div class="stat-label">در انتظار</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(33, 150, 243, 0.1); color: #1976D2;">🔄</div>
+            <div class="stat-value">{{ settlement_stats.processing_count|default:"0" }}</div>
+            <div class="stat-label">در حال پردازش</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">✅</div>
+            <div class="stat-value">{{ settlement_stats.completed_count|default:"0" }}</div>
+            <div class="stat-label">واریز شده</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(244, 67, 54, 0.1); color: #C62828;">❌</div>
+            <div class="stat-value">{{ settlement_stats.failed_count|default:"0" }}</div>
+            <div class="stat-label">ناموفق</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── تسویه‌های در انتظار ─── -->
+{% if pending_settlements %}
+<div class="section-title">⏳ تسویه‌های در انتظار پردازش</div>
+<div class="table-card mb-4">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کسب‌وکار</th>
+                <th>مبلغ</th>
+                <th>شبا</th>
+                <th>بانک</th>
+                <th>تاریخ درخواست</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for settlement in pending_settlements %}
+            <tr>
+                <td>
+                    <strong>{{ settlement.business.name }}</strong>
+                    <br>
+                    <small class="text-muted">{{ settlement.business.owner.phone }}</small>
+                </td>
+                <td><strong>{{ settlement.amount|floatformat:0 }}</strong> تومان</td>
+                <td><code>{{ settlement.bank_sheba }}</code></td>
+                <td>{{ settlement.bank_name }}</td>
+                <td>{{ settlement.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <form method="post" action="{% url 'dashboard:settlement_approve' settlement.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success">✅ پردازش</button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                            onclick="showRejectModal({{ settlement.id }}, '{{ settlement.business.name }}')">
+                        ❌ رد
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ─── تراکنش‌های اخیر ─── -->
+<div class="section-title">📋 تراکنش‌های اخیر</div>
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کد پیگیری</th>
+                <th>مشتری</th>
+                <th>کسب‌وکار</th>
+                <th>مبلغ</th>
+                <th>نوع</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in recent_transactions %}
+            <tr>
+                <td><code>{{ tx.tracking_code }}</code></td>
+                <td>{{ tx.customer.phone }}</td>
+                <td>{{ tx.business.name }}</td>
+                <td>{{ tx.amount|floatformat:0 }} تومان</td>
+                <td>{{ tx.get_type_display }}</td>
+                <td>
+                    {% if tx.status == 'blocked' %}
+                    <span class="status-badge status-blocked">بلوکه</span>
+                    {% elif tx.status == 'settling' %}
+                    <span class="status-badge status-settling">در حال تسویه</span>
+                    {% elif tx.status == 'settled' %}
+                    <span class="status-badge status-settled">تسویه شده</span>
+                    {% elif tx.status == 'refunded' %}
+                    <span class="status-badge status-refunded">مسترد شده</span>
+                    {% else %}
+                    <span class="status-badge status-failed">ناموفق</span>
+                    {% endif %}
+                </td>
+                <td>{{ tx.created_at|date:"Y/m/d H:i" }}</td>
+                <td>
+                    <a href="{% url 'dashboard:transaction_detail' tx.id %}" class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ─── مودال رد تسویه ─── -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">رد تسویه</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>رد تسویه کسب‌وکار: <strong id="rejectBusinessName"></strong></p>
+                    <label class="form-label">دلیل رد (الزامی)</label>
+                    <textarea class="form-control" name="rejection_reason" rows="3"
+                              placeholder="دلیل رد تسویه را بنویسید..." required></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-danger">رد تسویه</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showRejectModal(settlementId, businessName) {
+        document.getElementById('rejectBusinessName').textContent = businessName;
+        document.getElementById('rejectForm').action = `/dashboard/financial/settlements/${settlementId}/reject/`;
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

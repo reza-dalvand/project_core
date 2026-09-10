@@ -6,48 +6,42 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
-# ═══════ سفارشی‌سازی Admin ═══════
-admin.site.site_header = "پنل مدیریت بیو کلاب"
-admin.site.site_title = "بیو کلاب | مدیریت"
-admin.site.index_title = "داشبورد مدیریت"
+from apps.core.admin_site import OTPAdminSite
+from apps.dashboard.views.errors import error_403, error_404, error_500
+
 
 urlpatterns = [
-    # ═══════ Admin ═══════
-    path(
-        settings.LANDING_ADMIN_URL,
-        admin.site.urls,
-        name='admin',
-    ),
-
     # ═══════ Landing Page ═══════
     path('', include('apps.landing.urls')),
-
-    # ═══════ REST API ═══════
-    path('api/v1/', include([
-        path('accounts/', include('apps.accounts.urls')),
-        path('categories/', include('apps.categories.urls')),
-        path('locations/', include('apps.locations.urls')),
-        path('businesses/', include('apps.businesses.urls')),
-        path('services/', include('apps.services.urls')),
-        path('schedules/', include('apps.schedules.urls')),
-        path('appointments/', include('apps.appointments.urls')),
-        path('payments/', include('apps.payments.urls')),
-        path('reviews/', include('apps.reviews.urls')),
-        path('favorites/', include('apps.favorites.urls')),
-        path('notifications/', include('apps.notifications.urls')),
-        path('search/', include('apps.search.urls')),
-        path('explore/', include('apps.explore.urls')),
-        path('portfolios/', include('apps.portfolios.urls')),
-        path('ads/', include('apps.ads.urls')),
-        path('reminders/', include('apps.reminders.urls')),
-        path('support/', include('apps.support.urls')),
-
-        # ✅ فاز ۱: اندپوینت‌های کانفیگ
-        path('config/', include('apps.core.urls')),
-    ])),
-
     # ═══════ Dashboard ═══════
     path('dashboard/', include('apps.dashboard.urls')),
+    # ═══════ REST API ═══════
+        path('api/v1/', include([
+            path('accounts/', include('apps.accounts.urls')),
+            path('categories/', include('apps.categories.urls')),
+            path('locations/', include('apps.locations.urls')),
+            path('businesses/', include('apps.businesses.urls')),
+            path('services/', include('apps.services.urls')),
+            path('schedules/', include('apps.schedules.urls')),
+            path('appointments/', include('apps.appointments.urls')),
+            path('payments/', include('apps.payments.urls')),
+            path('reviews/', include('apps.reviews.urls')),
+            path('favorites/', include('apps.favorites.urls')),
+            path('notifications/', include('apps.notifications.urls')),
+            path('search/', include('apps.search.urls')),
+            path('portfolios/', include('apps.portfolios.urls')),
+            path('reminders/', include('apps.reminders.urls')),
+            path('support/', include('apps.support.urls')),
+            
+            # ✅ FIX: اضافه کردن Namespace اپ explore
+            path('explore/', include('apps.explore.urls')),
+
+            path('ads/', include('apps.ads.urls')),
+            path('ads-management/', include('apps.ads_management.urls')),
+
+            # ✅ فاز ۱: اندپوینت‌های کانفیگ
+            path('config/', include('apps.core.urls')),
+        ])),
 ]
 
 # ═══════ Media & Static در توسعه ═══════
@@ -67,3 +61,7 @@ urlpatterns += [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+handler403 = error_403
+handler404 = error_404
+handler500 = error_500

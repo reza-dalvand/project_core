@@ -1,27 +1,31 @@
+# apps/favorites/serializers/__init__.py
+# اطمینان از وجود FavoriteBusinessSerializer
+
 """
-Serializers برای علاقه‌مندی‌ها — نسخه نهایی (فاز ۸)
+Serializers برای علاقه‌مندی‌ها
 """
 from rest_framework import serializers
-from apps.favorites.models import FavoriteBusiness, FavoritePost
+from apps.favorites.models import FavoriteBusiness
 
 
 class FavoriteBusinessSerializer(serializers.ModelSerializer):
     """Serializer برای علاقه‌مندی به کسب‌وکار"""
     business_name = serializers.CharField(source='business.name', read_only=True)
     business_logo = serializers.SerializerMethodField()
-    # ✅ فاز ۸: فیلدهای مورد نیاز فرانت
+    business_cover = serializers.SerializerMethodField()  # ✅ جدید
     business_category = serializers.CharField(
         source='business.category.name', read_only=True, default=''
     )
     business_city = serializers.CharField(
         source='business.city.name', read_only=True, default=''
     )
+    business_slug = serializers.CharField(source='business.booking_slug', read_only=True)  # ✅ جدید
 
     class Meta:
         model = FavoriteBusiness
         fields = [
-            'id', 'business', 'business_name', 'business_logo',
-            'business_category', 'business_city',  # ✅ فاز ۸
+            'id', 'business', 'business_name', 'business_logo', 'business_cover',
+            'business_category', 'business_city', 'business_slug',
             'created_at',
         ]
 
@@ -31,36 +35,16 @@ class FavoriteBusinessSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.business.logo.url)
         return None
 
-
-class FavoritePostSerializer(serializers.ModelSerializer):
-    """Serializer برای علاقه‌مندی به پست"""
-    # ✅ فاز ۸: فیلدهای مورد نیاز فرانت
-    caption = serializers.CharField(source='post.caption', read_only=True)
-    business_name = serializers.CharField(
-        source='post.business.name', read_only=True
-    )
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FavoritePost
-        fields = [
-            'id', 'post', 'caption', 'business_name',
-            'image',  # ✅ فاز ۸
-            'created_at',
-        ]
-
-    def get_image(self, obj):
-        """اولین تصویر پست"""
+    def get_business_cover(self, obj):
+        """✅ جدید: تصویر کاور کسب‌وکار"""
         request = self.context.get('request')
-        first_image = obj.post.images.order_by('sort_order').first()
-        if first_image and request:
-            return request.build_absolute_uri(first_image.image.url)
-        return None
-
-
-class FavoriteToggleSerializer(serializers.Serializer):
-    """Serializer برای تغییر وضعیت علاقه‌مندی"""
-    favorite_type = serializers.ChoiceField(
-        choices=['business', 'post'],
-    )
-    object_id = serializers.IntegerField()
+        # اول cover_image را چک کن
+        if hasattr(obj.business, 'cover_image') and obj.business.cover_image and request:
+            return request.build_absolute_uri(obj.business.cover_image.url)
+        # اگر cover نبود، اولین تصویر گالری
+        if hasattr(obj.business, 'gallery') and request:
+            first_gallery = obj.business.gallery.first()
+            if first_gallery and first_gallery.image:
+                return request.build_absolute_uri(first_gallery.image.url)
+        # Fallback به logo
+        return self.get_business_logo(obj)

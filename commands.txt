@@ -1,0 +1,31 @@
+# ۲. Build و Start
+docker compose -f docker-compose.dev.yml up -d --build
+
+# ۳. ایجاد داده‌های اولیه (اولین بار)
+docker compose -f docker-compose.dev.yml exec backend \
+  python manage.py create_initial_data
+
+# ۴. مشاهده لاگ‌ها
+docker compose -f docker-compose.dev.yml logs -f backend
+
+
+
+
+# ─── Shell ───
+docker compose -f docker-compose.dev.yml exec backend python manage.py shell
+
+# ─── Migrations ───
+docker compose -f docker-compose.dev.yml exec backend python manage.py makemigrations
+docker compose -f docker-compose.dev.yml exec backend python manage.py migrate
+
+# ─── Create Superuser ───
+docker compose -f docker-compose.dev.yml exec backend python manage.py createsuperuser
+
+# ─── تست ───
+docker compose -f docker-compose.dev.yml exec backend pytest tests/ -v
+
+# ─── توقف ───
+docker compose -f docker-compose.dev.yml down
+
+# ─── توقف + حذف volumes (ریست کامل دیتابیس) ───
+docker compose -f docker-compose.dev.yml down -v

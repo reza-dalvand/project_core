@@ -1,0 +1,112 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}هشدارها{% endblock %}
+{% block extra_head %}
+<style>
+.alert-item {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: all 0.2s;
+}
+.alert-item:hover {
+    box-shadow: 0 4px 12px rgba(44, 37, 33, 0.08);
+    transform: translateY(-1px);
+}
+.alert-item-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+}
+.alert-item-icon.warning { background: rgba(255, 152, 0, 0.12); }
+.alert-item-icon.info    { background: rgba(33, 150, 243, 0.12); }
+.alert-item-icon.success { background: rgba(76, 175, 80, 0.12); }
+.alert-item-body h6 {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+.alert-item-body p {
+    color: var(--text-2);
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+.alert-item-count {
+    margin-right: auto;
+    flex-shrink: 0;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+}
+.alert-item-count.warning { background: #FFF3CD; color: #856404; }
+.alert-item-count.info    { background: #D1ECF1; color: #0C5460; }
+.alert-item-count.success { background: #D4EDDA; color: #155724; }
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+}
+.empty-state .icon { font-size: 72px; margin-bottom: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">🔔 هشدارهای سیستم</h2>
+        <p class="text-muted mb-0">
+            {{ total_alerts }} هشدار فعال
+        </p>
+    </div>
+    <a href="{% url 'dashboard:settings' %}"
+       class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به تنظیمات
+    </a>
+</div>
+
+{% if alerts %}
+    {% for alert in alerts %}
+    <div class="alert-item">
+        <div class="alert-item-icon {{ alert.type }}">
+            {{ alert.icon }}
+        </div>
+        <div class="alert-item-body">
+            <h6>{{ alert.title }}</h6>
+            <p>{{ alert.description }}</p>
+            {% if alert.link %}
+            <a href="{% url 'dashboard:'|add:alert.link %}"
+               class="btn btn-sm btn-outline-primary">
+                مشاهده ←
+            </a>
+            {% endif %}
+        </div>
+        <div class="alert-item-count {{ alert.type }}">
+            {{ alert.count }}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="stat-card">
+        <div class="empty-state">
+            <div class="icon">✅</div>
+            <h4 class="fw-bold mb-2">هیچ هشداری وجود ندارد</h4>
+            <p class="text-muted mb-0">
+                همه چیز مرتب است. هشدارهای جدید اینجا نمایش داده می‌شوند.
+            </p>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

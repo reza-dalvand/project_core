@@ -1,0 +1,72 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش اجاره لاین{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش آگهی لاین: {{ line_rental.title }}</h4>
+                <a href="{% url 'dashboard:line_rentals_list' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">عنوان <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="title" value="{{ line_rental.title }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">کسب‌وکار</label>
+                        <input type="text" class="form-control" value="{{ line_rental.business.name }}" disabled>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">توضیحات</label>
+                    <textarea class="form-control" name="description" rows="2">{{ line_rental.description }}</textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">نوع همکاری</label>
+                        <select class="form-select" name="collab_type">
+                            {% for value, label in collab_choices %}
+                                <option value="{{ value }}" {% if line_rental.collab_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">سهم سالن (%)</label>
+                        <input type="number" class="form-control" name="percent_salon" value="{{ line_rental.percent_salon|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">سهم همکار (%)</label>
+                        <input type="number" class="form-control" name="percent_partner" value="{{ line_rental.percent_partner|default:'' }}">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">مبلغ اجاره ثابت</label>
+                        <input type="number" class="form-control" name="fixed_amount" value="{{ line_rental.fixed_amount|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">رهن/ودیعه</label>
+                        <input type="number" class="form-control" name="fixed_deposit" value="{{ line_rental.fixed_deposit|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">نرخ ساعتی</label>
+                        <input type="number" class="form-control" name="hourly_rate" value="{{ line_rental.hourly_rate|default:'' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">شماره تماس</label>
+                    <input type="tel" class="form-control" name="contact_phone" value="{{ line_rental.contact_phone }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">تغییر تصویر لاین</label>
+                    <input type="file" class="form-control" name="line_image" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">💾 ذخیره تغییرات</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

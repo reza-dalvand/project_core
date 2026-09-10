@@ -1,0 +1,174 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}کسب‌وکارهای متخلف{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-bar {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        margin-bottom: 24px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .violation-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        background: #F8D7DA;
+        color: #721C24;
+    }
+    .suspension-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+        background: #FFF3CD;
+        color: #856404;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">⚠️ کسب‌وکارهای متخلف</h2>
+        <p class="text-muted mb-0">
+            کسب‌وکارهایی که ۵ لغو یا بیشتر در ۲ روز گذشته داشته‌اند
+        </p>
+    </div>
+    <a href="{% url 'dashboard:businesses_list' %}" class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به کسب‌وکارها
+    </a>
+</div>
+
+{% if violations %}
+<!-- ─── فرم ارسال پیامک گروهی ─── -->
+<div class="filter-bar mb-4">
+    <form method="post" action="{% url 'dashboard:violators_send_sms' %}">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label small fw-semibold">متن پیامک (برای ارسال گروهی)</label>
+                <textarea class="form-control" name="message" rows="2"
+                          placeholder="متن پیامک را وارد کنید..."></textarea>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-warning w-100">
+                    📨 ارسال پیامک به همه متخلفین
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ─── جدول ─── -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کسب‌وکار</th>
+                <th>مالک</th>
+                <th>تعداد لغو</th>
+                <th>بازه زمانی</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for violation in violations %}
+            <tr>
+                <td>
+                    <strong>{{ violation.business.name }}</strong>
+                    <br>
+                    <small class="text-muted">{{ violation.business.city.name }}</small>
+                </td>
+                <td>
+                    {{ violation.business.owner.full_name }}
+                    <br>
+                    <small class="text-muted"><code>{{ violation.business.owner.phone }}</code></small>
+                </td>
+                <td>
+                    <span class="violation-badge">{{ violation.cancellation_count }} لغو</span>
+                </td>
+                <td>
+                    <small>
+                        {{ violation.period_start|date:"Y/m/d H:i" }}
+                        <br>تا
+                        {{ violation.period_end|date:"Y/m/d H:i" }}
+                    </small>
+                </td>
+                <td>
+                    {% if violation.business.is_suspended %}
+                        <span class="suspension-badge">🚫 تعلیق شده</span>
+                    {% else %}
+                        <span class="violation-badge">⚠️ در انتظار بررسی</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not violation.business.is_suspended %}
+                        <form method="post"
+                              action="{% url 'dashboard:business_suspend' violation.business.id %}"
+                              class="d-inline"
+                              onsubmit="return confirm('آیا از تعلیق «{{ violation.business.name }}» مطمئن هستید؟');">
+                            {% csrf_token %}
+                            <input type="hidden" name="reason" value="لغوهای مکرر و بدون هماهنگی">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                🚫 تعلیق
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="post"
+                              action="{% url 'dashboard:business_reactivate' violation.business.id %}"
+                              class="d-inline"
+                              onsubmit="return confirm('آیا از فعال‌سازی مجدد «{{ violation.business.name }}» مطمئن هستید؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success">
+                                ✅ فعال‌سازی مجدد
+                            </button>
+                        </form>
+                    {% endif %}
+                    <a href="{% url 'dashboard:business_detail' violation.business.id %}"
+                       class="btn btn-sm btn-outline-primary">
+                        جزئیات
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="stat-card">
+    <div class="text-center py-5">
+        <div style="font-size: 64px; margin-bottom: 16px;">✅</div>
+        <h4 class="fw-bold mb-2">هیچ کسب‌وکار متخلفی وجود ندارد</h4>
+        <p class="text-muted mb-0">
+            در حال حاضر کسب‌وکاری با ۵ لغو یا بیشتر در ۲ روز گذشته شناسایی نشده است.
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

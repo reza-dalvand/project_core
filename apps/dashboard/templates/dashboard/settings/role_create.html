@@ -1,0 +1,47 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}ایجاد نقش{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-6">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">➕ ایجاد نقش جدید</h4>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">نام نقش</label>
+                    <select class="form-select" name="name" required>
+                        <option value="">انتخاب کنید...</option>
+                        <option value="super_admin">سوپر ادمین</option>
+                        <option value="app_admin">ادمین اپلیکیشن</option>
+                        <option value="content_admin">ادمین محتوا</option>
+                        <option value="financial_admin">ادمین مالی</option>
+                        <option value="support_admin">پشتیبانی</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">توضیحات</label>
+                    <textarea class="form-control" name="description" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">دسترسی‌ها</label>
+                    <div class="row">
+                        {% for value, label in available_permissions %}
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="permissions" value="{{ value }}" id="perm_{{ value }}">
+                                <label class="form-check-label" for="perm_{{ value }}">{{ label }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ایجاد نقش
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

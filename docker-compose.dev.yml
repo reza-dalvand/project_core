@@ -1,0 +1,181 @@
+# ═══════════════════════════════════════════════
+#   BEAU CLUB — Docker Compose Development
+# ═══════════════════════════════════════════════
+services:
+  # ═══════════ PostgreSQL + PostGIS ═══════════
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: beau_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: beau_dev
+      POSTGRES_USER: beau_dev
+      POSTGRES_PASSWORD: beau_dev_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beau_dev -d beau_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Redis ═══════════
+  redis:
+    image: redis:7-alpine
+    container_name: beau_dev_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Backend (Django Dev Server) ═══════════
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - dev_media:/app/media
+      - dev_static:/app/staticfiles
+      - /app/__pycache__
+      - /app/.pytest_cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ✅ نیازی به اسکریپت انتظار نیست، depends_on کار را انجام می‌دهد
+    command: >
+      sh -c "
+        echo '🚀 BEAU CLUB — Development Server' &&
+        echo '⏳ Running migrations...' &&
+        python manage.py migrate --noinput &&
+        echo '🌐 Starting Django dev server on http://0.0.0.0:8000' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Celery Worker (with auto-reload) ═══════════
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_celery_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+      - CELERY_TASK_ALWAYS_EAGER=False
+    volumes:
+      - .:/app
+      - dev_media:/app/media
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      watchmedo auto-restart
+      --directory=./
+      --pattern=*.py
+      --recursive
+      --ignore-pattern=*/migrations/*
+      --
+      celery -A config worker
+      -l info
+      -c 2
+    networks:
+      - beau_dev_net
+
+  # ═══════════ Celery Beat ═══════════
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: beau_dev_celery_beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=development
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - DB_ENGINE=django.contrib.gis.db.backends.postgis
+      - DB_NAME=beau_dev
+      - DB_USER=beau_dev
+      - DB_PASSWORD=beau_dev_pass
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - DEBUG=True
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A config beat
+      -l info
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    networks:
+      - beau_dev_net
+
+# ═══════════ Volumes ═══════════
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  dev_media:
+    driver: local
+  dev_static:
+    driver: local
+
+# ═══════════ Networks ═══════════
+networks:
+  beau_dev_net:
+    driver: bridge
+    name: beau_dev_network

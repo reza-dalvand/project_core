@@ -1,0 +1,248 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}پنل مدیریت{% endblock %} | بیو کلاب</title>
+
+<!-- ✅ فاز ۴: فونت وزیرمتن محلی — حذف وابستگی به CDN -->
+<style>
+@font-face {
+font-family: 'Vazirmatn';
+src: url('{% static "dashboard/fonts/Vazirmatn-Regular.woff2" %}') format('woff2');
+font-weight: 400;
+font-style: normal;
+font-display: swap;
+}
+@font-face {
+font-family: 'Vazirmatn';
+src: url('{% static "dashboard/fonts/Vazirmatn-Medium.woff2" %}') format('woff2');
+font-weight: 500;
+font-style: normal;
+font-display: swap;
+}
+@font-face {
+font-family: 'Vazirmatn';
+src: url('{% static "dashboard/fonts/Vazirmatn-Bold.woff2" %}') format('woff2');
+font-weight: 700;
+font-style: normal;
+font-display: swap;
+}
+@font-face {
+font-family: 'Vazirmatn';
+src: url('{% static "dashboard/fonts/Vazirmatn-ExtraBold.woff2" %}') format('woff2');
+font-weight: 800;
+font-style: normal;
+font-display: swap;
+}
+</style>
+
+<!-- ✅ فاز ۴: Bootstrap محلی — حذف وابستگی به CDN -->
+<link rel="stylesheet" href="{% static 'dashboard/vendor/bootstrap.min.css' %}">
+
+<!-- استایل سفارشی پنل -->
+<link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
+
+<!-- ✅ فاز ۴: دسترسی‌پذیری — رد کردن لینک به محتوا -->
+<style>
+.skip-link {
+position: absolute;
+top: -100px;
+right: 16px;
+z-index: 9999;
+background: var(--primary-dark, #8D7468);
+color: #fff;
+padding: 10px 20px;
+border-radius: 0 0 10px 10px;
+font-size: 14px;
+font-weight: 600;
+text-decoration: none;
+transition: top 0.2s;
+}
+.skip-link:focus {
+top: 0;
+color: #fff;
+}
+</style>
+
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ✅ فاز ۴: Skip Link برای دسترسی‌پذیری -->
+<a href="#main-content" class="skip-link">پرش به محتوا اصلی</a>
+
+<!-- Overlay سایدبار -->
+<div class="sidebar-overlay" id="sidebarOverlay" role="presentation"></div>
+
+<!-- ═══════ سایدبار ═══════ -->
+<aside class="sidebar" id="sidebar" role="navigation" aria-label="منوی اصلی">
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            <div class="sidebar-logo" aria-hidden="true">🌸</div>
+            <span>بیو کلاب</span>
+        </div>
+        <button class="sidebar-close" id="sidebarClose"
+                aria-label="بستن منو"
+                aria-expanded="true"
+                aria-controls="sidebar">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    {% load dashboard_tags %}
+    <nav class="sidebar-nav">
+        <a href="{% url 'dashboard:home' %}"
+           class="{% if request.resolver_match.url_name|url_in:'home' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'home' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">🏠</span>
+            <span>داشبورد</span>
+        </a>
+
+        <a href="{% url 'dashboard:users_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'users_list,user_detail,user_edit,user_toggle_active' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'users_list,user_detail,user_edit,user_toggle_active' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">👥</span>
+            <span>کاربران</span>
+        </a>
+
+        <a href="{% url 'dashboard:businesses_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'businesses_list,business_detail,business_approve,business_reject,business_toggle_vip' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'businesses_list,business_detail,business_approve,business_reject,business_toggle_vip' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">🏪</span>
+            <span>کسب‌وکارها</span>
+        </a>
+
+        <a href="{% url 'dashboard:violators_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'violators_list' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'violators_list' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">⚠️</span>
+            <span>متخلفین</span>
+        </a>
+
+        <a href="{% url 'dashboard:bookings' %}"
+           class="{% if request.resolver_match.url_name|url_in:'bookings,appointments_list,appointment_detail,appointment_cancel,appointment_status_change,services_list,service_detail,service_toggle_active,schedules_list' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'bookings,appointments_list,appointment_detail,appointment_cancel,appointment_status_change,services_list,service_detail,service_toggle_active,schedules_list' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">📅</span>
+            <span>نوبت‌ها و خدمات</span>
+        </a>
+
+        <a href="{% url 'dashboard:financial' %}"
+           class="{% if request.resolver_match.url_name|url_in:'financial,transactions_list,transaction_detail,settlements_list,settlement_approve,settlement_reject' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'financial,transactions_list,transaction_detail,settlements_list,settlement_approve,settlement_reject' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">💰</span>
+            <span>مالی</span>
+        </a>
+
+        <a href="{% url 'dashboard:content' %}"
+           class="{% if request.resolver_match.url_name|url_in:'content,explore_list,explore_toggle_pin,explore_delete,portfolios_list,portfolio_delete,model_requests_list,model_request_delete,line_rentals_list,line_rental_delete,price_lists' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'content,explore_list,explore_toggle_pin,explore_delete,portfolios_list,portfolio_delete,model_requests_list,model_request_delete,line_rentals_list,line_rental_delete,price_lists' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">📋</span>
+            <span>محتوا</span>
+        </a>
+
+        <a href="{% url 'dashboard:ads_list' %}"
+           class="{% if request.resolver_match.url_name|url_in:'ads_list,ads_create,ads_edit' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'ads_list,ads_create,ads_edit' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">📢</span>
+            <span>تبلیغات</span>
+        </a>
+
+        <a href="{% url 'dashboard:support' %}"
+           class="{% if request.resolver_match.url_name|url_in:'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'support,tickets_list,ticket_detail,messages_list,message_detail,notifications_list,sms_logs' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">🎧</span>
+            <span>پشتیبانی</span>
+        </a>
+
+        <a href="{% url 'dashboard:settings' %}"
+           class="{% if request.resolver_match.url_name|url_in:'settings,roles_list,role_create,role_edit,role_delete,admins_list,admin_create,admin_toggle_active,admin_delete,system_settings,sms_templates,sms_template_edit,landing_settings' %}active{% endif %}"
+           {% if request.resolver_match.url_name|url_in:'settings,roles_list,role_create,role_edit,role_delete,admins_list,admin_create,admin_toggle_active,admin_delete,system_settings,sms_templates,sms_template_edit,landing_settings' %}aria-current="page"{% endif %}>
+            <span class="icon" aria-hidden="true">⚙️</span>
+            <span>تنظیمات</span>
+        </a>
+
+        <hr aria-hidden="true">
+
+        <a href="{% url 'dashboard:logout' %}" class="text-danger">
+            <span class="icon" aria-hidden="true">🚪</span>
+            <span>خروج</span>
+        </a>
+    </nav>
+</aside>
+
+<!-- ═══════ محتوای اصلی ═══════ -->
+<div class="main-content" id="mainContent">
+
+    <!-- هدر -->
+    <header class="top-header">
+        <button class="hamburger-btn" id="hamburgerBtn"
+                aria-label="باز کردن منو"
+                aria-expanded="false"
+                aria-controls="sidebar">
+            <span aria-hidden="true">☰</span>
+        </button>
+        <div class="header-user-info">
+            <span class="text-muted small">ورود شده با:</span>
+            <strong>{{ request.session.dashboard_admin_phone }}</strong>
+        </div>
+    </header>
+
+    <!-- محتوا -->
+    <main class="container-fluid py-4" id="main-content" role="main">
+
+        <!-- ✅ فاز ۴: نوار وضعیت صفحه برای صفحه‌خوان‌ها -->
+        <div id="page-status" class="visually-hidden" role="status" aria-live="polite"></div>
+
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show"
+             role="alert"
+             aria-live="assertive">
+            {{ message }}
+            <button type="button" class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="بستن پیام"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- ═══════ مودال تایید حذف (فاز ۴ — جایگزین confirm) ═══════ -->
+<div class="modal fade" id="confirmModal" tabindex="-1"
+     aria-labelledby="confirmModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border);">
+                <h5 class="modal-title" id="confirmModalTitle">تایید عملیات</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        aria-label="بستن"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage" style="margin-bottom: 0;">آیا مطمئن هستید؟</p>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border);">
+                <button type="button" class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal">
+                    انصراف
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmModalSubmit">
+                    تایید
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ فاز ۴: اسکریپت‌های محلی — حذف وابستگی به CDN -->
+<script src="{% static 'dashboard/vendor/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'dashboard/js/main.js' %}"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

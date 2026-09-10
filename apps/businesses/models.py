@@ -73,15 +73,15 @@ class Business(BaseModel):
     # ═══════════ موقعیت جغرافیایی (PostGIS) ═══════════
     latitude = models.DecimalField(
         'عرض جغرافیایی',
-        max_digits=10,
-        decimal_places=7,
+        max_digits=18,      
+        decimal_places=10,
         null=True,
         blank=True,
     )
     longitude = models.DecimalField(
         'طول جغرافیایی',
-        max_digits=10,
-        decimal_places=7,
+        max_digits=18,     
+        decimal_places=10,  
         null=True,
         blank=True,
     )
@@ -134,6 +134,18 @@ class Business(BaseModel):
     # ═══════════ VIP ═══════════
     is_vip = models.BooleanField('VIP', default=False)
     vip_expires_at = models.DateTimeField('انقضای VIP', null=True, blank=True)
+
+
+    # ═══════════ وضعیت تعلیق (تخلفات) ═══════════
+    is_suspended = models.BooleanField(
+        'تعلیق شده (تخلف)', 
+        default=False, 
+        db_index=True,
+        help_text='در صورت فعال بودن، کسب‌وکار از جستجو حذف شده و رزرو جدید ممنوع است.'
+    )
+    suspension_reason = models.TextField('دلیل تعلیق', blank=True, default='')
+    suspended_at = models.DateTimeField('زمان تعلیق', null=True, blank=True)
+
 
     class Meta:
         db_table = 'businesses'
@@ -214,3 +226,25 @@ class BusinessGallery(BaseModel):
             raise ValidationError('حداکثر ۳ تصویر مجاز است')
 
 
+
+class BusinessViolation(BaseModel):
+    """لاگ تخلفات کسب‌وکار (لغوهای مکرر توسط سالن)"""
+    business = models.ForeignKey(
+        'Business', on_delete=models.CASCADE, related_name='violations',
+        verbose_name='کسب‌وکار'
+    )
+    cancellation_count = models.IntegerField('تعداد لغو توسط سالن در بازه')
+    period_start = models.DateTimeField('شروع بازه بررسی')
+    period_end = models.DateTimeField('پایان بازه بررسی')
+    is_resolved = models.BooleanField(
+        'رسیدگی شده (تعلیق یا رد)', default=False, db_index=True
+    )
+
+    class Meta:
+        db_table = 'business_violations'
+        verbose_name = '⚠️ تخلف کسب‌وکار'
+        verbose_name_plural = '⚠️ تخلفات کسب‌وکارها'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.business.name} - {self.cancellation_count} لغو'

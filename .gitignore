@@ -225,3 +225,8 @@ docker-compose.override.yml
 # ==========================================================
 *.old
 *.orig
+
+# Database Backups
+backups/
+*.dump
+

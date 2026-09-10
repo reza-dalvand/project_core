@@ -3,8 +3,7 @@ Admin configuration for accounts app
 """
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-
-from .models import User, OtpCode, UserDevice, UserReferral
+from .models import User, OtpCode, UserDevice, UserReferral, UserBankInfo
 
 
 @admin.register(User)
@@ -17,7 +16,6 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ['is_verified', 'is_active', 'is_staff']
     search_fields = ['phone', 'first_name', 'last_name', 'national_id']
     ordering = ['-date_joined']
-
     fieldsets = (
         ('🔐 اطلاعات احراز هویت', {'fields': ('phone', 'password')}),
         ('👤 اطلاعات پروفایل', {'fields': ('first_name', 'last_name', 'avatar')}),
@@ -34,11 +32,14 @@ class CustomUserAdmin(UserAdmin):
             'classes': ('collapse',),
         }),
     )
-
     add_fieldsets = (
         ('ساخت کاربر جدید', {
             'classes': ('wide',),
-            'fields': ('phone', 'first_name', 'last_name', 'password1', 'password2', 'is_verified', 'is_active'),
+            'fields': (
+                'phone', 'first_name', 'last_name',
+                'password1', 'password2',
+                'is_verified', 'is_active',
+            ),
         }),
     )
 
@@ -65,3 +66,21 @@ class UserReferralAdmin(admin.ModelAdmin):
     list_display = ['user', 'referral_code', 'is_active']
     list_filter = ['is_active']
     search_fields = ['user__phone', 'referral_code']
+
+
+# ✅ NEW: ثبت مدل UserBankInfo
+@admin.register(UserBankInfo)
+class UserBankInfoAdmin(admin.ModelAdmin):
+    list_display = ['user', 'bank_name', 'owner_name', 'is_complete', 'updated_at']
+    list_filter = ['is_complete', 'bank_name']
+    search_fields = ['user__phone', 'owner_name', 'sheba', 'card_number']
+    readonly_fields = ['is_complete', 'created_at', 'updated_at']
+    raw_id_fields = ['user']
+    fieldsets = (
+        ('🏦 اطلاعات بانکی', {
+            'fields': ('user', 'bank_name', 'bank_id', 'sheba', 'card_number', 'owner_name'),
+        }),
+        ('📊 وضعیت', {
+            'fields': ('is_complete', 'created_at', 'updated_at'),
+        }),
+    )

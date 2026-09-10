@@ -3,7 +3,7 @@
 """
 import pytest
 from django.urls import reverse
-from apps.favorites.models import FavoriteBusiness, FavoritePost
+from apps.favorites.models import FavoriteBusiness
 
 
 @pytest.mark.django_db

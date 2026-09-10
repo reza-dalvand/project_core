@@ -1,0 +1,98 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}جزئیات پیام{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- ─── اطلاعات اصلی ─── -->
+    <div class="col-lg-4">
+        <div class="stat-card">
+            <h4 class="fw-bold mb-3">📨 جزئیات پیام</h4>
+
+            <div class="mb-3">
+                <label class="small text-muted">نام و نام خانوادگی</label>
+                <div class="fw-bold">{{ message.full_name }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">شماره تماس</label>
+                <div class="fw-semibold"><code>{{ message.phone }}</code></div>
+            </div>
+
+            {% if message.email %}
+            <div class="mb-3">
+                <label class="small text-muted">ایمیل</label>
+                <div class="fw-semibold">{{ message.email }}</div>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="small text-muted">موضوع</label>
+                <div class="fw-semibold">{{ message.subject }}</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">وضعیت</label>
+                <div>
+                    {% if message.is_read %}
+                    <span class="status-badge" style="background:#D4EDDA;color:#155724;">خوانده شده</span>
+                    {% else %}
+                    <span class="status-badge" style="background:#FFF3CD;color:#856404;">خوانده نشده</span>
+                    {% endif %}
+                    {% if message.is_replied %}
+                    <span class="status-badge ms-1" style="background:#D1ECF1;color:#0C5460;">پاسخ داده شده</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="small text-muted">تاریخ ارسال</label>
+                <div class="fw-semibold">{{ message.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── پیام و مدیریت ─── -->
+    <div class="col-lg-8">
+        <!-- متن پیام -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📝 متن پیام</h5>
+            <div class="alert alert-light" style="border: 1px solid var(--border);">
+                {{ message.message|linebreaks }}
+            </div>
+        </div>
+
+        <!-- فرم مدیریت -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">🔧 مدیریت پیام</h5>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">یادداشت ادمین</label>
+                    <textarea class="form-control" name="admin_note" rows="3"
+                              placeholder="یادداشت داخلی...">{{ message.admin_note }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_replied" id="isReplied"
+                               {% if message.is_replied %}checked{% endif %}>
+                        <label class="form-check-label" for="isReplied">
+                            پاسخ داده شده
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+
+        <!-- لینک‌ها -->
+        <div class="mt-3">
+            <a href="{% url 'dashboard:messages_list' %}" class="btn btn-outline-secondary btn-sm">
+                ← بازگشت به لیست پیام‌ها
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

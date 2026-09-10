@@ -1,0 +1,300 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}جستجوی سراسری{% endblock %}
+{% block extra_head %}
+<style>
+.search-box {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+.search-input-wrap {
+    position: relative;
+}
+.search-input-wrap .icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--text-2);
+}
+.search-input-wrap input {
+    padding-right: 48px;
+    font-size: 16px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    padding: 14px 16px;
+}
+.search-input-wrap input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(168, 139, 125, 0.12);
+}
+.result-section {
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.result-section-header {
+    background: var(--bg);
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.result-section-header .count {
+    background: var(--primary);
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+.result-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: background 0.15s;
+}
+.result-item:last-child { border-bottom: none; }
+.result-item:hover { background: rgba(168, 139, 125, 0.04); }
+.result-item-info { flex: 1; min-width: 0; }
+.result-item-info .name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+.result-item-info .meta {
+    font-size: 12px;
+    color: var(--text-2);
+}
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 6px;
+}
+.status-dot.active   { background: #4CAF50; }
+.status-dot.inactive { background: #E53935; }
+.status-dot.pending  { background: #FF9800; }
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-2);
+}
+.no-results .icon { font-size: 64px; margin-bottom: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- هدر -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">🔍 جستجوی سراسری</h2>
+        <p class="text-muted mb-0">
+            جستجو در کاربران، کسب‌وکارها، تراکنش‌ها، نوبت‌ها و تیکت‌ها
+        </p>
+    </div>
+    <a href="{% url 'dashboard:settings' %}"
+       class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به تنظیمات
+    </a>
+</div>
+
+<!-- جستجو -->
+<div class="search-box">
+    <form method="get">
+        <div class="search-input-wrap">
+            <span class="icon">🔍</span>
+            <input type="text" name="q" class="form-control"
+                   placeholder="جستجو کنید... (شماره تلفن، نام، کد پیگیری)"
+                   value="{{ query }}"
+                   autocomplete="off"
+                   autofocus>
+        </div>
+    </form>
+</div>
+
+{% if query %}
+    {% if total_results > 0 %}
+        <p class="text-muted mb-3">
+            <strong>{{ total_results }}</strong> نتیجه برای
+            «<strong>{{ query }}</strong>» یافت شد
+        </p>
+
+        <!-- کاربران -->
+        {% if results.users %}
+        <div class="result-section">
+            <div class="result-section-header">
+                👥 کاربران
+                <span class="count">{{ results.users|length }}</span>
+            </div>
+            {% for user in results.users %}
+            <div class="result-item">
+                <div class="result-item-info">
+                    <div class="name">
+                        {{ user.full_name }}
+                        <span class="status-dot {% if user.is_active %}active{% else %}inactive{% endif %}"></span>
+                    </div>
+                    <div class="meta">
+                        <code>{{ user.phone }}</code>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:user_detail' user.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    مشاهده
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- کسب‌وکارها -->
+        {% if results.businesses %}
+        <div class="result-section">
+            <div class="result-section-header">
+                🏪 کسب‌وکارها
+                <span class="count">{{ results.businesses|length }}</span>
+            </div>
+            {% for business in results.businesses %}
+            <div class="result-item">
+                <div class="result-item-info">
+                    <div class="name">
+                        {{ business.name }}
+                        <span class="status-dot
+                            {% if business.status == 'approved' %}active
+                            {% elif business.status == 'pending' %}pending
+                            {% else %}inactive{% endif %}">
+                        </span>
+                    </div>
+                    <div class="meta">
+                        {{ business.city.name }} —
+                        ⭐ {{ business.rating }} —
+                        مالک: <code>{{ business.owner.phone }}</code>
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:business_detail' business.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    مشاهده
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- تراکنش‌ها -->
+        {% if results.transactions %}
+        <div class="result-section">
+            <div class="result-section-header">
+                💰 تراکنش‌ها
+                <span class="count">{{ results.transactions|length }}</span>
+            </div>
+            {% for tx in results.transactions %}
+            <div class="result-item">
+                <div class="result-item-info">
+                    <div class="name">
+                        <code>{{ tx.tracking_code }}</code>
+                    </div>
+                    <div class="meta">
+                        {{ tx.amount|floatformat:0 }} تومان —
+                        {{ tx.get_status_display }} —
+                        {{ tx.customer.phone }}
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:transaction_detail' tx.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    مشاهده
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- نوبت‌ها -->
+        {% if results.appointments %}
+        <div class="result-section">
+            <div class="result-section-header">
+                📅 نوبت‌ها
+                <span class="count">{{ results.appointments|length }}</span>
+            </div>
+            {% for apt in results.appointments %}
+            <div class="result-item">
+                <div class="result-item-info">
+                    <div class="name">
+                        {{ apt.service.name }}
+                    </div>
+                    <div class="meta">
+                        {{ apt.date_key }} —
+                        {{ apt.time_slot }} —
+                        {{ apt.customer.phone }} —
+                        {{ apt.get_status_display }}
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:appointment_detail' apt.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    مشاهده
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- تیکت‌ها -->
+        {% if results.tickets %}
+        <div class="result-section">
+            <div class="result-section-header">
+                🎧 تیکت‌ها
+                <span class="count">{{ results.tickets|length }}</span>
+            </div>
+            {% for ticket in results.tickets %}
+            <div class="result-item">
+                <div class="result-item-info">
+                    <div class="name">{{ ticket.subject }}</div>
+                    <div class="meta">
+                        {{ ticket.user.phone }} —
+                        {{ ticket.get_priority_display }} —
+                        {{ ticket.get_status_display }}
+                    </div>
+                </div>
+                <a href="{% url 'dashboard:ticket_detail' ticket.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    مشاهده
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="stat-card">
+            <div class="no-results">
+                <div class="icon">🔍</div>
+                <h4 class="fw-bold mb-2">نتیجه‌ای یافت نشد</h4>
+                <p class="text-muted mb-0">
+                    عبارت دیگری را امتحان کنید.
+                    حداقل ۲ کاراکتر وارد کنید.
+                </p>
+            </div>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="stat-card">
+        <div class="no-results">
+            <div class="icon">🔍</div>
+            <h4 class="fw-bold mb-2">جستجوی سراسری</h4>
+            <p class="text-muted mb-0">
+                عبارت مورد نظر را در کادر بالا وارد کنید.
+            </p>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

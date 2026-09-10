@@ -23,6 +23,8 @@ class AppVersionView(APIView, StandardResponseMixin):
         summary='اطلاعات نسخه اپلیکیشن',
         description='نسخه فعلی، حداقل نسخه مورد نیاز، آپدیت اجباری و تغییرات نسخه',
     )
+
+    
     def get(self, request):
         config = AppConfig.objects.first()
 
@@ -33,6 +35,8 @@ class AppVersionView(APIView, StandardResponseMixin):
                     'latest_version': '1.0.0',
                     'min_required_version': '1.0.0',
                     'is_force_update': False,
+                    'android_force_update_enabled': True,
+                    'android_optional_update_enabled': True,
                     'title': 'نسخه جدید بیو کلاب منتشر شد!',
                     'update_message': 'برای تجربه بهتر، لطفاً به آخرین نسخه به‌روزرسانی کنید.',
                     'changelog': [],
@@ -46,6 +50,8 @@ class AppVersionView(APIView, StandardResponseMixin):
                 'latest_version': config.latest_version,
                 'min_required_version': config.min_required_version,
                 'is_force_update': config.is_force_update,
+                'android_force_update_enabled': config.android_force_update_enabled,
+                'android_optional_update_enabled': config.android_optional_update_enabled,
                 'title': config.update_title,
                 'update_message': config.update_message,
                 'changelog': config.changelog or [],
@@ -72,6 +78,7 @@ class MaintenanceStatusView(APIView, StandardResponseMixin):
             return self.success_response(
                 data={
                     'is_maintenance': False,
+                    'is_maintenance_modal_enabled': False,
                     'title': '',
                     'message': '',
                     'estimated_end': '',
@@ -83,6 +90,7 @@ class MaintenanceStatusView(APIView, StandardResponseMixin):
         return self.success_response(
             data={
                 'is_maintenance': config.is_maintenance,
+                'is_maintenance_modal_enabled': config.is_maintenance_modal_enabled,
                 'title': config.maintenance_title,
                 'message': config.maintenance_message,
                 'estimated_end': config.maintenance_estimated_end,

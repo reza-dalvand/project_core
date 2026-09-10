@@ -145,9 +145,44 @@ class ServiceScheduleSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class ServiceScheduleCreateSerializer(ServiceScheduleSerializer):
-    """Serializer ایجاد زمان‌بندی جدید"""
-    pass
+class ServiceScheduleCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceSchedule
+        fields = ['service', 'jy', 'jm', 'jd', 'work_start', 'work_end', 'slot_duration', 'breaks']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        # دریافت کسب‌وکار کاربر
+        business = request.user.businesses.filter(is_active=True, status='approved').first()
+        if not business:
+            raise serializers.ValidationError("کسب‌وکار تایید شده یافت نشد")
+        
+        validated_data['business'] = business
+        
+        # تولید date_key
+        jy = validated_data['jy']
+        jm = validated_data['jm']
+        jd = validated_data['jd']
+        date_key = f"{jy}/{jm:02d}/{jd:02d}"
+        validated_data['date_key'] = date_key
+        
+        # ✅ استفاده از update_or_create به جای create
+        # این کار از IntegrityError جلوگیری می‌کند و اگر رکورد تکراری بود، آن را آپدیت می‌کند
+        schedule, created = ServiceSchedule.objects.update_or_create(
+            service=validated_data['service'],
+            date_key=date_key,
+            defaults={
+                'business': business,
+                'jy': jy,
+                'jm': jm,
+                'jd': jd,
+                'work_start': validated_data['work_start'],
+                'work_end': validated_data['work_end'],
+                'slot_duration': validated_data['slot_duration'],
+                'breaks': validated_data.get('breaks', []),
+            }
+        )
+        return schedule
 
 
 class ServiceScheduleUpdateSerializer(ServiceScheduleSerializer):

@@ -1,0 +1,56 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ایجاد پست مجله{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">➕ ایجاد پست مجله</h4>
+                <a href="{% url 'dashboard:explore_list' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">کسب‌وکار <span class="text-danger">*</span></label>
+                    <select class="form-select" name="business" required>
+                        <option value="">انتخاب کنید...</option>
+                        {% for b in businesses %}
+                            <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">کپشن <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="caption" rows="3" required
+                              placeholder="حداقل ۱۰ کاراکتر..."></textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">دسته‌بندی اصلی</label>
+                        <select class="form-select" name="main_category">
+                            <option value="">بدون دسته‌بندی</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">زیردسته</label>
+                        <select class="form-select" name="sub_category">
+                            <option value="">بدون زیردسته</option>
+                            {% for sub in sub_services %}
+                                <option value="{{ sub.id }}">{{ sub.category.name }} - {{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">تصاویر (حداکثر ۵)</label>
+                    <input type="file" class="form-control" name="images" multiple accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">💾 ایجاد پست</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

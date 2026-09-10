@@ -1,0 +1,43 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش تسویه{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش تسویه: {{ settlement.business.name }}</h4>
+                <a href="{% url 'dashboard:settlements_list' %}" class="btn btn-outline-secondary btn-sm">
+                    ← بازگشت
+                </a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">مبلغ تسویه (تومان) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" name="amount"
+                           value="{{ settlement.amount }}" min="1000" step="1000" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">شماره شبا <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="bank_sheba"
+                           value="{{ settlement.bank_sheba }}" maxlength="26" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">نام بانک <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="bank_name"
+                           value="{{ settlement.bank_name }}" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره تغییرات
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

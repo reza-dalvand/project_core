@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════
-#   BEAU CLUB Backend Dockerfile — Production Only
+#   BEAU CLUB Backend Dockerfile — Production
 # ═══════════════════════════════════════════════
 
 # ─── Stage 1: Base ───
@@ -28,9 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ─── Stage 2: Dependencies ───
 FROM base as dependencies
 COPY requirements/base.txt requirements/base.txt
-COPY requirements/production.txt requirements/environment.txt
+COPY requirements/production.txt requirements/production.txt
 RUN pip install --upgrade pip && \
-    pip install -r requirements/environment.txt
+    pip install -r requirements/production.txt
 
 # ─── Stage 3: Production ───
 FROM dependencies as production
@@ -54,7 +54,10 @@ USER appuser
 
 EXPOSE 8000
 
-# ✅ حذف CMD از اینجا — docker-compose command را override می‌کند
+# ✅ Healthcheck برای مانیتورینگ توسط Docker و Nginx
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/config/maintenance-status/ || exit 1
+
 CMD ["gunicorn", \
     "--bind", "0.0.0.0:8000", \
     "--workers", "3", \

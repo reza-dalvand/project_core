@@ -1,0 +1,65 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}ویرایش پست{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="fw-bold mb-0">✏️ ویرایش پست: {{ post.caption|truncatechars:40 }}</h4>
+                <a href="{% url 'dashboard:explore_list' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">کپشن <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="caption" rows="3" required>{{ post.caption }}</textarea>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">دسته‌بندی اصلی</label>
+                        <select class="form-select" name="main_category">
+                            <option value="">بدون دسته‌بندی</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if post.main_category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">زیردسته</label>
+                        <select class="form-select" name="sub_category">
+                            <option value="">بدون زیردسته</option>
+                            {% for sub in sub_services %}
+                                <option value="{{ sub.id }}" {% if post.sub_category_id == sub.id %}selected{% endif %}>{{ sub.category.name }} - {{ sub.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <!-- تصاویر فعلی -->
+                {% if post.images.all %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">تصاویر فعلی</label>
+                    <div class="row g-2">
+                        {% for img in post.images.all %}
+                        <div class="col-3">
+                            <div class="position-relative">
+                                <img src="{{ img.image.url }}" class="img-fluid rounded" style="height:80px;width:100%;object-fit:cover;">
+                                <div class="form-check mt-1">
+                                    <input class="form-check-input" type="checkbox" name="delete_images" value="{{ img.id }}" id="del_img_{{ img.id }}">
+                                    <label class="form-check-label small text-danger" for="del_img_{{ img.id }}">حذف</label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">افزودن تصاویر جدید</label>
+                    <input type="file" class="form-control" name="images" multiple accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">💾 ذخیره تغییرات</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

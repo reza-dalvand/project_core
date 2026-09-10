@@ -151,7 +151,6 @@ def check_new_booking_after_reminder():
         updated_count = 0
 
         for reminder in sent_reminders:
-            # ✅ اصلاح: تبدیل تاریخ جلالی به datetime میلادی
             if not reminder.sent_date:
                 continue
 

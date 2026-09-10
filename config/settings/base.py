@@ -27,13 +27,23 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 SITE_NAME = env('SITE_NAME', default='بیو کلاب')
 SITE_DOMAIN = env('SITE_DOMAIN', default='http://localhost:8000')
 
+
+# ─── Global App Environment ───
+# development | production | test
+# این متغیر برای کنترل رفتار سرویس‌های خارجی مثل پیامک، پرداخت و استعلام استفاده می‌شود.
+APP_ENV = env('APP_ENV', default='development').lower()
+IS_PRODUCTION = APP_ENV == 'production'
+IS_DEVELOPMENT = APP_ENV == 'development'
+
+
+# جلوگیری از ارور WhiteNoise در صورت نبود فایل‌های .map در CSSهای ثالث
+WHITENOISE_MANIFEST_STRICT = False
+
+
 # ═══════════════════════════════════════════════
 #   Application Definition
 # ═══════════════════════════════════════════════
 THIRD_PARTY_APPS = [
-    # ═══ Jazzmin باید اول از همه باشد ═══
-    'jazzmin',
-    # ✅ فاز ۱: اضافه شد — بدون این، بک‌اند Jinja2 در TEMPLATES کار نمی‌کند
     'django_jinja',
     # REST API
     'rest_framework',
@@ -81,6 +91,7 @@ LOCAL_APPS = [
     'apps.explore.apps.ExploreConfig',
     # Ads
     'apps.ads.apps.AdsConfig',
+    'apps.ads_management.apps.AdsManagementConfig',
     # Features
     'apps.reminders.apps.RemindersConfig',
     'apps.favorites.apps.FavoritesConfig',
@@ -102,6 +113,7 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'apps.dashboard.middleware.DashboardSessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -123,8 +135,8 @@ TEMPLATES = [
         'OPTIONS': {
             'environment': 'config.jinja2_env.environment',
             'match_extension': '.html',
-            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/).*\.html$',
-            'app_dirname': 'templates',
+            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/|dashboard/).*\.html$',
+            'app_dirname': 'templates', 'app_dirname': 'templates',
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -247,9 +259,10 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
+    'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ),
+        'apps.accounts.permissions.IsNotSuspended',  
+    ],
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
@@ -273,21 +286,41 @@ REST_FRAMEWORK = {
 }
 
 # ═══════════════════════════════════════════════
-#   JWT Settings
+#   JWT Settings — Sliding Token + Rotation
 # ═══════════════════════════════════════════════
+from datetime import timedelta
+
 SIMPLE_JWT = {
+    # ─── Lifetime ───
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    
+    # ─── Rotation & Security ───
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
+    
+    # ─── Algorithm ───
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
+    
+    # ─── Token Classes ───
+    'AUTH_TOKEN_CLASSES': (
+        'rest_framework_simplejwt.tokens.AccessToken',
+    ),
+    # ✅ حذف یا کامنت کردن این خطوط:
+    # 'SLIDING_TOKEN_LIFETIME': timedelta(hours=1),
+    # 'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=30),
+    # 'SLIDING_TOKEN_CLASSES': (
+    #     'rest_framework_simplejwt.tokens.SlidingToken',
+    # ),
+    
+    # ─── Header & Claims ───
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
+
 
 # ═══════════════════════════════════════════════
 #   External Services
@@ -298,11 +331,15 @@ SHAHKAR_API_URL = env(
     default='https://s.api.ir/api/sw1/ShahkarLite',
 )
 SHAHKAR_API_KEY = env('SHAHKAR_API_KEY', default='fake-api-key-for-dev')
+# config/settings/base.py
 ZARINPAL_MERCHANT_ID = env(
     'ZARINPAL_MERCHANT_ID',
-    default='fake-merchant-id-for-dev',
+    default='11111111-1111-1111-1111-111111111111', # ✅ UUID ثابت برای Sandbox
 )
+
+ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True) 
 ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True)
+
 ZARINPAL_CALLBACK_URL = env(
     'ZARINPAL_CALLBACK_URL',
     default='http://localhost:8000/api/v1/payments/callback/',
@@ -373,6 +410,8 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
 # ═══════════════════════════════════════════════
 #   CKEditor 5
 # ═══════════════════════════════════════════════
@@ -401,106 +440,6 @@ LOGIN_URL = f'/{LANDING_ADMIN_URL}login/'
 LOGIN_REDIRECT_URL = f'/{LANDING_ADMIN_URL}'
 
 # ═══════════════════════════════════════════════
-#   Jazzmin Settings
-# ═══════════════════════════════════════════════
-JAZZMIN_SETTINGS = {
-    "site_title": "بیو کلاب | پنل مدیریت",
-    "site_header": "بیو کلاب",
-    "site_brand": "BEAU CLUB Admin",
-    "welcome_sign": "به پنل مدیریت بیو کلاب خوش آمدید",
-    "copyright": "beau Co. © 2024-2026",
-    "user_avatar": "avatar",
-    "topmenu_links": [
-        {"name": "🏠 سایت معرفی", "url": "/", "new_window": True},
-        {"name": "📚 مستندات API", "url": "/api/docs/", "new_window": True},
-    ],
-    "show_sidebar": True,
-    "navigation_expanded": True,
-    "icons": {
-        "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
-        "accounts": "fas fa-user-shield",
-        "accounts.CustomUser": "fas fa-users",
-        "accounts.OtpCode": "fas fa-key",
-        "accounts.UserDevice": "fas fa-mobile-alt",
-        "categories": "fas fa-layer-group",
-        "categories.ServiceCategory": "fas fa-spa",
-        "categories.SubService": "fas fa-list",
-        "categories.BusinessCategory": "fas fa-store",
-        "locations": "fas fa-map-marked-alt",
-        "locations.Province": "fas fa-map",
-        "locations.City": "fas fa-city",
-        "businesses": "fas fa-building",
-        "businesses.Business": "fas fa-building",
-        "businesses.BusinessGallery": "fas fa-images",
-        "services": "fas fa-concierge-bell",
-        "services.Service": "fas fa-concierge-bell",
-        "schedules": "fas fa-calendar-week",
-        "schedules.ServiceSchedule": "fas fa-calendar-day",
-        "appointments": "fas fa-calendar-check",
-        "appointments.Appointment": "fas fa-calendar-alt",
-        "payments": "fas fa-credit-card",
-        "payments.Transaction": "fas fa-receipt",
-        "payments.Settlement": "fas fa-money-check-alt",
-        "reviews": "fas fa-star",
-        "reviews.Review": "fas fa-comment-alt",
-        "portfolios": "fas fa-images",
-        "portfolios.Portfolio": "fas fa-images",
-        "ads": "fas fa-bullhorn",
-        "ads.ModelRequest": "fas fa-user-tie",
-        "ads.LineRental": "fas fa-handshake",
-        "explore": "fas fa-compass",
-        "explore.ExplorePost": "fas fa-image",
-        "reminders": "fas fa-bell",
-        "reminders.RenewalReminder": "fas fa-bell",
-        "favorites": "fas fa-heart",
-        "search": "fas fa-search",
-        "support": "fas fa-headset",
-        "notifications": "fas fa-bell",
-        "landing": "fas fa-globe",
-    },
-    "show_ui_builder": False,
-    "changeform_format": "collapsible",
-    "order_with_respect_to": [
-        "accounts",
-        "categories",
-        "locations",
-        "businesses",
-        "services",
-        "schedules",
-        "appointments",
-        "payments",
-        "reviews",
-        "portfolios",
-        "ads",
-        "explore",
-        "reminders",
-        "favorites",
-        "search",
-        "support",
-        "notifications",
-        "landing",
-        "auth",
-    ],
-}
-
-JAZZMIN_UI_TWEAKS = {
-    "navbar_small_text": False,
-    "footer_small_text": False,
-    "sidebar_fixed": True,
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "sidebar_nav_compact_style": False,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": False,
-    "theme": "cosmo",
-    "dark_mode_theme": None,
-    "actions_sticky_top": True,
-}
-
-# ═══════════════════════════════════════════════
 #   Celery Beat Schedule
 # ═══════════════════════════════════════════════
 from celery.schedules import crontab
@@ -517,6 +456,7 @@ CELERY_BEAT_SCHEDULE = {
     'check-renewal-reminders': {
         'task': 'apps.reminders.tasks.check_renewal_reminders',
         'schedule': crontab(hour=8, minute=0),
+        # 'schedule': crontab(minute='*/1'), # هر دو دقیقه انجام میشه 
     },
     'auto-settle-appointments': {
         'task': 'apps.payments.tasks.auto_settle_completed_appointments',
@@ -538,4 +478,48 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.notifications.tasks.cleanup_old_otp_codes',
         'schedule': crontab(hour=4, minute=0),
     },
+    'process-expired-appointments': {
+        'task': 'apps.appointments.tasks.process_expired_appointments',
+        'schedule': crontab(hour='*/6', minute=0),  # هر ۶ ساعت
+    },
+    'detect-excessive-cancellations': {
+        'task': 'apps.appointments.tasks.detect_excessive_cancellations',
+        'schedule': crontab(hour=2, minute=0),  # هر روز ساعت ۲ بامداد
+    },
+}
+
+
+# ═══════════════════════════════════════════════
+#   Dashboard Security Settings
+#   ✅ فاز ۲: تنظیمات امنیتی داشبورد
+# ═══════════════════════════════════════════════
+DASHBOARD_SETTINGS = {
+    # انقضای سشن غیرفعال (دقیقه)
+    'SESSION_TIMEOUT_MINUTES': env.int(
+        'DASHBOARD_SESSION_TIMEOUT', default=60
+    ),
+    # حداکثر عمر مطلق سشن (ساعت)
+    'ABSOLUTE_SESSION_TIMEOUT_HOURS': env.int(
+        'DASHBOARD_ABSOLUTE_SESSION_TIMEOUT', default=8
+    ),
+    # حداکثر تلاش ورود با یک شماره قبل از قفل (تعداد)
+    'MAX_LOGIN_ATTEMPTS': env.int(
+        'DASHBOARD_MAX_LOGIN_ATTEMPTS', default=5
+    ),
+    # مدت قفل پس از تجاوز از حد مجاز (دقیقه)
+    'LOGIN_LOCKOUT_MINUTES': env.int(
+        'DASHBOARD_LOGIN_LOCKOUT_MINUTES', default=15
+    ),
+    # حداکثر ارسال مجدد کد تایید (تعداد)
+    'MAX_RESEND_ATTEMPTS': env.int(
+        'DASHBOARD_MAX_RESEND_ATTEMPTS', default=3
+    ),
+    # IPهای مجاز برای داشبورد (خالی = همه مجاز)
+    'ALLOWED_IPS': env.list(
+        'DASHBOARD_ALLOWED_IPS', default=[]
+    ),
+    # فعال‌سازی بررسی IP
+    'ENABLE_IP_RESTRICTION': env.bool(
+        'DASHBOARD_ENABLE_IP_RESTRICTION', default=False
+    ),
 }

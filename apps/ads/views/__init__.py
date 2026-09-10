@@ -4,7 +4,7 @@ Views برای آگهی‌ها (مدلینگ + اجاره لاین)
 import logging
 from rest_framework import permissions, status
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.shortcuts import get_object_or_404
 
@@ -76,10 +76,19 @@ class ModelRequestListView(APIView, StandardResponseMixin):
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
                 queryset = queryset.filter(
+                    location__isnull=False,
                     location__distance_lte=(point, D(km=radius))
                 ).distance(point).order_by('distance')
             except (ValueError, TypeError):
                 pass
+
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+
+        if province_id:
+            queryset = queryset.filter(business__province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(business__city_id=city_id)
 
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
@@ -92,6 +101,7 @@ class ModelRequestListView(APIView, StandardResponseMixin):
         serializer = ModelRequestListSerializer(
             queryset, many=True, context={'request': request}
         )
+
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
@@ -123,7 +133,7 @@ class ModelRequestDetailView(APIView, StandardResponseMixin):
 class BusinessModelRequestCreateView(APIView, StandardResponseMixin):
     """ایجاد درخواست مدل"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @extend_schema(
         request=ModelRequestCreateSerializer,
@@ -254,10 +264,20 @@ class LineRentalListView(APIView, StandardResponseMixin):
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
                 queryset = queryset.filter(
+                    location__isnull=False,  # ✅ اضافه شد: فقط رکوردهایی که موقعیت دارند
                     location__distance_lte=(point, D(km=radius))
                 ).distance(point).order_by('distance')
             except (ValueError, TypeError):
                 pass
+
+        # بعد از فیلترهای موجود اضافه کنید:
+        province_id = request.query_params.get('province_id')
+        city_id = request.query_params.get('city_id')
+
+        if province_id:
+            queryset = queryset.filter(business__province_id=province_id)
+            if city_id:
+                queryset = queryset.filter(business__city_id=city_id)
 
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
@@ -270,6 +290,7 @@ class LineRentalListView(APIView, StandardResponseMixin):
         serializer = LineRentalListSerializer(
             queryset, many=True, context={'request': request}
         )
+        
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
@@ -302,7 +323,7 @@ class LineRentalDetailView(APIView, StandardResponseMixin):
 class BusinessLineRentalCreateView(APIView, StandardResponseMixin):
     """ایجاد آگهی اجاره لاین"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @extend_schema(
         request=LineRentalCreateSerializer,
@@ -316,7 +337,6 @@ class BusinessLineRentalCreateView(APIView, StandardResponseMixin):
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
-
         try:
             line_rental = serializer.save()
             return self.success_response(
@@ -327,7 +347,7 @@ class BusinessLineRentalCreateView(APIView, StandardResponseMixin):
                 status=status.HTTP_201_CREATED,
             )
         except Exception as e:
-            logger.error(f"Create line rental error: {e}")
+            logger.error(f"Create line rental error: {e}", exc_info=True)  # ✅ exc_info اضافه شد
             return self.error_response(
                 message='خطا در ایجاد آگهی',
                 code='CREATE_ERROR',
@@ -390,7 +410,7 @@ class BusinessLineRentalDeleteView(APIView, StandardResponseMixin):
 class BusinessModelRequestUpdateView(APIView, StandardResponseMixin):
     """ویرایش درخواست مدل"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     @extend_schema(
         request=ModelRequestUpdateSerializer,
@@ -439,7 +459,7 @@ class BusinessModelRequestUpdateView(APIView, StandardResponseMixin):
 class BusinessLineRentalUpdateView(APIView, StandardResponseMixin):
     """ویرایش آگهی اجاره لاین"""
     permission_classes = [permissions.IsAuthenticated, IsApprovedBusinessOwner]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     @extend_schema(
         request=LineRentalUpdateSerializer,

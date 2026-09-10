@@ -78,3 +78,9 @@ class BusinessFinancialStatsSerializer(serializers.Serializer):
     settled = serializers.IntegerField()
     refunded = serializers.IntegerField()
     total = serializers.IntegerField()
+
+
+class VerifyPaymentSerializer(serializers.Serializer):
+    """Serializer تایید پرداخت توسط فرانت‌اند"""
+    authority = serializers.CharField(required=True, help_text='شناسه Authority زرین‌پال')
+    status = serializers.CharField(required=False, allow_blank=True, help_text='Status زرین‌پال (OK/NOK)')

@@ -39,6 +39,13 @@ class RenewalReminderListView(APIView, StandardResponseMixin):
             is_active=True, status='approved'
         ).first()
 
+        if not business:
+            return self.error_response(
+                message='کسب‌وکار تایید شده یافت نشد',
+                code='NO_BUSINESS',
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         queryset = RenewalReminder.objects.filter(
             business=business,
         ).select_related(
@@ -52,12 +59,14 @@ class RenewalReminderListView(APIView, StandardResponseMixin):
             except (ValueError, TypeError):
                 pass
 
-        pagination = StandardResultsSetPagination()
-        page = pagination.paginate_queryset(queryset, request)
-        if page is not None:
-            serializer = RenewalReminderSerializer(page, many=True)
-            return pagination.get_paginated_response(serializer.data)
+        # ❌ این بخش Pagination را کاملاً حذف کن:
+        # pagination = StandardResultsSetPagination()
+        # page = pagination.paginate_queryset(queryset, request)
+        # if page is not None:
+        #     serializer = RenewalReminderSerializer(page, many=True)
+        #     return pagination.get_paginated_response(serializer.data)
 
+        # ✅ فقط این بخش بماند:
         serializer = RenewalReminderSerializer(queryset, many=True)
         return self.success_response(
             data=serializer.data,

@@ -1,0 +1,226 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}لاگ عملیات{% endblock %}
+{% block extra_head %}
+<style>
+.filter-bar {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+.stat-mini {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+.stat-mini .value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+}
+.stat-mini .label {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 4px;
+}
+.table-card {
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.table-card .table { margin-bottom: 0; min-width: 800px; }
+.table-card .table th {
+    background: var(--bg);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    white-space: nowrap;
+}
+.table-card .table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+.severity-badge {
+    padding: 3px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-block;
+    white-space: nowrap;
+}
+.severity-info     { background: #D1ECF1; color: #0C5460; }
+.severity-warning  { background: #FFF3CD; color: #856404; }
+.severity-critical { background: #F8D7DA; color: #721C24; }
+.action-code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+.pagination .page-link {
+    color: var(--primary-dark);
+    border-color: var(--border);
+}
+.pagination .page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- هدر -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📋 لاگ عملیات</h2>
+        <p class="text-muted mb-0">
+            حسابرسی تغییرات پنل مدیریت
+        </p>
+    </div>
+    <a href="{% url 'dashboard:settings' %}"
+       class="btn btn-outline-secondary btn-sm">
+        ← بازگشت به تنظیمات
+    </a>
+</div>
+
+<!-- آمار سریع -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.total }}</div>
+            <div class="label">کل لاگ‌ها</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-mini">
+            <div class="value">{{ stats.filtered }}</div>
+            <div class="label">نتایج فیلتر شده</div>
+        </div>
+    </div>
+</div>
+
+<!-- فیلتر -->
+<div class="filter-bar">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">نوع عملیات</label>
+            <select name="action" class="form-select">
+                <option value="">همه</option>
+                {% for value, label in action_choices %}
+                <option value="{{ value }}"
+                    {% if action_filter == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold">شماره ادمین</label>
+            <input type="text" name="admin" class="form-control"
+                   placeholder="0912..."
+                   value="{{ admin_filter }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+                🔍 فیلتر
+            </button>
+        </div>
+        <div class="col-md-2">
+            <a href="{% url 'dashboard:audit_log' %}"
+               class="btn btn-outline-secondary w-100">
+                پاک کردن
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- جدول -->
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>زمان</th>
+                <th>عملیات</th>
+                <th>ادمین</th>
+                <th>نقش</th>
+                <th>IP</th>
+                <th>هدف</th>
+                <th>شدت</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in page_obj %}
+            <tr>
+                <td style="white-space: nowrap;">
+                    <small>{{ log.created_at|date:"Y/m/d H:i:s" }}</small>
+                </td>
+                <td>
+                    <span class="action-code">{{ log.action }}</span>
+                </td>
+                <td><code>{{ log.admin_phone }}</code></td>
+                <td><small>{{ log.admin_role }}</small></td>
+                <td><code>{{ log.client_ip }}</code></td>
+                <td>
+                    {% if log.target_name %}
+                    <small>{{ log.target_name }}</small>
+                    {% else %}
+                    <small class="text-muted">-</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="severity-badge severity-{{ log.severity }}">
+                        {{ log.get_severity_display }}
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-5 text-muted">
+                    لاگی یافت نشد.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- صفحه‌بندی -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.previous_page_number }}&action={{ action_filter }}&admin={{ admin_filter }}">
+                قبلی
+            </a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">
+                {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.next_page_number }}&action={{ action_filter }}&admin={{ admin_filter }}">
+                بعدی
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

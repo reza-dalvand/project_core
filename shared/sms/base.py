@@ -2,14 +2,15 @@
 Abstract SMS Provider
 الگوی Strategy Pattern برای سرویس‌دهنده‌های پیامک
 
-متدهای کاوه‌نگار:
-- verify_lookup: فقط برای پترن‌های احراز هویت (مثل کد تایید)
-- sms_send: ارسال پیام ساده (برای اطلاع‌رسانی مثل رزرو)
-- sms_sendarray: ارسال گروهی (برای تبلیغات)
+متدهای اصلی:
+- send_otp: پیامک کد تایید
+- send: پیام ساده اطلاع‌رسانی
+- send_pattern: ارسال با قالب/پترن
+- send_bulk: ارسال گروهی
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 
 @dataclass
@@ -39,26 +40,18 @@ class AbstractSmsProvider(ABC):
     """
 
     @abstractmethod
-    def send_otp(self, phone: str, template_name: str, token: str) -> SmsResult:
-        """
-        ارسال کد تایید یکبار مصرف از طریق پترن احراز هویت
-        فقط برای لاگین/ثبت‌نام
-        """
-        ...
-
-    @abstractmethod
-    def send_pattern(self, phone: str, template_name: str, **kwargs) -> SmsResult:
-        """
-        ارسال پیامک قالبی از طریق پترن احراز هویت
-        فقط برای پترن‌های احراز هویت
-        """
+    def send_otp(self, phone: str, message: str) -> SmsResult:
+        """ارسال پیامک حاوی کد تایید"""
         ...
 
     @abstractmethod
     def send(self, phone: str, message: str, sender: str = '') -> SmsResult:
-        """
-        ارسال پیامک ساده (برای اطلاع‌رسانی مثل رزرو)
-        """
+        """ارسال پیامک ساده"""
+        ...
+
+    @abstractmethod
+    def send_pattern(self, phone: str, template_name: str, **variables) -> SmsResult:
+        """ارسال از طریق قالب/پترن سرویس‌دهنده"""
         ...
 
     @abstractmethod
@@ -68,9 +61,7 @@ class AbstractSmsProvider(ABC):
         messages: List[str],
         senders: List[str] = None,
     ) -> BulkSmsResult:
-        """
-        ارسال گروهی پیامک (برای تبلیغات)
-        """
+        """ارسال گروهی پیامک"""
         ...
 
     @abstractmethod
@@ -84,10 +75,13 @@ class AbstractSmsProvider(ABC):
         phone = phone.translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789'))
         phone = phone.translate(str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789'))
         phone = ''.join(c for c in phone if c.isdigit() or c == '+')
+
         if phone.startswith('+98'):
             phone = '0' + phone[3:]
         elif phone.startswith('0098'):
             phone = '0' + phone[4:]
+
         if not phone.startswith('09') or len(phone) != 11:
             raise ValueError(f'شماره موبایل نامعتبر: {phone}')
+
         return phone

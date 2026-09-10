@@ -1,3 +1,6 @@
+# apps/portfolios/urls.py
+# افزودن مسیرهای "my-portfolios" برای مدیریت نمونه‌کارها
+
 from django.urls import path
 from .views import (
     PortfolioListView,
@@ -14,8 +17,8 @@ urlpatterns = [
     # Public
     path('', PortfolioListView.as_view(), name='portfolio-list'),
     path('<int:pk>/', PortfolioDetailView.as_view(), name='portfolio-detail'),
-    
-    # Business
+
+    # Business - My Portfolios (افزوده شد)
     path('my-portfolios/', BusinessPortfolioListView.as_view(), name='my-portfolio-list'),
     path('my-portfolios/create/', BusinessPortfolioCreateView.as_view(), name='portfolio-create'),
     path('my-portfolios/<int:pk>/update/', BusinessPortfolioUpdateView.as_view(), name='portfolio-update'),

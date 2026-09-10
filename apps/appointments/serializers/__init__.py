@@ -129,15 +129,12 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     def get_can_cancel(self, obj):
         """
         آیا نوبت قابل لغو است؟
-        هماهنگ با فرانت: canCancelAppointment
-        قانون: فقط اگر ۱۲ ساعت یا بیشتر مانده باشد
+        از آنجا که لغو توسط مشتری غیرفعال شده، همیشه False برمی‌گرداند.
+        فقط صاحب کسب‌وکار می‌تواند لغو کند.
         """
-        if obj.status != Appointment.Status.RESERVED:
-            return False
-        hours_left = self.get_hours_left(obj)
-        CANCELLATION_THRESHOLD_HOURS = 12
-        return hours_left >= CANCELLATION_THRESHOLD_HOURS
+        return False
 
+    
     def get_deposit_paid(self, obj):
         """مبلغ بیعانه پرداخت شده"""
         return obj.deposit_amount

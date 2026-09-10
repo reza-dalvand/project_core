@@ -1,14 +1,14 @@
+# config/settings/test.py
+
 """
 تنظیمات محیط تست
-ارث‌بری از base با تنظیمات خاص تست
 """
 from .base import *  # noqa
 
 DEBUG = True
 SECRET_KEY = 'test-secret-key-not-for-production-only'
 
-# ─── Database: PostGIS (برای تست‌ها) ───
-# هاست مستقیم 'localhost' گذاشته شده تا از .env مقدار 'postgres' نخواند
+# ─── Database ───
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
@@ -23,31 +23,32 @@ DATABASES = {
     }
 }
 
-# ─── Cache: غیرفعال (بدون Redis) ───
+# ─── Cache ───
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'test-cache-location',
     }
 }
 
-# ─── DRF: غیرفعال کردن throttling برای تست ───
+# ─── DRF ───
 REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
 REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
-# ─── CORS: باز برای تست ───
+# ─── CORS ───
 CORS_ALLOW_ALL_ORIGINS = True
 
 # ─── SMS: Mock (بدون API Key واقعی) ───
-KAVENEGAR_API_KEY = ''
+KAVENEGAR_API_KEY = 'test-fake-kavenegar-key'
 
 # ─── Shahkar: Mock ───
-SHAHKAR_API_KEY = ''
+SHAHKAR_API_KEY = 'test-fake-shahkar-key'
 
-# ─── Celery: اجرای همزمان (بدون worker) ───
+# ─── Celery ───
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
-# ─── Logging: حداقل ───
+# ─── Logging ───
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,
@@ -59,5 +60,18 @@ LOGGING = {
     'root': {
         'handlers': ['console'],
         'level': 'WARNING',
+    },
+}
+
+# ═══════════════════════════════════════════════════════════
+#   ✅ FIX: در محیط تست از StaticFilesStorage ساده استفاده کن
+#   تا نیازی به فایل manifest (collectstatic) نباشد
+# ═══════════════════════════════════════════════════════════
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }

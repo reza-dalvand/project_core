@@ -1,0 +1,282 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}مدیریت محتوا{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        background: var(--card);
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 16px;
+    }
+    .stat-value {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--text);
+    }
+    .stat-label {
+        font-size: 13px;
+        color: var(--text-2);
+    }
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .table-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card .table th {
+        background: var(--bg);
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-2);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+    }
+    .table-card .table td {
+        padding: 12px 16px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+    .quick-link {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--bg);
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+        border: 1px solid var(--border);
+        height: 100%;
+    }
+    .quick-link:hover {
+        background: rgba(168, 139, 125, 0.1);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .quick-link .icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .status-pinned { background: #D4EDDA; color: #155724; }
+    .status-urgent { background: #F8D7DA; color: #721C24; }
+    .status-published { background: #D4EDDA; color: #155724; }
+    .status-draft { background: #FFF3CD; color: #856404; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ─── هدر ─── -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">📋 مدیریت محتوا</h2>
+        <p class="text-muted mb-0">اکسپلور، نمونه‌کارها، آگهی‌ها و لیست قیمت</p>
+    </div>
+</div>
+
+<!-- ─── آمار کلی ─── -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">🔍</div>
+            <div class="stat-value">{{ explore_stats.total|default:"0" }}</div>
+            <div class="stat-label">پست‌های اکسپلور</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">🖼️</div>
+            <div class="stat-value">{{ portfolio_stats.total|default:"0" }}</div>
+            <div class="stat-label">نمونه‌کارها</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">👤</div>
+            <div class="stat-value">{{ model_request_stats.total|default:"0" }}</div>
+            <div class="stat-label">درخواست مدل</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🏬</div>
+            <div class="stat-value">{{ line_rental_stats.total|default:"0" }}</div>
+            <div class="stat-label">اجاره لاین</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">📋</div>
+            <div class="stat-value">{{ price_list_stats.total|default:"0" }}</div>
+            <div class="stat-label">لیست قیمت</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(156, 39, 176, 0.1); color: #7B1FA2;">📌</div>
+            <div class="stat-value">{{ explore_stats.pinned|default:"0" }}</div>
+            <div class="stat-label">پست‌های پین شده</div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── لینک‌های سریع ─── -->
+<div class="section-title">🔗 دسترسی سریع</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:explore_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(233, 30, 99, 0.1); color: #C2185B;">🔍</div>
+            <div>
+                <strong>اکسپلور</strong>
+                <br><small class="text-muted">مدیریت پست‌ها</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:portfolios_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(63, 81, 181, 0.1); color: #303F9F;">🖼️</div>
+            <div>
+                <strong>نمونه‌کارها</strong>
+                <br><small class="text-muted">مدیریت پورتفولیو</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:model_requests_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(255, 152, 0, 0.1); color: #F57C00;">👤</div>
+            <div>
+                <strong>درخواست مدل</strong>
+                <br><small class="text-muted">آگهی‌های مدلینگ</small>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:line_rentals_list' %}" class="quick-link">
+            <div class="icon" style="background: rgba(0, 150, 136, 0.1); color: #00796B;">🏬</div>
+            <div>
+                <strong>اجاره لاین</strong>
+                <br><small class="text-muted">آگهی‌های لاین</small>
+            </div>
+        </a>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <a href="{% url 'dashboard:price_lists' %}" class="quick-link">
+            <div class="icon" style="background: rgba(76, 175, 80, 0.1); color: #388E3C;">📋</div>
+            <div>
+                <strong>لیست قیمت</strong>
+                <br><small class="text-muted">مدیریت لیست‌ها</small>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- ─── پست‌های اخیر ─── -->
+{% if recent_posts %}
+<div class="section-title">🔍 پست‌های اخیر اکسپلور</div>
+<div class="table-card mb-4">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>کپشن</th>
+                <th>کسب‌وکار</th>
+                <th>منبع</th>
+                <th>تصاویر</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in recent_posts %}
+            <tr>
+                <td>{{ post.caption|truncatechars:50 }}</td>
+                <td>{{ post.business.name }}</td>
+                <td>
+                    {% if post.source == 'business' %}
+                    کسب‌وکار
+                    {% else %}
+                    مجله
+                    {% endif %}
+                </td>
+                <td>{{ post.images.count }}</td>
+                <td>
+                    {% if post.is_pinned %}
+                    <span class="status-badge status-pinned">📌 پین شده</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ post.created_at|date:"Y/m/d" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ─── نمونه‌کارهای اخیر ─── -->
+{% if recent_portfolios %}
+<div class="section-title">🖼️ نمونه‌کارهای اخیر</div>
+<div class="table-card">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>عنوان</th>
+                <th>کسب‌وکار</th>
+                <th>دسته‌بندی</th>
+                <th>تصاویر</th>
+                <th>تاریخ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for portfolio in recent_portfolios %}
+            <tr>
+                <td>{{ portfolio.title }}</td>
+                <td>{{ portfolio.business.name }}</td>
+                <td>{{ portfolio.category.name }}</td>
+                <td>{{ portfolio.images.count }}</td>
+                <td>{{ portfolio.created_at|date:"Y/m/d" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
