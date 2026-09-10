@@ -36,6 +36,10 @@ IS_PRODUCTION = APP_ENV == 'production'
 IS_DEVELOPMENT = APP_ENV == 'development'
 
 
+# جلوگیری از ارور WhiteNoise در صورت نبود فایل‌های .map در CSSهای ثالث
+WHITENOISE_MANIFEST_STRICT = False
+
+
 # ═══════════════════════════════════════════════
 #   Application Definition
 # ═══════════════════════════════════════════════
