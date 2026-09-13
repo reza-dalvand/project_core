@@ -24,8 +24,10 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     'buclub.ir',
     'api.beauclub.ir',
     'develop.beauclub.ir', 
+    'app.beauclub.ir', 
     'localhost',
     '127.0.0.1',
+
 ])
 
 ###
@@ -37,11 +39,12 @@ CSRF_TRUSTED_ORIGINS = [
     'https://beuclub.ir',
     'https://buclub.ir',
     'https://api.beauclub.ir',
-    'https://develop.beauclub.ir',  # ✅ اضافه شد
+    'https://develop.beauclub.ir',
+    'app.beauclub.ir', 
     'https://www.beauclub.ir',
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
-    env('FRONTEND_URL', default='https://beauclub.ir'),
+    env('FRONTEND_URL', default='https://app.beauclub.ir'),
     'capacitor://localhost',
 ]
 
@@ -168,10 +171,11 @@ CORS_ALLOWED_ORIGINS = [
     'https://buclub.ir',
     'https://api.beauclub.ir',
     'https://develop.beauclub.ir', 
+    'https://app.beauclub.ir',
     'https://www.beauclub.ir',
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
-    env('FRONTEND_URL', default='https://beauclub.ir'),
+    env('FRONTEND_URL', default='https://app.beauclub.ir'),
     'capacitor://localhost',
 ]
 
@@ -179,6 +183,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^capacitor://localhost$',
     r'^https://beauclub\.ir$',
+    r'^https://app\.beauclub\.ir$',
     r'^https://.*\.beauclub\.ir$',
     r'^https://www\.beauclub\.ir$',
     r'^https://beuclub\.ir$',

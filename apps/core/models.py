@@ -68,7 +68,7 @@ class AppConfig(models.Model):
     )
     store_url = models.URLField(
         'لینک آپدیت',
-        default='https://beauclub.ir',
+        default='https://app.beauclub.ir',
         blank=True,
     )
     store_name = models.CharField(
