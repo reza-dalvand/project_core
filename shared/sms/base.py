@@ -40,7 +40,7 @@ class AbstractSmsProvider(ABC):
     """
 
     @abstractmethod
-    def send_otp(self, phone: str, message: str) -> SmsResult:
+    def send_otp(self, phone: str, token: str, template_name: str = None) -> SmsResult:
         """ارسال پیامک حاوی کد تایید"""
         ...
 

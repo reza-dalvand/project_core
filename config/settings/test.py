@@ -5,6 +5,9 @@
 """
 from .base import *  # noqa
 
+
+APP_ENV = 'test'
+
 DEBUG = True
 SECRET_KEY = 'test-secret-key-not-for-production-only'
 

@@ -16,6 +16,7 @@ INVALID_API_KEYS = {
     '',
     'fake-api-key-for-dev',
     'your-kavenegar-api-key-here',
+    'test-fake-kavenegar-key',  # ✅ کلید محیط تست
 }
 
 
@@ -23,43 +24,32 @@ def get_sms_provider():
     """
     Factory برای دریافت سرویس پیامک بر اساس متغیر گلوبال محیط
 
-    در محیط توسعه/تست:
-        KavenegarConsoleSmsProvider
-        رفتار کاوه‌نگار را شبیه‌سازی می‌کند اما ارسال واقعی انجام نمی‌دهد.
-        پیام‌ها فقط در کنسول/لاگ چاپ می‌شوند.
-
-    در محیط پروداکشن:
-        KavenegarSmsProvider
-        ارسال واقعی از طریق API کاوه‌نگار انجام می‌شود.
+    منطق جدید:
+    1. در محیط تست (APP_ENV=test) همیشه از Console Provider استفاده می‌شود
+       تا پیامک واقعی ارسال نشود و هزینه کسر نگردد.
+    2. در سایر محیط‌ها در صورت وجود کلید API معتبر، از Kavenegar واقعی استفاده می‌شود.
+    3. در غیر این صورت از Console Provider استفاده می‌شود.
     """
     app_env = getattr(settings, 'APP_ENV', 'development').lower()
-    is_production = getattr(settings, 'IS_PRODUCTION', False)
-    debug = getattr(settings, 'DEBUG', False)
-
-    if is_production:
-        from .kavenegar import KavenegarSmsProvider
-
-        api_key = getattr(settings, 'KAVENEGAR_API_KEY', '')
-
-        if api_key in INVALID_API_KEYS or 'your-kavenegar-api-key' in api_key:
-            logger.critical(
-                'KAVENEGAR_API_KEY برای محیط پروداکشن تنظیم نشده است.'
-            )
-            raise ImproperlyConfigured(
-                'KAVENEGAR_API_KEY برای محیط پروداکشن تنظیم نشده است.'
-            )
-
-        return KavenegarSmsProvider(api_key=api_key)
-
-    if debug or app_env in {'development', 'test'}:
+    
+    # ✅ اولویت اول: محیط تست — همیشه Console
+    if app_env == 'test':
         from .console import KavenegarConsoleSmsProvider
+        logger.info('🧪 محیط تست: استفاده از Console SMS Provider')
         return KavenegarConsoleSmsProvider()
 
-    # اگر تنظیمات پروداکشن باشد ولی APP_ENV=production نباشد،
-    # پیامک را در کنسول چاپ نمی‌کنیم تا کدها در لاگ پروداکشن نشت نکنند.
-    logger.critical(
-        'APP_ENV برای ارسال پیامک در محیط غیرتوسعه باید برابر production باشد.'
+    from .kavenegar import KavenegarSmsProvider
+    from .console import KavenegarConsoleSmsProvider
+
+    api_key = getattr(settings, 'KAVENEGAR_API_KEY', '')
+
+    # اولویت دوم: کلید معتبر = Kavenegar واقعی
+    if api_key and api_key not in INVALID_API_KEYS and 'your-kavenegar-api-key' not in api_key:
+        logger.info('📱 استفاده از Kavenegar SMS Provider (کلید معتبر)')
+        return KavenegarSmsProvider(api_key=api_key)
+
+    # فال‌بک: Console
+    logger.warning(
+        'KAVENEGAR_API_KEY تنظیم نشده یا معتبر نیست. از Console SMS Provider استفاده می‌شود.'
     )
-    raise ImproperlyConfigured(
-        'APP_ENV برای ارسال پیامک در محیط غیرتوسعه باید برابر production باشد.'
-    )
+    return KavenegarConsoleSmsProvider()

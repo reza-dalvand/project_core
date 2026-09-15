@@ -40,7 +40,7 @@ class AppVersionView(APIView, StandardResponseMixin):
                     'title': 'نسخه جدید بیو کلاب منتشر شد!',
                     'update_message': 'برای تجربه بهتر، لطفاً به آخرین نسخه به‌روزرسانی کنید.',
                     'changelog': [],
-                    'store_url': 'https://beauclub.ir',
+                    'store_url': 'https://app.beauclub.ir',
                     'store_name': 'بیو کلاب وب',
                 }
             )

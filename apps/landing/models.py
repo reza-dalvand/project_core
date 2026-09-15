@@ -922,7 +922,7 @@ class FooterLinkGroup(models.Model):
 
     title = models.CharField('عنوان گروه', max_length=50)
     order = models.IntegerField('ترتیب', default=0)
-
+    is_active = models.BooleanField('فعال', default=True) 
     class Meta:
         verbose_name = '🔗 گروه لینک فوتر'
         verbose_name_plural = '🔗 گروه‌های لینک فوتر'

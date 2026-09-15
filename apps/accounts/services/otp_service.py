@@ -113,12 +113,8 @@ class OTPService:
                 code='SMS_PROVIDER_UNAVAILABLE',
             )
 
-        message = (
-            f'کد تایید بیو کلاب: {code}\n'
-            f'این کد را با کسی به اشتراک نگذارید.'
-        )
-
-        result = provider.send_otp(phone, message=message)
+        # ارسال کد به عنوان token برای استفاده از verify_lookup کاوه‌نگار
+        result = provider.send_otp(phone, token=code)
 
         if not result.success:
             logger.error(f"OTP SMS failed for {phone}: {result.error_message}")
