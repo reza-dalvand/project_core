@@ -134,7 +134,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'environment': 'config.jinja2_env.environment',
-            'match_extension': '.html',
+            "match_extension": ".jinja",
             'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/|dashboard/).*\.html$',
             'app_dirname': 'templates', 'app_dirname': 'templates',
             'context_processors': [
@@ -142,8 +142,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'apps.landing.context_processors.site_settings',
-                'apps.landing.context_processors.all_sections',
+                'apps.landing.context_processors.landing_context',
+
             ],
             'extensions': [
                 'jinja2.ext.do',
@@ -176,8 +176,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'apps.landing.context_processors.site_settings',
-                'apps.landing.context_processors.all_sections',
+                # 'apps.landing.context_processors.site_settings',
+                # 'apps.landing.context_processors.all_sections',
             ],
         },
     },
