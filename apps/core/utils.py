@@ -71,7 +71,7 @@ def calculate_app_fee(amount: int) -> int:
         return 0
     
     if amount < 250000:
-        # زیر ۲۵۰ هزار: ثابت ۷,۰۰۰
+        # زیر ۲۵۰ هزار: ثابت ۹,۰۰۰
         fee = 9000
     elif amount <= 500000:
         # ۲۵۰ هزار تا ۵۰۰ هزار: ۳٪
