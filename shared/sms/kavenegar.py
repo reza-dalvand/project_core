@@ -46,12 +46,46 @@ class KavenegarSmsProvider(AbstractSmsProvider):
     # ═══════════════════════════════════════════════
     #   ارسال کد تایید
     # ═══════════════════════════════════════════════
-    def send_otp(self, phone: str, message: str) -> SmsResult:
+    def send_otp(self, phone: str, token: str, template_name: str = None) -> SmsResult:
         """
-        ارسال پیامک کد تایید
-        در پیاده‌سازی فعلی پروژه، پیامک کد تایید به صورت پیام ساده ارسال می‌شود.
+        ارسال پیامک کد تایید با استفاده از verify_lookup کاوه‌نگار
         """
-        return self.send(phone=phone, message=message)
+        from django.conf import settings
+        
+        phone = self.validate_phone(phone)
+        
+        if not template_name:
+            template_name = getattr(settings, 'KAVENEGAR_OTP_TEMPLATE', 'otp_template')
+
+        try:
+            params = {
+                'receptor': phone,
+                'template': template_name,
+                'token': token,
+                'type': 'sms',
+            }
+            response = self.api.verify_lookup(params)
+            entries = response.get('entries', [])
+
+            if not entries:
+                return SmsResult(
+                    success=False,
+                    error_message='پاسخ خالی از کاوه‌نگار دریافت شد',
+                )
+
+            entry = entries[0]
+
+            return SmsResult(
+                success=True,
+                message_id=str(entry.get('messageid', '')),
+                cost=entry.get('cost', 0),
+            )
+        except Exception as e:
+            logger.error(f'Kavenegar verify_lookup error → {phone}: {e}')
+            return SmsResult(
+                success=False,
+                error_message=str(e),
+            )
 
     # ═══════════════════════════════════════════════
     #   ارسال پیام ساده

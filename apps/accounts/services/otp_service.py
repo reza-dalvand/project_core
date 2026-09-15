@@ -99,32 +99,28 @@ class OTPService:
 
         return otp
 
-    @classmethod
-    def _send_sms(cls, phone: str, code: str):
-        """ارسال پیامک از طریق سرویس انتخاب‌شده بر اساس محیط"""
-        from shared.sms import get_sms_provider
+@classmethod
+def _send_sms(cls, phone: str, code: str):
+    """ارسال پیامک از طریق سرویس انتخاب‌شده بر اساس محیط"""
+    from shared.sms import get_sms_provider
 
-        try:
-            provider = get_sms_provider()
-        except Exception as e:
-            logger.error(f"SMS provider init failed: {e}")
-            raise OTPException(
-                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
-                code='SMS_PROVIDER_UNAVAILABLE',
-            )
-
-        message = (
-            f'کد تایید بیو کلاب: {code}\n'
-            f'این کد را با کسی به اشتراک نگذارید.'
+    try:
+        provider = get_sms_provider()
+    except Exception as e:
+        logger.error(f"SMS provider init failed: {e}")
+        raise OTPException(
+            message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
+            code='SMS_PROVIDER_UNAVAILABLE',
         )
 
-        result = provider.send_otp(phone, message=message)
+    # ارسال کد به عنوان token برای استفاده از verify_lookup کاوه‌نگار
+    result = provider.send_otp(phone, token=code)
 
-        if not result.success:
-            logger.error(f"OTP SMS failed for {phone}: {result.error_message}")
-            raise OTPException(
-                message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
-                code='SMS_SEND_FAILED',
-            )
+    if not result.success:
+        logger.error(f"OTP SMS failed for {phone}: {result.error_message}")
+        raise OTPException(
+            message='خطا در ارسال کد تایید. لطفاً دوباره تلاش کنید.',
+            code='SMS_SEND_FAILED',
+        )
 
-        logger.info(f"OTP SMS sent successfully to {phone}")
+    logger.info(f"OTP SMS sent successfully to {phone}")

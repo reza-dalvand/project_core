@@ -326,6 +326,7 @@ SIMPLE_JWT = {
 #   External Services
 # ═══════════════════════════════════════════════
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='fake-api-key-for-dev')
+KAVENEGAR_OTP_TEMPLATE = env('KAVENEGAR_OTP_TEMPLATE', default='otp_template') # نام قالب ثبت شده در پنل کاوه‌نگار
 SHAHKAR_API_URL = env(
     'SHAHKAR_API_URL',
     default='https://s.api.ir/api/sw1/ShahkarLite',

@@ -18,29 +18,27 @@ class MockSmsProvider(AbstractSmsProvider):
     def __init__(self):
         self._sent_messages = []
         self._credit = 100000
+        
 
-    # ✅ تغییر: امضای جدید
-    def send_otp(self, phone: str, message: str) -> SmsResult:
+    def send_otp(self, phone: str, token: str, template_name: str = None) -> SmsResult:
+        import uuid
         phone = self.validate_phone(phone)
-
-        message_id = f'MOCK-{len(self._sent_messages) + 1}'
+        message_id = f'MOCK-{uuid.uuid4().hex[:12]}'
+        message = f'کد تایید: {token}'
 
         self._sent_messages.append({
             'phone': phone,
             'message': message,
             'type': 'otp',
+            'message_id': message_id,
         })
 
-        logger.info(
-            f"🔑 [MOCK OTP] → {phone}\n"
-            f"   متن: {message}\n"
-            f"   شناسه: {message_id}"
-        )
+        logger.info(f'[MOCK SMS] OTP → {phone}: {message}')
 
         return SmsResult(
             success=True,
             message_id=message_id,
-            cost=250,
+            cost=0,
         )
 
     def send(self, phone: str, message: str, sender: str = '') -> SmsResult:

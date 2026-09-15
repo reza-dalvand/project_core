@@ -34,20 +34,26 @@ class KavenegarConsoleSmsProvider(AbstractSmsProvider):
             f'{separator}\n'
         )
 
-    def send_otp(self, phone: str, message: str) -> SmsResult:
+    def send_otp(self, phone: str, token: str, template_name: str = None) -> SmsResult:
         phone = self.validate_phone(phone)
         message_id = self._generate_message_id('CONSOLE-OTP')
+        message = f'کد تایید بیو کلاب: {token}\nاین کد را با کسی به اشتراک نگذارید.'
 
         self._sent_messages.append({
             'phone': phone,
             'message': message,
             'type': 'otp',
             'message_id': message_id,
+            'template': template_name,
         })
 
         self._log_sms('OTP', phone, message_id, message)
 
-        return SmsResult(success=True, message_id=message_id, cost=0)
+        return SmsResult(
+            success=True,
+            message_id=message_id,
+            cost=0,
+        )
 
     def send(self, phone: str, message: str, sender: str = '') -> SmsResult:
         phone = self.validate_phone(phone)
