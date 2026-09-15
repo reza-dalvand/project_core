@@ -152,7 +152,7 @@ class TestService:
     def test_service_properties(self, test_service):
         assert test_service.discount_amount == 50000
         assert test_service.final_price == 450000
-        assert test_service.app_fee >= 7000
+        assert test_service.app_fee >= 9000
 
     def test_service_renewal_days(self, test_service):
         assert test_service.renewal_days == 30

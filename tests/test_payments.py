@@ -16,7 +16,7 @@ class TestPaymentService:
     def test_calculate_app_fee_small(self):
         from apps.payments.services.payment_service import PaymentService
         fee = PaymentService.calculate_app_fee(50000)
-        assert fee == 7000
+        assert fee == 9000
 
     def test_calculate_app_fee_zero(self):
         from apps.payments.services.payment_service import PaymentService
