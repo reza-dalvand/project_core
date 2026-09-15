@@ -40,7 +40,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://buclub.ir',
     'https://api.beauclub.ir',
     'https://develop.beauclub.ir',
-    'app.beauclub.ir', 
+    'https://app.beauclub.ir', 
     'https://www.beauclub.ir',
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
