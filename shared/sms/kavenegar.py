@@ -46,17 +46,22 @@ class KavenegarSmsProvider(AbstractSmsProvider):
     # ═══════════════════════════════════════════════
     #   ارسال کد تایید
     # ═══════════════════════════════════════════════
+    # ═══════════════════════════════════════════════
+    #   ارسال کد تایید
+    # ═══════════════════════════════════════════════
     def send_otp(self, phone: str, token: str, template_name: str = None) -> SmsResult:
         """
         ارسال پیامک کد تایید با استفاده از verify_lookup کاوه‌نگار
+        ✅ FIX: parsing بهتر + fallback به sms_send + logging دقیق
         """
         from django.conf import settings
-        
+
         phone = self.validate_phone(phone)
-        
+
         if not template_name:
             template_name = getattr(settings, 'KAVENEGAR_OTP_TEMPLATE', 'otp_template')
 
+        # ─── تلاش اول: verify_lookup (پترن) ───
         try:
             params = {
                 'receptor': phone,
@@ -64,24 +69,91 @@ class KavenegarSmsProvider(AbstractSmsProvider):
                 'token': token,
                 'type': 'sms',
             }
-            response = self.api.verify_lookup(params)
-            entries = response.get('entries', [])
 
-            if not entries:
+            logger.info(
+                f'Kavenegar verify_lookup request → phone={phone}, '
+                f'template={template_name}'
+            )
+
+            response = self.api.verify_lookup(params)
+
+            # ✅ FIX: لاگ response خام برای دیباگ
+            logger.info(f'Kavenegar verify_lookup raw response: {response}')
+
+            # ✅ FIX: parsing انعطاف‌پذیر — هم dict و هم list
+            entry = None
+
+            if isinstance(response, dict):
+                entries = response.get('entries', [])
+                if entries:
+                    entry = entries[0]
+                else:
+                    # شاید response مستقیماً messageid دارد
+                    if response.get('messageid'):
+                        entry = response
+            elif isinstance(response, list) and response:
+                entry = response[0]
+
+            if entry:
+                message_id = str(entry.get('messageid', ''))
+                cost = entry.get('cost', 0)
+                logger.info(
+                    f'Kavenegar verify_lookup SUCCESS → {phone}, '
+                    f'messageid={message_id}, cost={cost}'
+                )
                 return SmsResult(
-                    success=False,
-                    error_message='پاسخ خالی از کاوه‌نگار دریافت شد',
+                    success=True,
+                    message_id=message_id,
+                    cost=cost,
                 )
 
-            entry = entries[0]
+            # entries خالی بود — شاید return status موفقیت‌آمیز است
+            if isinstance(response, dict):
+                return_status = response.get('return', {})
+                if isinstance(return_status, dict) and return_status.get('status') == 200:
+                    logger.warning(
+                        f'Kavenegar verify_lookup: entries خالی ولی status=200 → {phone}'
+                    )
+                    return SmsResult(success=True, message_id='', cost=0)
 
-            return SmsResult(
-                success=True,
-                message_id=str(entry.get('messageid', '')),
-                cost=entry.get('cost', 0),
-            )
+            logger.error(f'Kavenegar verify_lookup: response غیرمنتظره → {phone}: {response}')
+
         except Exception as e:
-            logger.error(f'Kavenegar verify_lookup error → {phone}: {e}')
+            error_str = str(e)
+            logger.warning(
+                f'Kavenegar verify_lookup exception → {phone}: {error_str}'
+            )
+
+            # ✅ FIX: اگر خطای 404 (template not found) بود، fallback به sms_send
+            if '404' in error_str or 'نامشخص' in error_str:
+                logger.info(
+                    f'Kavenegar: template "{template_name}" یافت نشد. '
+                    f'Fallback به sms_send ساده → {phone}'
+                )
+                return self._send_otp_fallback(phone, token)
+
+            # سایر خطاها هم fallback
+            logger.warning(f'Kavenegar: fallback به sms_send → {phone}')
+            return self._send_otp_fallback(phone, token)
+
+        # اگر هیچ entry پیدا نشد، fallback
+        logger.warning(f'Kavenegar: بدون entry — fallback → {phone}')
+        return self._send_otp_fallback(phone, token)
+    
+
+    def _send_otp_fallback(self, phone: str, token: str) -> SmsResult:
+        """
+        ✅ NEW: Fallback — ارسال کد تایید به صورت پیام ساده
+        وقتی verify_lookup کار نکند (template نیست، خطا دارد، ...)
+        """
+        try:
+            message = (
+                f'کد تایید بیو کلاب: {token}\n'
+                f'این کد را با کسی به اشتراک نگذارید.'
+            )
+            return self.send(phone=phone, message=message)
+        except Exception as e:
+            logger.error(f'Kavenegar fallback sms_send error → {phone}: {e}')
             return SmsResult(
                 success=False,
                 error_message=str(e),
