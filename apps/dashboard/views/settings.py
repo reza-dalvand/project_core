@@ -25,7 +25,7 @@ from apps.landing.models import (
     AboutSection, AboutPoint,
     TeamSection, TeamMember,
     StatsSection, StatItem,
-    FAQSection, FAQItem,
+    FAQSection, FAQItem, FAQCategory,
     ContactSection, DownloadSection,
 )
 from apps.dashboard.models import AdminRole, AdminUser
@@ -1533,7 +1533,7 @@ def landing_stats_view(request):
 @role_required('super_admin')
 @admin_login_required
 def landing_faq_view(request):
-    """مدیریت بخش سوالات متداول + سوالات"""
+    """مدیریت بخش سوالات متداول + تب‌ها + سوالات"""
     section = FAQSection.objects.first()
 
     if request.method == 'POST':
@@ -1550,26 +1550,65 @@ def landing_faq_view(request):
             section.save()
             messages.success(request, 'تنظیمات بخش سوالات بروزرسانی شد.')
 
+        # ═══════════ ✅ مدیریت تب‌ها (جدید) ═══════════
+        elif action == 'add_tab':
+            tab_name = request.POST.get('tab_name', '').strip()
+            tab_icon = request.POST.get('tab_icon', '').strip()
+
+            if not tab_name or len(tab_name) < 2:
+                messages.error(request, 'عنوان تب باید حداقل ۲ کاراکتر باشد.')
+            else:
+                if not section:
+                    section = FAQSection.objects.create()
+                FAQCategory.objects.create(
+                    section=section,
+                    name=tab_name,
+                    icon=tab_icon,
+                    order=FAQCategory.objects.count(),
+                )
+                messages.success(request, f'تب "{tab_name}" اضافه شد.')
+
+        elif action == 'toggle_tab':
+            item_id = request.POST.get('item_id')
+            try:
+                cat = FAQCategory.objects.get(id=item_id)
+                cat.is_active = not cat.is_active
+                cat.save(update_fields=['is_active'])
+            except FAQCategory.DoesNotExist:
+                messages.error(request, 'تب یافت نشد.')
+
+        elif action == 'delete_tab':
+            item_id = request.POST.get('item_id')
+            deleted, _ = FAQCategory.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'تب و سوالات آن حذف شد.')
+            else:
+                messages.error(request, 'تب یافت نشد.')
+
+        # ═══════════ ✅ مدیریت سوالات (اصلاح شده برای تب) ═══════════
         elif action == 'add_item':
             question = request.POST.get('question', '').strip()
             answer = request.POST.get('answer', '').strip()
+            category_id = request.POST.get('category_id')  # ✅ دریافت تب انتخاب شده
 
             if not question or len(question) < 5:
                 messages.error(request, 'سوال باید حداقل ۵ کاراکتر باشد.')
             elif not answer or len(answer) < 5:
                 messages.error(request, 'پاسخ سوال باید حداقل ۵ کاراکتر باشد.')
+            elif not category_id:
+                messages.error(request, 'انتخاب تب (دسته‌بندی) الزامی است.')
             else:
                 if not section:
                     section = FAQSection.objects.create()
                 
-                # ✅ FIX: محاسبه order فقط بر اساس سوالات همین بخش
-                current_order = FAQItem.objects.filter(section=section).count()
+                category = FAQCategory.objects.filter(id=category_id).first()
                 
                 FAQItem.objects.create(
                     section=section,
+                    category=category,  # ✅ اختصاص به تب
                     question=question,
                     answer=answer,
-                    order=current_order,
+                    order=FAQItem.objects.filter(category=category).count() if category else FAQItem.objects.count(),
                 )
                 messages.success(request, 'سوال جدید با موفقیت اضافه شد.')
 
@@ -1596,10 +1635,20 @@ def landing_faq_view(request):
 
         return redirect(reverse('dashboard:landing_faq'))
 
+    # ─── دریافت داده‌ها برای نمایش در تمپلیت ───
     faqs = FAQItem.objects.filter(section=section).order_by('order') if section else []
-    context = {'section': section, 'faqs': faqs}
-    return render(request, 'dashboard/settings/landing_faq.html', context)
+    
+    # ✅ اضافه شدن دسته‌بندی‌ها به کانتکست
+    categories = FAQCategory.objects.filter(section=section).order_by('order') if section else []
+    active_categories = FAQCategory.objects.filter(section=section, is_active=True).order_by('order') if section else []
 
+    context = {
+        'section': section, 
+        'faqs': faqs,
+        'categories': categories,
+        'active_categories': active_categories,
+    }
+    return render(request, 'dashboard/settings/landing_faq.html', context)
 
 
 # ═══════════════════════════════════════════════

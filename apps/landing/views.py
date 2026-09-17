@@ -8,7 +8,7 @@ from .models import (
     SiteSettings, HeroSection, FeaturesSection, Feature,
     HowToSection, HowToStep, ServicesSection, ServiceCategory,
     AboutSection, AboutPoint, TeamSection, TeamMember,
-    StatsSection, StatItem, FAQSection, FAQItem,
+    StatsSection, StatItem, FAQSection, FAQItem, FAQCategory,
     ContactSection, ContactMessage, DownloadSection,
     TrustBadge, NavItem, FooterLinkGroup, FooterLink
 )
@@ -50,6 +50,12 @@ def index(request):
     
     # ─── بخش سوالات متداول ───
     faq_section = FAQSection.objects.filter(is_active=True).first()
+    faq_categories = FAQCategory.objects.filter(
+        section=faq_section, 
+        is_active=True,
+        items__is_active=True
+    ).prefetch_related('items').order_by('order').distinct() if faq_section else []
+
     faqs = FAQItem.objects.filter(is_active=True).order_by('order') if faq_section else []
     
     # ─── بخش تماس ───
@@ -84,6 +90,7 @@ def index(request):
         'stats_section': stats_section,
         'stats': stats,
         'faq_section': faq_section,
+        'faq_categories': faq_categories,
         'faqs': faqs,
         'contact_section': contact_section,
         'download_section': download_section,
