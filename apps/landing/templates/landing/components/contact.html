@@ -1,0 +1,107 @@
+<!-- ═══════════ تماس با ما ═══════════ -->
+{% if contact_section %}
+<section id="contact" class="py-24 lg:py-32 bg-white/40 border-y border-ink/5">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+
+    <!-- هدر بخش -->
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
+      <span class="inline-flex items-center gap-2 glass rounded-full px-4 py-2 text-xs font-bold text-rose-600 mb-4">
+        <span class="material-icons" style="font-size:14px;">{{ contact_section.badge_icon|default:"headset_mic" }}</span>
+        {{ contact_section.badge_text|default:"ارتباط با ما" }}
+      </span>
+      <h2 class="font-display text-4xl lg:text-5xl leading-tight mb-4">{{ contact_section.title|default:"با ما در تماس باشید" }}</h2>
+      <p class="text-ink/60 leading-8">{{ contact_section.subtitle|default:"تیم پشتیبانی بیو کلاب آماده پاسخگویی به سوالات و حل مشکلات شماست." }}</p>
+    </div>
+
+    <!-- ═══ کانال‌های ارتباطی (دیپ‌لینک به اپ‌ها) ═══ -->
+    <div class="grid sm:grid-cols-3 gap-5 mb-12" data-stagger>
+
+      <!-- واتساپ -->
+      {% if site_settings.whatsapp_url and site_settings.whatsapp_url != "#" %}
+      <a href="{% if "http" in site_settings.whatsapp_url %}{{ site_settings.whatsapp_url }}{% else %}https://wa.me/{{ site_settings.whatsapp_url|cut:"+" }}{% endif %}"
+         target="_blank" rel="noopener noreferrer"
+         class="group glass rounded-3xl p-6 text-center hover:-translate-y-2 hover:shadow-lift transition-all duration-500">
+        <span class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#25D366]/10 text-[#128C7E] grid place-items-center group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c2.2 0 4.26.86 5.82 2.42a8.203 8.203 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23-1.48 0-2.93-.39-4.19-1.15l-.3-.17-3.12.82.83-3.04-.2-.31a8.264 8.264 0 0 1-1.26-4.38c.01-4.54 3.7-8.24 8.25-8.24M8.53 7.33c-.16 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1 2.56.14.17 1.76 2.67 4.25 3.73 2.07.89 2.49.71 2.94.66.45-.04 1.45-.59 1.65-1.17.21-.58.21-1.07.15-1.17-.06-.1-.23-.16-.48-.27-.25-.14-1.47-.73-1.69-.81-.23-.08-.37-.12-.56.12-.16.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.12-.24-.01-.37.11-.5.11-.11.27-.29.37-.44.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.52-.06-.11-.56-1.37-.77-1.87-.2-.48-.4-.42-.56-.43-.14 0-.3-.01-.46-.01z"/></svg>
+        </span>
+        <h3 class="font-display text-xl mb-1">واتساپ</h3>
+        <p class="text-xs text-ink/50 mb-4">پاسخ‌گویی سریع، ۷ روز هفته</p>
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#128C7E]">
+          شروع گفتگو
+          <svg class="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </span>
+      </a>
+      {% endif %}
+
+      <!-- تلگرام -->
+      {% if site_settings.telegram_url and site_settings.telegram_url != "#" %}
+      <a href="{% if "http" in site_settings.telegram_url %}{{ site_settings.telegram_url }}{% else %}https://t.me/{{ site_settings.telegram_url|cut:"@" }}{% endif %}"
+         target="_blank" rel="noopener noreferrer"
+         class="group glass rounded-3xl p-6 text-center hover:-translate-y-2 hover:shadow-lift transition-all duration-500">
+        <span class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#229ED9]/10 text-[#229ED9] grid place-items-center group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0Zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.578-1.732-1.056-.693-.371-1.076.031-1.488.107-.109 1.94-1.779 1.976-1.933.046-.19-.146-.274-.404-.36-1.06-.357-1.94-.792-2.94-1.21-1.002-.42-1.313-.683-1.29-1.003.024-.318.475-.443 1.003-.646 2.14-.836 3.593-1.387 4.36-1.706 2.04-.85 2.464-.998 2.74-.998Z"/></svg>
+        </span>
+        <h3 class="font-display text-xl mb-1">تلگرام</h3>
+        <p class="text-xs text-ink/50 mb-4">کانال و پشتیبانی آنلاین</p>
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#229ED9]">
+          ورود به تلگرام
+          <svg class="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </span>
+      </a>
+      {% endif %}
+
+      <!-- اینستاگرام -->
+      {% if site_settings.instagram_url and site_settings.instagram_url != "#" %}
+      <a href="{% if "http" in site_settings.instagram_url %}{{ site_settings.instagram_url }}{% else %}https://instagram.com/{{ site_settings.instagram_url|cut:"@" }}{% endif %}"
+         target="_blank" rel="noopener noreferrer"
+         class="group glass rounded-3xl p-6 text-center hover:-translate-y-2 hover:shadow-lift transition-all duration-500">
+        <span class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#E1306C]/10 text-[#E1306C] grid place-items-center group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+        </span>
+        <h3 class="font-display text-xl mb-1">اینستاگرام</h3>
+        <p class="text-xs text-ink/50 mb-4">نمونه‌کارها و اخبار روز</p>
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-[#E1306C]">
+          مشاهده صفحه
+          <svg class="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+        </span>
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- ═══ نوار اطلاعات تماس ═══ -->
+    <div class="glass rounded-[2rem] p-8 lg:p-10 reveal">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+        <div class="flex flex-col items-center gap-2">
+          <span class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 grid place-items-center">
+            <span class="material-icons" style="font-size:20px;">call</span>
+          </span>
+          <h4 class="font-bold text-sm text-ink mt-1">تلفن پشتیبانی</h4>
+          <a href="tel:{{ site_settings.phone }}" dir="ltr" class="text-sm text-ink/60 hover:text-rose-600 transition-colors">{{ site_settings.phone|default:"۰۲۱-۹۱۰۰۱۲۳۴" }}</a>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 grid place-items-center">
+            <span class="material-icons" style="font-size:20px;">mail</span>
+          </span>
+          <h4 class="font-bold text-sm text-ink mt-1">ایمیل</h4>
+          <a href="mailto:{{ site_settings.email }}" dir="ltr" class="text-sm text-ink/60 hover:text-rose-600 transition-colors">{{ site_settings.email|default:"support@beau.app" }}</a>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 grid place-items-center">
+            <span class="material-icons" style="font-size:20px;">schedule</span>
+          </span>
+          <h4 class="font-bold text-sm text-ink mt-1">ساعات پاسخ‌گویی</h4>
+          <p class="text-sm text-ink/60">{{ site_settings.working_hours|default:"شنبه تا پنجشنبه ۹ تا ۱۸" }}</p>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <span class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 grid place-items-center">
+            <span class="material-icons" style="font-size:20px;">place</span>
+          </span>
+          <h4 class="font-bold text-sm text-ink mt-1">دفتر مرکزی</h4>
+          <p class="text-sm text-ink/60">{{ site_settings.address|default:"تهران، سعادت‌آباد" }}</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endif %}

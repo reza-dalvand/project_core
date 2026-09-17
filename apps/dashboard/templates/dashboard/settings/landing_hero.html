@@ -1,0 +1,144 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}بخش هیرو{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">🎯 بخش هیرو</h4>
+                <div>
+                    <a href="{% url 'dashboard:landing_settings' %}" class="btn btn-outline-secondary btn-sm">← تنظیمات لندینگ</a>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <h6 class="fw-bold mb-3 mt-3">📝 محتوای اصلی</h6>
+                <div class="mb-3">
+                    <label class="form-label">متن بج</label>
+                    <input type="text" class="form-control" name="badge_text"
+                           value="{{ hero.badge_text|default:'✨ نسل جدید رزرو خدمات زیبایی' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان اصلی</label>
+                    <input type="text" class="form-control" name="title"
+                           value="{{ hero.title|default:'زیبایی و سلامت، فقط با یک لمس' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">بخش هایلایت عنوان</label>
+                    <input type="text" class="form-control" name="title_highlight"
+                           value="{{ hero.title_highlight|default:'فقط با یک لمس' }}">
+                    <small class="text-muted">بخشی از عنوان که با رنگ گرادیانت نمایش داده می‌شود</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">توضیحات</label>
+                    <textarea class="form-control" name="description" rows="3">{{ hero.description|default:'' }}</textarea>
+                </div>
+
+                <h6 class="fw-bold mb-3 mt-4">🔘 دکمه‌ها</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">متن دکمه اصلی</label>
+                        <input type="text" class="form-control" name="primary_btn_text"
+                               value="{{ hero.primary_btn_text|default:'دانلود رایگان' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">آیکون دکمه اصلی</label>
+                        <input type="text" class="form-control" name="primary_btn_icon"
+                               value="{{ hero.primary_btn_icon|default:'download' }}">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">متن دکمه دوم</label>
+                        <input type="text" class="form-control" name="secondary_btn_text"
+                               value="{{ hero.secondary_btn_text|default:'نحوه کار' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">آیکون دکمه دوم</label>
+                        <input type="text" class="form-control" name="secondary_btn_icon"
+                               value="{{ hero.secondary_btn_icon|default:'play_circle' }}">
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-3 mt-4">📊 آمار هیرو</h6>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">آیکون آمار ۱</label>
+                        <input type="text" class="form-control" name="stat1_icon"
+                               value="{{ hero.stat1_icon|default:'store' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">مقدار آمار ۱</label>
+                        <input type="text" class="form-control" name="stat1_value"
+                               value="{{ hero.stat1_value|default:'۲۵۰۰+' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">برچسب آمار ۱</label>
+                        <input type="text" class="form-control" name="stat1_label"
+                               value="{{ hero.stat1_label|default:'کسب‌وکار فعال' }}">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">آیکون آمار ۲</label>
+                        <input type="text" class="form-control" name="stat2_icon"
+                               value="{{ hero.stat2_icon|default:'people' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">مقدار آمار ۲</label>
+                        <input type="text" class="form-control" name="stat2_value"
+                               value="{{ hero.stat2_value|default:'۱۲۰هزار+' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">برچسب آمار ۲</label>
+                        <input type="text" class="form-control" name="stat2_label"
+                               value="{{ hero.stat2_label|default:'کاربر فعال' }}">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">آیکون آمار ۳</label>
+                        <input type="text" class="form-control" name="stat3_icon"
+                               value="{{ hero.stat3_icon|default:'star' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">مقدار آمار ۳</label>
+                        <input type="text" class="form-control" name="stat3_value"
+                               value="{{ hero.stat3_value|default:'۴.۸' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">برچسب آمار ۳</label>
+                        <input type="text" class="form-control" name="stat3_label"
+                               value="{{ hero.stat3_label|default:'امتیاز کاربران' }}">
+                    </div>
+                </div>
+
+                <h6 class="fw-bold mb-3 mt-4">🖼️ تصویر هیرو</h6>
+                <div class="mb-3">
+                    <label class="form-label">تصویر هیرو (ماکاپ موبایل)</label>
+                    <input type="file" class="form-control" name="hero_image" accept="image/*">
+                    {% if hero.hero_image %}
+                        <div class="mt-2">
+                            <img src="{{ hero.hero_image.url }}" alt="تصویر هیرو" style="max-height: 120px; border-radius: 8px; border: 1px solid #ddd;">
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="heroActive"
+                               {% if hero.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="heroActive">فعال</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره بخش هیرو
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,267 @@
+<!-- ═══════════ فوتر — مینیمال و کامل ═══════════ -->
+<footer id="footer" class="relative mt-8 bg-ink text-cream rounded-t-[3rem] overflow-hidden">
+  <!-- خط مویی گرادیانت بالا -->
+  <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-l from-transparent via-rose-500/70 to-transparent"></div>
+
+  <!-- پس‌زمینه محیطی -->
+  <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+    <div class="absolute -top-32 right-[15%] w-96 h-96 rounded-full bg-rose-600/10 blur-[130px]"></div>
+    <div class="absolute -bottom-40 left-[10%] w-96 h-96 rounded-full bg-gold/10 blur-[130px]"></div>
+    <span class="material-icons absolute -bottom-14 -left-8 text-cream/[0.04] select-none" style="font-size:15rem;">{{ site_settings.logo_icon|default:"spa" }}</span>
+  </div>
+
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 lg:pt-20 pb-8">
+
+    <!-- ═══ ردیف ۱: برند + لینک‌ها + تماس ═══ -->
+    <div class="grid gap-12 lg:gap-10 lg:grid-cols-12">
+
+      <!-- برند -->
+      <div class="lg:col-span-4">
+        <a href="#hero" class="inline-flex items-center gap-3 group">
+          <span class="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 grid place-items-center text-white shadow-lg shadow-rose-900/40 group-hover:scale-105 transition-transform">
+            <span class="material-icons" style="font-size:20px;">{{ site_settings.logo_icon|default:"spa" }}</span>
+          </span>
+          <span class="font-display text-3xl leading-none pt-1">{{ site_settings.site_name|default:"بیو کلاب" }}</span>
+        </a>
+        <p class="mt-5 text-sm leading-8 text-cream/50 max-w-sm">{{ site_settings.site_slogan|default:"باشگاه آنلاین زیبایی و سلامت بانوان؛ رزرو نوبت به سادگی چند لمس." }}</p>
+
+        <!-- شبکه‌های اجتماعی -->
+        <div class="mt-7 flex items-center gap-2.5">
+          {% if site_settings.instagram_url and site_settings.instagram_url != "#" %}
+          <a href="{{ site_settings.instagram_url }}" target="_blank" rel="noopener noreferrer" aria-label="اینستاگرام"
+             class="w-10 h-10 rounded-full border border-cream/15 grid place-items-center text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream hover:-translate-y-0.5 transition-all">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg>
+          </a>
+          {% endif %}
+          {% if site_settings.telegram_url and site_settings.telegram_url != "#" %}
+          <a href="{{ site_settings.telegram_url }}" target="_blank" rel="noopener noreferrer" aria-label="تلگرام"
+             class="w-10 h-10 rounded-full border border-cream/15 grid place-items-center text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream hover:-translate-y-0.5 transition-all">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 3 11 14M22 3l-7 19-4-9-9-4 20-6z"/></svg>
+          </a>
+          {% endif %}
+          {% if site_settings.whatsapp_url and site_settings.whatsapp_url != "#" %}
+          <a href="{{ site_settings.whatsapp_url }}" target="_blank" rel="noopener noreferrer" aria-label="واتساپ"
+             class="w-10 h-10 rounded-full border border-cream/15 grid place-items-center text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream hover:-translate-y-0.5 transition-all">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.6-6.1c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.4-3c-.3-.4 0-.5.1-.7l.4-.5c.1-.2.1-.3 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.9.9-1.1 2.2-.3 3.6a13 13 0 0 0 5 4.6c1.7.7 2.4.8 3.3.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2 0-.1-.2-.2-.5-.3z"/></svg>
+          </a>
+          {% endif %}
+          {% if site_settings.twitter_url and site_settings.twitter_url != "#" %}
+          <a href="{{ site_settings.twitter_url }}" target="_blank" rel="noopener noreferrer" aria-label="توییتر"
+             class="w-10 h-10 rounded-full border border-cream/15 grid place-items-center text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream hover:-translate-y-0.5 transition-all">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 1.2h3.7l-8 9.2L24 22.8h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9 6.1-6.9z"/></svg>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- دسترسی سریع -->
+      <div class="lg:col-span-2">
+        <h4 class="font-display text-lg mb-5 text-cream/90">دسترسی سریع</h4>
+        <ul class="space-y-3 text-sm text-cream/50">
+          {% for item in nav_items %}
+          <li><a href="#{{ item.anchor }}" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>{{ item.label }}</a></li>
+          {% endfor %}
+          {% if not nav_items %}
+          <li><a href="#features" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>امکانات</a></li>
+          <li><a href="#steps" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>مراحل رزرو</a></li>
+          <li><a href="#services" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>خدمات</a></li>
+          <li><a href="#about" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>درباره ما</a></li>
+          <li><a href="#team" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>تیم ما</a></li>
+          <li><a href="#faq" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>سؤالات</a></li>
+          <li><a href="#contact" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>تماس با ما</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- گروه‌های لینک (دیتابیس) -->
+      <div class="lg:col-span-3">
+        {% if footer_groups %}
+          {% for group in footer_groups %}
+          <div class="{% if not forloop.first %}mt-7{% endif %}">
+            <h4 class="font-display text-lg mb-4 text-cream/90">{{ group.title }}</h4>
+            <ul class="space-y-3 text-sm text-cream/50">
+              {% for link in group.links.all %}
+              {% if link.is_active %}
+              <li><a href="{{ link.url }}" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>{{ link.label }}</a></li>
+              {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+          {% endfor %}
+        {% else %}
+          <h4 class="font-display text-lg mb-5 text-cream/90">پشتیبانی</h4>
+          <ul class="space-y-3 text-sm text-cream/50">
+            <li><a href="#faq" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>سوالات متداول</a></li>
+            <li><a href="#contact" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>تماس با ما</a></li>
+            <li><a href="#download" class="inline-flex items-center gap-2 hover:text-rose-400 transition-colors"><span class="w-1 h-1 rounded-full bg-rose-500/60"></span>دانلود اپلیکیشن</a></li>
+          </ul>
+        {% endif %}
+      </div>
+
+      <!-- تماس + دانلود اپ -->
+      <div class="lg:col-span-3">
+        <h4 class="font-display text-lg mb-5 text-cream/90">تماس با ما</h4>
+        <ul class="space-y-3.5 text-sm text-cream/50">
+          {% if site_settings.address %}
+          <li class="flex items-start gap-2.5">
+            <svg class="mt-1 shrink-0 text-rose-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            {{ site_settings.address }}
+          </li>
+          {% endif %}
+          {% if site_settings.phone %}
+          <li class="flex items-center gap-2.5">
+            <svg class="shrink-0 text-rose-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg>
+            {{ site_settings.phone }}
+          </li>
+          {% endif %}
+          {% if site_settings.email %}
+          <li class="flex items-center gap-2.5">
+            <svg class="shrink-0 text-rose-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg>
+            <a href="mailto:{{ site_settings.email }}" class="hover:text-rose-400 transition-colors" dir="ltr">{{ site_settings.email }}</a>
+          </li>
+          {% endif %}
+          {% if site_settings.working_hours %}
+          <li class="flex items-center gap-2.5">
+            <svg class="shrink-0 text-rose-400" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            {{ site_settings.working_hours }}
+          </li>
+          {% endif %}
+        </ul>
+
+        <!-- دانلود اپلیکیشن -->
+        {% if site_settings.cafebazaar_url and site_settings.cafebazaar_url != "#" or site_settings.myket_url and site_settings.myket_url != "#" or site_settings.google_play_url and site_settings.google_play_url != "#" or site_settings.app_store_url and site_settings.app_store_url != "#" %}
+        <div class="mt-7">
+          <p class="text-[11px] font-bold text-cream/40 mb-3">دانلود اپلیکیشن</p>
+          <div class="flex flex-wrap gap-2">
+            {% if site_settings.cafebazaar_url and site_settings.cafebazaar_url != "#" %}
+            <a href="{{ site_settings.cafebazaar_url }}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 rounded-xl border border-cream/10 bg-cream/5 px-3.5 py-2 text-[11px] font-bold text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream transition-all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5 19.3 6.6c.1-.2 0-.4-.2-.5-.2-.1-.4 0-.5.2l-1.7 2.9A10.7 10.7 0 0 0 12 8.5c-1.7 0-3.4.2-4.9.7L5.4 6.3c-.1-.2-.3-.3-.5-.2-.2.1-.3.3-.2.5l1.7 2.9C3.5 11 1.5 13.9 1.3 17.3h21.4c-.2-3.4-2.2-6.3-5.1-7.8zM7.7 14.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm8.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
+              کافه‌بازار
+            </a>
+            {% endif %}
+            {% if site_settings.myket_url and site_settings.myket_url != "#" %}
+            <a href="{{ site_settings.myket_url }}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 rounded-xl border border-cream/10 bg-cream/5 px-3.5 py-2 text-[11px] font-bold text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream transition-all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
+              مایکت
+            </a>
+            {% endif %}
+            {% if site_settings.google_play_url and site_settings.google_play_url != "#" %}
+            <a href="{{ site_settings.google_play_url }}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 rounded-xl border border-cream/10 bg-cream/5 px-3.5 py-2 text-[11px] font-bold text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream transition-all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.6.34-1.11.84-1.35L13.69 12l-9.85 9.85c-.5-.24-.84-.76-.84-1.35zm13.81-5.38L6.05 21.34l8.49-8.49 2.27 2.27zm3.35-4.31c.34.27.59.68.59 1.19s-.25.92-.6 1.19l-2.29 1.32-2.5-2.5 2.5-2.5 2.3 1.3zM6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z"/></svg>
+              گوگل‌پلی
+            </a>
+            {% endif %}
+            {% if site_settings.app_store_url and site_settings.app_store_url != "#" %}
+            <a href="{{ site_settings.app_store_url }}" target="_blank" rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 rounded-xl border border-cream/10 bg-cream/5 px-3.5 py-2 text-[11px] font-bold text-cream/70 hover:bg-rose-600 hover:border-rose-600 hover:text-cream transition-all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+              اپ‌استور
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ═══ ردیف ۲: نشان‌های اعتماد + ای‌نماد ═══ -->
+    {% if trust_badges or site_settings.enamad_image or site_settings.enamad_code %}
+    <div class="mt-14 pt-8 border-t border-cream/10 flex flex-wrap items-center justify-between gap-6">
+      <div class="flex flex-wrap items-center gap-2.5">
+        {% if trust_badges %}
+        <span class="text-[11px] font-bold text-cream/40 ml-1">نشان‌های اعتماد:</span>
+        {% for badge in trust_badges %}
+          {% if badge.link_url %}
+          <a href="{{ badge.link_url }}" target="_blank" rel="noopener noreferrer"
+             class="inline-flex items-center gap-2 rounded-full border border-cream/10 bg-cream/5 px-4 py-2 text-[11px] font-bold text-cream/70 hover:border-rose-500/50 hover:text-cream hover:-translate-y-0.5 transition-all">
+          {% else %}
+          <span class="inline-flex items-center gap-2 rounded-full border border-cream/10 bg-cream/5 px-4 py-2 text-[11px] font-bold text-cream/70 hover:border-rose-500/50 hover:text-cream transition-colors">
+          {% endif %}
+            {% if badge.image %}
+            <img src="{{ badge.image.url }}" alt="{{ badge.name }}" class="w-5 h-5 object-contain" loading="lazy">
+            {% else %}
+            <span class="material-icons text-rose-400" style="font-size:16px;">{{ badge.icon|default:"verified" }}</span>
+            {% endif %}
+            {{ badge.name }}
+          {% if badge.link_url %}</a>{% else %}</span>{% endif %}
+        {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- ای‌نماد -->
+      {% if site_settings.enamad_image or site_settings.enamad_code %}
+      <div class="flex items-center gap-3">
+        {% if site_settings.enamad_image %}
+        <a href="https://trustseal.enamad.ir" target="_blank" rel="noopener noreferrer" aria-label="نماد اعتماد الکترونیکی"
+           class="bg-white rounded-2xl p-2 shadow-lg hover:scale-105 transition-transform">
+          <img src="{{ site_settings.enamad_image.url }}" alt="نماد اعتماد الکترونیکی" class="w-20 h-20 object-contain" loading="lazy">
+        </a>
+        {% elif site_settings.enamad_code %}
+        <div id="enamadBox" class="enamad-box bg-white rounded-2xl p-2 shadow-lg w-[92px] min-h-[92px] flex items-center justify-center overflow-hidden">
+          {{ site_settings.enamad_code|safe }}
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ═══ ردیف ۳: نوار پایینی ═══ -->
+    <div class="mt-8 pt-6 border-t border-cream/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-cream/40">
+      <p class="leading-6 text-center sm:text-right">
+        © {{ site_settings.copyright_year|default:"۱۴۰۵" }} — {{ site_settings.footer_text|default:"تمامی حقوق برای بیو کلاب محفوظ است. ساخته شده با ❤️ در ایران" }}
+      </p>
+      <div class="flex items-center gap-5">
+        <a href="#" class="hover:text-rose-400 transition-colors">قوانین و مقررات</a>
+        <a href="#" class="hover:text-rose-400 transition-colors">حریم خصوصی</a>
+        <a href="#hero" aria-label="بازگشت به بالا"
+           class="w-9 h-9 rounded-full border border-cream/15 grid place-items-center text-cream/60 hover:bg-rose-600 hover:border-rose-600 hover:text-cream hover:-translate-y-0.5 transition-all">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- نرمال‌سازی خروجی ای‌نماد + fallback ضد هنگ -->
+  <style>
+    .enamad-box a { display: block; line-height: 0; }
+    .enamad-box img { width: 76px !important; height: 76px !important; object-fit: contain; }
+  </style>
+  <script>
+  (function () {
+    var box = document.getElementById('enamadBox');
+    if (!box) { return; }
+    var img = box.querySelector('img');
+    var link = img ? img.closest('a') : null;
+    var verifyUrl = link ? link.href : 'https://trustseal.enamad.ir';
+
+    function showFallback() {
+      box.innerHTML =
+        '<a href="' + verifyUrl + '" target="_blank" rel="noopener noreferrer" ' +
+        'style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;">' +
+        '<span class="material-icons" style="font-size:34px;color:#C13E55;">verified_user</span>' +
+        '<span style="font-size:9px;font-weight:800;color:#3A2430;line-height:1;">نماد اعتماد</span></a>';
+    }
+
+    if (!img) { showFallback(); return; }
+
+    var settled = false;
+    function isRealLogo() {
+      return img.complete && img.naturalWidth >= 40 && img.naturalHeight >= 40;
+    }
+    function fail() {
+      if (settled) { return; }
+      settled = true;
+      showFallback();
+    }
+
+    img.addEventListener('load', function () { isRealLogo() ? (settled = true) : fail(); });
+    img.addEventListener('error', fail);
+    if (img.complete) { isRealLogo() ? (settled = true) : fail(); }
+    setTimeout(fail, 4000);
+  })();
+  </script>
+</footer>

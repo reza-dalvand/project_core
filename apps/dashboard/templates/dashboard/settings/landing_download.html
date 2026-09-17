@@ -1,0 +1,80 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}بخش دانلود{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">📱 بخش دانلود</h4>
+                <a href="{% url 'dashboard:landing_settings' %}" class="btn btn-outline-secondary btn-sm">← تنظیمات لندینگ</a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <h6 class="fw-bold mb-3 mt-3">📝 محتوا</h6>
+                <div class="mb-3">
+                    <label class="form-label">عنوان</label>
+                    <input type="text" class="form-control" name="title"
+                           value="{{ section.title|default:'همین حالا بیو کلاب را نصب کنید' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">توضیحات</label>
+                    <textarea class="form-control" name="description" rows="2">{{ section.description|default:'' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">متن راهنما</label>
+                    <input type="text" class="form-control" name="hint_text"
+                           value="{{ section.hint_text|default:'✨ رایگان • بدون تبلیغات • همیشه به‌روز' }}">
+                </div>
+
+                <h6 class="fw-bold mb-3 mt-4">📱 کنترل نمایش استورها</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_cafebazaar" id="showCafebazaar"
+                                   {% if section.show_cafebazaar %}checked{% endif %}>
+                            <label class="form-check-label" for="showCafebazaar">نمایش کافه‌بازار</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_myket" id="showMyket"
+                                   {% if section.show_myket %}checked{% endif %}>
+                            <label class="form-check-label" for="showMyket">نمایش مایکت</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_google_play" id="showGooglePlay"
+                                   {% if section.show_google_play %}checked{% endif %}>
+                            <label class="form-check-label" for="showGooglePlay">نمایش گوگل‌پلی</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="show_app_store" id="showAppStore"
+                                   {% if section.show_app_store %}checked{% endif %}>
+                            <label class="form-check-label" for="showAppStore">نمایش اپ‌استور</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="sectionActive"
+                               {% if section.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="sectionActive">نمایش بخش</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    💾 ذخیره بخش دانلود
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}بخش سوالات متداول{% endblock %}
+
+{% block extra_head %}
+<style>
+.item-card {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+.item-card .label { font-weight: 600; font-size: 14px; }
+.item-card .meta { font-size: 12px; color: var(--text-2); }
+
+/* استایل برای مخفی کردن textarea اصلی CKEditor */
+.ck-editor__editable_inline {
+    min-height: 150px;
+}
+</style>
+
+<!-- ✅ بارگذاری CKEditor 5 (در صورتی که در base.html لود نشده است) -->
+<script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">❓ بخش سوالات متداول</h4>
+                <a href="{% url 'dashboard:landing_settings' %}" class="btn btn-outline-secondary btn-sm">← تنظیمات لندینگ</a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_section">
+                <h6 class="fw-bold mb-3">📝 تنظیمات بخش</h6>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">متن بج</label>
+                        <input type="text" class="form-control" name="badge_text"
+                               value="{{ section.badge_text|default:'سوالات متداول' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">آیکون بج</label>
+                        <input type="text" class="form-control" name="badge_icon"
+                               value="{{ section.badge_icon|default:'help' }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">عنوان</label>
+                    <input type="text" class="form-control" name="title"
+                           value="{{ section.title|default:'پاسخ سوالات شما' }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">توضیحات</label>
+                    <textarea class="form-control" name="subtitle" rows="2">{{ section.subtitle|default:'' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="sectionActive"
+                               {% if section.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="sectionActive">نمایش بخش</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">💾 ذخیره تنظیمات بخش</button>
+            </form>
+        </div>
+
+        <!-- ─── لیست سوالات ─── -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">💬 سوالات ({{ faqs|length }})</h5>
+            {% for faq in faqs %}
+            <div class="item-card">
+                <div style="flex:1;">
+                    <span class="label">{{ faq.question }}</span>
+                    <br><span class="meta">{{ faq.answer|striptags|truncatechars:80 }}</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_item">
+                        <input type="hidden" name="item_id" value="{{ faq.id }}">
+                        <button type="submit" class="btn btn-sm {% if faq.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                            {% if faq.is_active %}🚫{% else %}✅{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" class="d-inline"
+                          onsubmit="return confirm('آیا از حذف این سوال مطمئن هستید؟');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_item">
+                        <input type="hidden" name="item_id" value="{{ faq.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">✕</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted small">سوالی وجود ندارد.</p>
+            {% endfor %}
+        </div>
+
+        <!-- ─── افزودن سوال جدید ─── -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">➕ افزودن سوال جدید</h5>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_item">
+                <div class="mb-3">
+                    <label class="form-label">سوال</label>
+                    <input type="text" class="form-control" name="question" required placeholder="مثلاً: رزرو نوبت چگونه انجام می‌شود؟">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">پاسخ</label>
+                    <!-- ❌ صفت required از اینجا حذف شد -->
+                    <textarea class="form-control ckeditor5" name="answer" rows="5" placeholder="پاسخ سوال را با قابلیت قالب‌بندی بنویسید..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">➕ افزودن سوال</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ اسکریپت اولیه‌سازی CKEditor 5 -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const textareas = document.querySelectorAll('.ckeditor5');
+    textareas.forEach(textarea => {
+        ClassicEditor
+            .create(textarea, {
+                toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'undo', 'redo'],
+                language: 'fa'
+            })
+            .catch(error => {
+                console.error('CKEditor 5 initialization error:', error);
+            });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,208 @@
+<!-- ═══════════ درباره ما — نسخه مینیمال و شیک ═══════════ -->
+{% if about_section %}
+<section id="about" class="relative py-28 lg:py-36 overflow-hidden">
+
+  <!-- ─── عناصر تزئینی پس‌زمینه ─── -->
+  <div class="absolute inset-0 -z-10 pointer-events-none" aria-hidden="true">
+    <div class="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-rose-100/50 to-transparent blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-amber-50/40 to-transparent blur-3xl"></div>
+    <!-- نقاط ریز تزئینی -->
+    <div class="absolute inset-0 opacity-[0.02]" style="background-image: radial-gradient(circle, currentColor 1px, transparent 1px); background-size: 40px 40px;"></div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
+
+      <!-- ═══ ستون متن ═══ -->
+      <div class="lg:col-span-5 reveal">
+
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2.5 mb-8">
+          <span class="w-8 h-px bg-rose-400"></span>
+          <span class="text-rose-600 font-bold text-sm tracking-wider uppercase">{{ about_section.badge_text|default:"درباره ما" }}</span>
+        </div>
+
+        <!-- Title -->
+        <h2 class="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.1] mb-8 text-ink">
+          {{ about_section.title|default:"ما اینجاییم تا زیبایی رو برای همه ساده‌تر کنیم" }}
+        </h2>
+
+        <!-- Description -->
+        <p class="text-ink/55 leading-[2] text-lg mb-12">
+          {{ about_section.description }}
+        </p>
+
+        <!-- Key Points -->
+        {% if about_points %}
+        <div class="space-y-6">
+          {% for point in about_points %}
+          <div class="group relative flex items-start gap-5 p-5 rounded-2xl transition-all duration-300 hover:bg-white/80 hover:shadow-lg hover:shadow-rose-500/5">
+            <!-- آیکون -->
+            <div class="relative shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 grid place-items-center shadow-lg shadow-rose-500/25 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                <span class="material-icons text-white" style="font-size:24px;">{{ point.icon|default:"check" }}</span>
+              </div>
+            </div>
+            <!-- متن -->
+            <div class="flex-1 pt-1">
+              <h4 class="font-bold text-base text-ink mb-2 group-hover:text-rose-700 transition-colors">{{ point.title }}</h4>
+              <p class="text-sm text-ink/50 leading-relaxed">{{ point.description }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ═══ ستون کارت بصری ═══ -->
+      <div class="lg:col-span-7 reveal" style="--d:200ms">
+        <div class="relative">
+
+          <!-- کارت اصلی با افکت گلس -->
+          <div class="relative bg-white/60 backdrop-blur-2xl rounded-[3rem] border border-white/80 shadow-2xl shadow-rose-500/[0.07] overflow-hidden">
+            
+            <!-- گرادیانت داخلی -->
+            <div class="absolute inset-0 bg-gradient-to-br from-rose-50/60 via-white/20 to-amber-50/40 pointer-events-none"></div>
+            
+            <!-- محتوای کارت -->
+            <div class="relative p-8 sm:p-10 lg:p-14">
+
+              <!-- هدر کارت -->
+              <div class="flex items-start gap-4 mb-8">
+                <div class="shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 grid place-items-center shadow-lg shadow-rose-500/20">
+                  <span class="material-icons text-white" style="font-size:22px;">auto_stories</span>
+                </div>
+                <div>
+                  <h3 class="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight">
+                    {{ about_section.card_title|default:"داستان بیو کلاب" }}
+                  </h3>
+                </div>
+              </div>
+
+              <!-- توضیحات با خط تزئینی -->
+              <div class="relative pr-6 mb-12">
+                <div class="absolute right-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-rose-300 via-rose-400 to-transparent rounded-full"></div>
+                <p class="text-ink/60 leading-[1.9] text-base">
+                  {{ about_section.card_description }}
+                </p>
+              </div>
+
+              <!-- آمار -->
+              <div class="grid grid-cols-3 gap-4 sm:gap-6">
+                <div class="relative text-center group">
+                  <div class="relative pb-4">
+                    <p class="font-display text-4xl sm:text-5xl font-bold bg-gradient-to-b from-rose-500 to-rose-700 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                      {{ about_section.card_stat1_value|default:"۳+" }}
+                    </p>
+                    <p class="text-xs sm:text-sm text-ink/45 font-medium tracking-wide">
+                      {{ about_section.card_stat1_label|default:"سال تجربه" }}
+                    </p>
+                  </div>
+                  <!-- خط جداکننده -->
+                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-px h-20 bg-gradient-to-b from-transparent via-ink/10 to-transparent hidden sm:block"></div>
+                </div>
+
+                <div class="relative text-center group">
+                  <div class="relative pb-4">
+                    <p class="font-display text-4xl sm:text-5xl font-bold bg-gradient-to-b from-rose-500 to-rose-700 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                      {{ about_section.card_stat2_value|default:"۲۴" }}
+                    </p>
+                    <p class="text-xs sm:text-sm text-ink/45 font-medium tracking-wide">
+                      {{ about_section.card_stat2_label|default:"شهر فعال" }}
+                    </p>
+                  </div>
+                  <div class="absolute left-0 top-1/2 -translate-y-1/2 w-px h-20 bg-gradient-to-b from-transparent via-ink/10 to-transparent hidden sm:block"></div>
+                </div>
+
+                <div class="relative text-center group">
+                  <div class="relative pb-4">
+                    <p class="font-display text-4xl sm:text-5xl font-bold bg-gradient-to-b from-rose-500 to-rose-700 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+                      {{ about_section.card_stat3_value|default:"۹۸٪" }}
+                    </p>
+                    <p class="text-xs sm:text-sm text-ink/45 font-medium tracking-wide">
+                      {{ about_section.card_stat3_label|default:"رضایت کاربر" }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- خط تزئینی پایین -->
+              <div class="mt-10 pt-8 border-t border-ink/[0.06]">
+                <div class="flex items-center gap-3">
+                  <div class="flex -space-x-2 rtl:space-x-reverse">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 border-2 border-white"></div>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 border-2 border-white"></div>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-white"></div>
+                  </div>
+                  <p class="text-xs text-ink/40 font-medium">
+                    بیش از <span class="font-bold text-ink/60">۱۲۰,۰۰۰</span> کاربر راضی
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ عناصر شناور تزئینی ═══ -->
+          
+          <!-- نشان تایید (بالا-راست) -->
+          <div class="absolute -top-5 -right-5 z-20 hidden md:block">
+            <div class="anim-float bg-white rounded-2xl shadow-xl shadow-rose-500/10 px-4 py-3 border border-rose-100/60 backdrop-blur-sm">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 grid place-items-center shadow-md shadow-emerald-500/20">
+                  <span class="material-icons text-white" style="font-size:18px;">verified</span>
+                </div>
+                <div class="text-right">
+                  <p class="text-[11px] font-bold text-ink leading-tight">تایید شده</p>
+                  <p class="text-[10px] text-ink/40 leading-tight">نماد اعتماد</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- بج پایین (شناور) -->
+          <div class="absolute -bottom-5 -left-4 z-20 hidden sm:block">
+            <div class="anim-float-reverse inline-flex items-center gap-2 bg-gradient-to-r from-rose-500 to-rose-600 rounded-2xl px-5 py-3 text-sm font-bold text-white shadow-xl shadow-rose-500/30 backdrop-blur-sm">
+              <span class="text-base">🌸</span>
+              <span>ساخته شده با عشق در ایران</span>
+            </div>
+          </div>
+
+          <!-- نقاط تزئینی (پایین-راست) -->
+          <div class="absolute -bottom-10 -right-10 z-0 opacity-30 hidden lg:block">
+            <div class="grid grid-cols-6 gap-1.5">
+              {% for i in dots_range %}
+              <div class="w-1 h-1 rounded-full bg-rose-300"></div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- حلقه تزئینی (بالا-چپ) -->
+          <div class="absolute -top-8 -left-8 z-0 opacity-20 hidden lg:block">
+            <div class="w-24 h-24 rounded-full border-2 border-rose-300 border-dashed"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-14px); }
+    }
+    
+    @keyframes float-reverse {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(14px); }
+    }
+    
+    .anim-float {
+      animation: float 5s ease-in-out infinite;
+    }
+    
+    .anim-float-reverse {
+      animation: float-reverse 5s ease-in-out infinite;
+    }
+  </style>
+</section>
+{% endif %}

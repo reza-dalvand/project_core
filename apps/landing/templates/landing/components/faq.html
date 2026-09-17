@@ -1,0 +1,35 @@
+<!-- ═══════════ سؤالات متداول ═══════════ -->
+{% if faqs %}
+<section id="faq" class="py-24 lg:py-32">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12 reveal">
+      <p class="text-rose-600 font-extrabold text-sm mb-3">{{ faq_section.badge_text|default:"سؤالات متداول" }}</p>
+      <h2 class="font-display text-4xl lg:text-5xl">{{ faq_section.title|default:"هر چه می‌خواهی بدانی" }}</h2>
+    </div>
+
+    <div class="space-y-4" data-stagger>
+      {% for faq in faqs %}
+      <div class="faq-item glass rounded-3xl overflow-hidden">
+        <button class="faq-btn w-full flex items-center justify-between gap-4 px-6 py-5 text-start font-extrabold" aria-expanded="false">
+          {{ faq.question }}
+          <span class="faq-ico shrink-0 w-9 h-9 rounded-full bg-rose-100 text-rose-600 grid place-items-center transition-transform duration-300">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+        </button>
+        
+        <!-- ✅ تغییر تگ p به div برای جلوگیری از تداخل HTML و نمایش صحیح خروجی CKEditor -->
+        <div class="faq-body">
+          <div class="overflow-hidden">
+            <div class="px-6 pb-6 text-sm text-ink/60 leading-8 prose prose-sm max-w-none rtl:prose-right">
+              {{ faq.answer|safe }}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="mt-10 text-center text-sm text-ink/50 reveal">سؤال دیگری داری؟ <a href="#footer" class="font-bold text-rose-600 hover:underline">با پشتیبانی در تماس باش</a></p>
+  </div>
+</section>
+{% endif %}

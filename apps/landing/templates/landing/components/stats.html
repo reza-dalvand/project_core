@@ -1,0 +1,15 @@
+<!-- ═══════════ آمار ═══════════ -->
+{% if stats %}
+<section id="stats" class="pb-24 lg:pb-32">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-10 text-center reveal">
+      {% for stat in stats %}
+      <div>
+        <p class="stat-num font-display text-5xl lg:text-6xl text-rose-600" data-count="{{ stat.value }}" {% if stat.display_text|slice:"-1:" == "." %}data-dec="1"{% endif %}>{{ stat.display_text }}</p>
+        <p class="mt-2 text-sm text-ink/50 font-medium">{{ stat.label }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

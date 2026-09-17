@@ -556,20 +556,17 @@ class TeamSection(models.Model):
         default='تیمی متعهد و متخصص که با عشق به زیبایی و فناوری، بیو کلاب را برای شما می‌سازند.',
     )
 
+    # ✅ فیلد جدید: عکس گروهی تیم
+    team_image = models.ImageField(
+        'عکس گروهی تیم',
+        upload_to='team/group/',
+        blank=True,
+        null=True,
+        help_text='اگر خالی باشد، تصویر پیش‌فرض آدمک‌ها نمایش داده می‌شود',
+    )
+
     is_active = models.BooleanField('نمایش بخش', default=True)
     order = models.IntegerField('ترتیب نمایش', default=6)
-
-    class Meta:
-        verbose_name = '👥 تنظیمات بخش تیم'
-        verbose_name_plural = '👥 تنظیمات بخش تیم'
-
-    def __str__(self):
-        return f'بخش تیم: {self.title}'
-
-    def save(self, *args, **kwargs):
-        if not self.pk and TeamSection.objects.exists():
-            TeamSection.objects.exclude(pk=self.pk).delete()
-        super().save(*args, **kwargs)
 
 
 class TeamMember(models.Model):

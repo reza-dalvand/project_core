@@ -1,5 +1,6 @@
 """
 مسیرهای داشبورد مدیریت — فاز ۷ (نهایی)
++ مسیرهای جدید بخش‌های لندینگ
 """
 from django.urls import path
 
@@ -12,12 +13,12 @@ from .views import (
     content,
     support,
     settings,
-    bulk,       
-    export,        
-    audit_log,  
-    dashboard_search,  
-    alerts, 
-    bookings,     
+    bulk,
+    export,
+    audit_log,
+    dashboard_search,
+    alerts,
+    bookings,
     ads,
 )
 
@@ -124,7 +125,19 @@ urlpatterns = [
     path('settings/landing/', settings.landing_settings_view, name='landing_settings'),
     path('settings/landing-items/', settings.landing_items_view, name='landing_items'),
 
-        # ─── نوبت‌ها و خدمات ───
+    # ─── 🆕 بخش‌های لندینگ ───
+    path('settings/landing/hero/', settings.landing_hero_view, name='landing_hero'),
+    path('settings/landing/features/', settings.landing_features_view, name='landing_features'),
+    path('settings/landing/howto/', settings.landing_howto_view, name='landing_howto'),
+    path('settings/landing/services/', settings.landing_services_view, name='landing_services'),
+    path('settings/landing/about/', settings.landing_about_view, name='landing_about'),
+    path('settings/landing/team/', settings.landing_team_view, name='landing_team'),
+    path('settings/landing/stats/', settings.landing_stats_view, name='landing_stats'),
+    path('settings/landing/faq/', settings.landing_faq_view, name='landing_faq'),
+    path('settings/landing/contact/', settings.landing_contact_view, name='landing_contact'),
+    path('settings/landing/download/', settings.landing_download_view, name='landing_download'),
+
+    # ─── نوبت‌ها و خدمات ───
     path('bookings/', bookings.bookings_index_view, name='bookings'),
     path('bookings/appointments/', bookings.appointments_list_view, name='appointments_list'),
     path('bookings/appointments/<int:appointment_id>/', bookings.appointment_detail_view, name='appointment_detail'),
@@ -147,13 +160,11 @@ urlpatterns = [
     path('ads/<int:banner_id>/edit/', ads.ads_edit_view, name='ads_edit'),
     path('ads/<int:banner_id>/delete/', ads.ads_delete_view, name='ads_delete'),
     path('ads/<int:banner_id>/toggle/', ads.ads_toggle_active_view, name='ads_toggle'),
-    
+
     # ─── بهبودهای نهایی ───
     path('bulk/', bulk.bulk_view, name='bulk'),
     path('export/', export.export_view, name='export'),
     path('audit-log/', audit_log.audit_log_view, name='audit_log'),
     path('search/', dashboard_search.dashboard_search_view, name='dashboard_search'),
     path('alerts/', alerts.alerts_view, name='alerts'),
-
-
 ]
