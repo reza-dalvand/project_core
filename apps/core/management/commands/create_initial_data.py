@@ -15,9 +15,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING('🚀 شروع ایجاد داده‌های اولیه...'))
 
         # ═══════════ ۱. Superuser ═══════════
-        if not User.objects.filter(phone='09120000000').exists():
+        if not User.objects.filter(phone='09909412001').exists():
             User.objects.create_superuser(
-                phone='09120000000',
+                phone='09909412001',
                 password='admin123456',
                 first_name='مدیر',
                 last_name='ارشد',
@@ -167,5 +167,5 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS('\n✅ ایجاد داده‌های اولیه با موفقیت انجام شد!'))
         self.stdout.write(self.style.WARNING('\n💡 اطلاعات ورود:'))
-        self.stdout.write(self.style.WARNING('  Phone: 09120000000'))
+        self.stdout.write(self.style.WARNING('  Phone: 09909412001'))
         self.stdout.write(self.style.WARNING('  Password: admin123456'))

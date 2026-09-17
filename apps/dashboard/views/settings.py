@@ -19,6 +19,14 @@ from apps.core.models import AppConfig
 from apps.notifications.models import SMSTemplate
 from apps.landing.models import (
     SiteSettings, NavItem, FooterLinkGroup, FooterLink, TrustBadge,
+    HeroSection, FeaturesSection, Feature,
+    HowToSection, HowToStep,
+    ServicesSection, ServiceCategory,
+    AboutSection, AboutPoint,
+    TeamSection, TeamMember,
+    StatsSection, StatItem,
+    FAQSection, FAQItem, FAQCategory,
+    ContactSection, DownloadSection,
 )
 from apps.dashboard.models import AdminRole, AdminUser
 from apps.dashboard.decorators import admin_login_required, role_required
@@ -40,6 +48,24 @@ def validate_semver(version_str):
     if not version_str:
         return False
     return bool(SEMVER_PATTERN.match(version_str.strip()))
+
+
+# ═══════════════════════════════════════════════
+#   حداکثر حجم آپلود تصویر
+# ═══════════════════════════════════════════════
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # ۵ مگابایت
+
+
+def safe_delete_file(file_field):
+    """حذف امن فایل از دیسک با هندل خطا"""
+    if not file_field:
+        return
+    try:
+        file_field.delete(save=False)
+    except FileNotFoundError:
+        logger.warning(f"File not found during delete: {file_field.name}")
+    except Exception as e:
+        logger.error(f"File delete error: {e}", exc_info=True)
 
 
 # ═══════════════════════════════════════════════
@@ -391,11 +417,11 @@ def system_settings_view(request):
         config.latest_version = latest_version
         config.min_required_version = min_required_version
         config.is_force_update = request.POST.get('is_force_update') == 'on'
-        
+
         # فاز جدید: کنترل نمایش مدال آپدیت در اندروید
         config.android_force_update_enabled = request.POST.get('android_force_update_enabled') == 'on'
         config.android_optional_update_enabled = request.POST.get('android_optional_update_enabled') == 'on'
-        
+
         config.update_title = request.POST.get(
             'update_title', config.update_title
         )
@@ -660,6 +686,20 @@ def landing_settings_view(request):
     """تنظیمات لندینگ — نسخه کامل با تمام فیلدها"""
     settings_obj = SiteSettings.objects.first()
 
+    @role_required('super_admin')
+    @admin_login_required
+    def landing_settings_view(request):
+        """تنظیمات لندینگ — نسخه کامل با تمام فیلدها"""
+        settings_obj = SiteSettings.objects.first()
+
+        if request.GET.get('remove_team_image'):
+            from apps.landing.models import TeamSection
+            team_section = TeamSection.objects.first()
+            if team_section and team_section.team_image:
+                team_section.team_image.delete(save=True)
+                messages.success(request, 'عکس تیم حذف شد. تصویر پیش‌فرض نمایش داده می‌شود.')
+            return redirect(reverse('dashboard:landing_settings'))
+
     if request.method == 'POST':
         if not settings_obj:
             settings_obj = SiteSettings()
@@ -725,8 +765,6 @@ def landing_settings_view(request):
             settings_obj.enamad_code = enamad_code
 
         # ─── ✅ FIX ۳.۶.۲: آپلود لوگو و فاویکون با هندل خطا ───
-        MAX_IMAGE_SIZE = 5 * 1024 * 1024  # ۵ مگابایت
-
         logo_file = request.FILES.get('logo')
         if logo_file:
             if logo_file.size > MAX_IMAGE_SIZE:
@@ -736,8 +774,7 @@ def landing_settings_view(request):
                 )
             else:
                 try:
-                    if settings_obj.logo:
-                        settings_obj.logo.delete(save=False)
+                    safe_delete_file(settings_obj.logo)
                     settings_obj.logo = logo_file
                 except Exception as e:
                     logger.error(f"Logo upload error: {e}")
@@ -752,8 +789,7 @@ def landing_settings_view(request):
                 )
             else:
                 try:
-                    if settings_obj.favicon:
-                        settings_obj.favicon.delete(save=False)
+                    safe_delete_file(settings_obj.favicon)
                     settings_obj.favicon = favicon_file
                 except Exception as e:
                     logger.error(f"Favicon upload error: {e}")
@@ -774,6 +810,29 @@ def landing_settings_view(request):
                 except Exception as e:
                     logger.error(f"Enamad image upload error: {e}")
                     messages.error(request, 'خطا در آپلود تصویر ای‌نماد.')
+
+        # ─── ✅ فیلد جدید: عکس گروهی تیم ───
+        team_image_file = request.FILES.get('team_image')
+        if team_image_file:
+            if team_image_file.size > MAX_IMAGE_SIZE:
+                messages.error(
+                    request,
+                    'حجم عکس تیم نباید بیشتر از ۵ مگابایت باشد.'
+                )
+            else:
+                try:
+                    from apps.landing.models import TeamSection
+                    team_section = TeamSection.objects.first()
+                    if not team_section:
+                        team_section = TeamSection.objects.create()
+                    if team_section.team_image:
+                        team_section.team_image.delete(save=False)
+                    team_section.team_image = team_image_file
+                    team_section.save(update_fields=['team_image'])
+                    messages.success(request, 'عکس گروهی تیم بروزرسانی شد.')
+                except Exception as e:
+                    logger.error(f"Team image upload error: {e}")
+                    messages.error(request, 'خطا در آپلود عکس تیم.')
 
         # ─── فوتر ───
         footer_fields = ['footer_text', 'copyright_year']
@@ -812,7 +871,6 @@ def landing_items_view(request):
             label = request.POST.get('label', '').strip()
             anchor = request.POST.get('anchor', '').strip()
 
-            # ✅ FIX ۳.۶.۴: اعتبارسنجی کامل‌تر
             if not label or len(label) < 2:
                 messages.error(request, 'عنوان آیتم ناوبری باید حداقل ۲ کاراکتر باشد.')
             elif not anchor or len(anchor) < 2:
@@ -951,3 +1009,708 @@ def landing_items_view(request):
         'trust_badges': trust_badges,
     }
     return render(request, 'dashboard/settings/landing_items.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش هیرو
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_hero_view(request):
+    """مدیریت بخش هیرو لندینگ"""
+    hero = HeroSection.objects.first()
+
+    if request.method == 'POST':
+        if not hero:
+            hero = HeroSection()
+
+        text_fields = [
+            'badge_text', 'title', 'title_highlight', 'description',
+            'primary_btn_text', 'primary_btn_icon',
+            'secondary_btn_text', 'secondary_btn_icon',
+            'stat1_value', 'stat1_label', 'stat1_icon',
+            'stat2_value', 'stat2_label', 'stat2_icon',
+            'stat3_value', 'stat3_label', 'stat3_icon',
+        ]
+        for field in text_fields:
+            value = request.POST.get(field)
+            if value is not None:
+                setattr(hero, field, value)
+
+        hero.is_active = request.POST.get('is_active') == 'on'
+
+        hero_image = request.FILES.get('hero_image')
+        if hero_image:
+            if hero_image.size > MAX_IMAGE_SIZE:
+                messages.error(request, 'حجم تصویر هیرو نباید بیشتر از ۵ مگابایت باشد.')
+            else:
+                try:
+                    safe_delete_file(hero.hero_image)
+                    hero.hero_image = hero_image
+                except Exception as e:
+                    logger.error(f"Hero image upload error: {e}")
+                    messages.error(request, 'خطا در آپلود تصویر هیرو.')
+
+        hero.save()
+        messages.success(request, 'بخش هیرو بروزرسانی شد.')
+        return redirect(reverse('dashboard:landing_hero'))
+
+    context = {'hero': hero}
+    return render(request, 'dashboard/settings/landing_hero.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش ویژگی‌ها
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_features_view(request):
+    """مدیریت بخش ویژگی‌ها + آیتم‌ها"""
+    section = FeaturesSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = FeaturesSection()
+            for field in ['badge_text', 'badge_icon', 'title', 'subtitle']:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش ویژگی‌ها بروزرسانی شد.')
+
+        elif action == 'add_item':
+            title = request.POST.get('title', '').strip()
+            description = request.POST.get('description', '').strip()
+            icon = request.POST.get('icon', '').strip()
+            color = request.POST.get('color', '#A88B7D').strip()
+
+            if not title or len(title) < 2:
+                messages.error(request, 'عنوان ویژگی باید حداقل ۲ کاراکتر باشد.')
+            elif not description or len(description) < 5:
+                messages.error(request, 'توضیحات ویژگی باید حداقل ۵ کاراکتر باشد.')
+            elif not icon:
+                messages.error(request, 'آیکون ویژگی الزامی است.')
+            else:
+                if not section:
+                    section = FeaturesSection.objects.create()
+                Feature.objects.create(
+                    section=section,
+                    title=title,
+                    description=description,
+                    icon=icon,
+                    color=color,
+                    order=Feature.objects.count(),
+                )
+                messages.success(request, f'ویژگی "{title}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = Feature.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except Feature.DoesNotExist:
+                messages.error(request, 'ویژگی یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = Feature.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'ویژگی حذف شد.')
+            else:
+                messages.error(request, 'ویژگی یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_features'))
+
+    features = Feature.objects.filter(section=section).order_by('order') if section else []
+    context = {'section': section, 'features': features}
+    return render(request, 'dashboard/settings/landing_features.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش نحوه کار
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_howto_view(request):
+    """مدیریت بخش نحوه کار + مراحل"""
+    section = HowToSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = HowToSection()
+            for field in ['badge_text', 'badge_icon', 'title', 'subtitle']:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش نحوه کار بروزرسانی شد.')
+
+        elif action == 'add_item':
+            step_number = request.POST.get('step_number', '').strip()
+            title = request.POST.get('title', '').strip()
+            description = request.POST.get('description', '').strip()
+            icon = request.POST.get('icon', '').strip()
+
+            if not step_number or not step_number.isdigit():
+                messages.error(request, 'شماره مرحله باید عدد باشد.')
+            elif int(step_number) < 1 or int(step_number) > 10:
+                messages.error(request, 'شماره مرحله باید بین ۱ تا ۱۰ باشد.')
+            elif not title or len(title) < 2:
+                messages.error(request, 'عنوان مرحله باید حداقل ۲ کاراکتر باشد.')
+            elif not description or len(description) < 5:
+                messages.error(request, 'توضیحات مرحله باید حداقل ۵ کاراکتر باشد.')
+            elif not icon:
+                messages.error(request, 'آیکون مرحله الزامی است.')
+            else:
+                if not section:
+                    section = HowToSection.objects.create()
+                HowToStep.objects.create(
+                    section=section,
+                    step_number=int(step_number),
+                    title=title,
+                    description=description,
+                    icon=icon,
+                    order=HowToStep.objects.count(),
+                )
+                messages.success(request, f'مرحله "{title}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = HowToStep.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except HowToStep.DoesNotExist:
+                messages.error(request, 'مرحله یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = HowToStep.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'مرحله حذف شد.')
+            else:
+                messages.error(request, 'مرحله یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_howto'))
+
+    steps = HowToStep.objects.filter(section=section).order_by('order', 'step_number') if section else []
+    context = {'section': section, 'steps': steps}
+    return render(request, 'dashboard/settings/landing_howto.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش خدمات
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_services_view(request):
+    """مدیریت بخش خدمات + دسته‌بندی‌ها"""
+    section = ServicesSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = ServicesSection()
+            for field in ['badge_text', 'badge_icon', 'title', 'subtitle']:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش خدمات بروزرسانی شد.')
+
+        elif action == 'add_item':
+            name = request.POST.get('name', '').strip()
+            count = request.POST.get('count', '').strip()
+            icon = request.POST.get('icon', '').strip()
+
+            if not name or len(name) < 2:
+                messages.error(request, 'نام خدمت باید حداقل ۲ کاراکتر باشد.')
+            elif not icon:
+                messages.error(request, 'آیکون خدمت الزامی است.')
+            else:
+                if not section:
+                    section = ServicesSection.objects.create()
+                ServiceCategory.objects.create(
+                    section=section,
+                    name=name,
+                    count=count or '۰',
+                    icon=icon,
+                    order=ServiceCategory.objects.count(),
+                )
+                messages.success(request, f'خدمت "{name}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = ServiceCategory.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except ServiceCategory.DoesNotExist:
+                messages.error(request, 'خدمت یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = ServiceCategory.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'خدمت حذف شد.')
+            else:
+                messages.error(request, 'خدمت یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_services'))
+
+    categories = ServiceCategory.objects.filter(section=section).order_by('order') if section else []
+    context = {'section': section, 'categories': categories}
+    return render(request, 'dashboard/settings/landing_services.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش درباره ما
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_about_view(request):
+    """مدیریت بخش درباره ما + نکات"""
+    section = AboutSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = AboutSection()
+            text_fields = [
+                'badge_text', 'title', 'description',
+                'card_title', 'card_description',
+                'card_stat1_value', 'card_stat1_label',
+                'card_stat2_value', 'card_stat2_label',
+                'card_stat3_value', 'card_stat3_label',
+            ]
+            for field in text_fields:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش درباره ما بروزرسانی شد.')
+
+        elif action == 'add_item':
+            title = request.POST.get('title', '').strip()
+            description = request.POST.get('description', '').strip()
+            icon = request.POST.get('icon', '').strip()
+
+            if not title or len(title) < 2:
+                messages.error(request, 'عنوان نکته باید حداقل ۲ کاراکتر باشد.')
+            elif not description or len(description) < 5:
+                messages.error(request, 'توضیحات نکته باید حداقل ۵ کاراکتر باشد.')
+            elif not icon:
+                messages.error(request, 'آیکون نکته الزامی است.')
+            else:
+                if not section:
+                    section = AboutSection.objects.create()
+                AboutPoint.objects.create(
+                    section=section,
+                    title=title,
+                    description=description,
+                    icon=icon,
+                    order=AboutPoint.objects.count(),
+                )
+                messages.success(request, f'نکته "{title}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = AboutPoint.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except AboutPoint.DoesNotExist:
+                messages.error(request, 'نکته یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = AboutPoint.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'نکته حذف شد.')
+            else:
+                messages.error(request, 'نکته یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_about'))
+
+    points = AboutPoint.objects.filter(section=section).order_by('order') if section else []
+    context = {'section': section, 'points': points}
+    return render(request, 'dashboard/settings/landing_about.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش تیم
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_team_view(request):
+    """مدیریت بخش تیم + اعضا"""
+    section = TeamSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = TeamSection()
+            for field in ['badge_text', 'badge_icon', 'title', 'subtitle']:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش تیم بروزرسانی شد.')
+
+        elif action == 'add_item':
+            full_name = request.POST.get('full_name', '').strip()
+            role = request.POST.get('role', '').strip()
+            description = request.POST.get('description', '').strip()
+            initials = request.POST.get('initials', '').strip()
+            email = request.POST.get('email', '').strip()
+            linkedin_url = request.POST.get('linkedin_url', '').strip()
+            twitter_url = request.POST.get('twitter_url', '').strip()
+
+            if not full_name or len(full_name) < 2:
+                messages.error(request, 'نام عضو تیم باید حداقل ۲ کاراکتر باشد.')
+            elif not role or len(role) < 2:
+                messages.error(request, 'سمت عضو تیم باید حداقل ۲ کاراکتر باشد.')
+            else:
+                if not section:
+                    section = TeamSection.objects.create()
+
+                avatar_file = request.FILES.get('avatar')
+                member = TeamMember(
+                    section=section,
+                    full_name=full_name,
+                    role=role,
+                    description=description,
+                    initials=initials,
+                    email=email,
+                    linkedin_url=linkedin_url,
+                    twitter_url=twitter_url,
+                    order=TeamMember.objects.count(),
+                )
+                if avatar_file:
+                    if avatar_file.size > MAX_IMAGE_SIZE:
+                        messages.error(request, 'حجم عکس عضو تیم نباید بیشتر از ۵ مگابایت باشد.')
+                    else:
+                        member.avatar = avatar_file
+
+                member.save()
+                messages.success(request, f'عضو تیم "{full_name}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = TeamMember.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except TeamMember.DoesNotExist:
+                messages.error(request, 'عضو تیم یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            try:
+                member = TeamMember.objects.get(id=item_id)
+                safe_delete_file(member.avatar)
+                member.delete()
+                messages.success(request, 'عضو تیم حذف شد.')
+            except TeamMember.DoesNotExist:
+                messages.error(request, 'عضو تیم یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_team'))
+
+    members = TeamMember.objects.filter(section=section).order_by('order') if section else []
+    context = {'section': section, 'members': members}
+    return render(request, 'dashboard/settings/landing_team.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش آمار
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_stats_view(request):
+    """مدیریت بخش آمار + آیتم‌ها"""
+    section = StatsSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = StatsSection()
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش آمار بروزرسانی شد.')
+
+        elif action == 'add_item':
+            value = request.POST.get('value', '').strip()
+            display_text = request.POST.get('display_text', '').strip()
+            label = request.POST.get('label', '').strip()
+            icon = request.POST.get('icon', '').strip()
+
+            if not value or not value.isdigit():
+                messages.error(request, 'مقدار عددی آمار باید عدد باشد.')
+            elif not display_text or len(display_text) < 1:
+                messages.error(request, 'متن نمایشی آمار الزامی است.')
+            elif not label or len(label) < 2:
+                messages.error(request, 'برچسب آمار باید حداقل ۲ کاراکتر باشد.')
+            elif not icon:
+                messages.error(request, 'آیکون آمار الزامی است.')
+            else:
+                if not section:
+                    section = StatsSection.objects.create()
+                StatItem.objects.create(
+                    section=section,
+                    value=int(value),
+                    display_text=display_text,
+                    label=label,
+                    icon=icon,
+                    order=StatItem.objects.count(),
+                )
+                messages.success(request, f'آمار "{label}" اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = StatItem.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+            except StatItem.DoesNotExist:
+                messages.error(request, 'آمار یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = StatItem.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'آمار حذف شد.')
+            else:
+                messages.error(request, 'آمار یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_stats'))
+
+    stats = StatItem.objects.filter(section=section).order_by('order') if section else []
+    context = {'section': section, 'stats': stats}
+    return render(request, 'dashboard/settings/landing_stats.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش سوالات متداول
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_faq_view(request):
+    """مدیریت بخش سوالات متداول + تب‌ها + سوالات"""
+    section = FAQSection.objects.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'update_section':
+            if not section:
+                section = FAQSection()
+            for field in ['badge_text', 'badge_icon', 'title', 'subtitle']:
+                value = request.POST.get(field)
+                if value is not None:
+                    setattr(section, field, value)
+            section.is_active = request.POST.get('is_active') == 'on'
+            section.save()
+            messages.success(request, 'تنظیمات بخش سوالات بروزرسانی شد.')
+
+        # ═══════════ ✅ مدیریت تب‌ها (جدید) ═══════════
+        elif action == 'add_tab':
+            tab_name = request.POST.get('tab_name', '').strip()
+            tab_icon = request.POST.get('tab_icon', '').strip()
+
+            if not tab_name or len(tab_name) < 2:
+                messages.error(request, 'عنوان تب باید حداقل ۲ کاراکتر باشد.')
+            else:
+                if not section:
+                    section = FAQSection.objects.create()
+                FAQCategory.objects.create(
+                    section=section,
+                    name=tab_name,
+                    icon=tab_icon,
+                    order=FAQCategory.objects.count(),
+                )
+                messages.success(request, f'تب "{tab_name}" اضافه شد.')
+
+        elif action == 'toggle_tab':
+            item_id = request.POST.get('item_id')
+            try:
+                cat = FAQCategory.objects.get(id=item_id)
+                cat.is_active = not cat.is_active
+                cat.save(update_fields=['is_active'])
+            except FAQCategory.DoesNotExist:
+                messages.error(request, 'تب یافت نشد.')
+
+        elif action == 'delete_tab':
+            item_id = request.POST.get('item_id')
+            deleted, _ = FAQCategory.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'تب و سوالات آن حذف شد.')
+            else:
+                messages.error(request, 'تب یافت نشد.')
+
+        # ═══════════ ✅ مدیریت سوالات (اصلاح شده برای تب) ═══════════
+        elif action == 'add_item':
+            question = request.POST.get('question', '').strip()
+            answer = request.POST.get('answer', '').strip()
+            category_id = request.POST.get('category_id')  # ✅ دریافت تب انتخاب شده
+
+            if not question or len(question) < 5:
+                messages.error(request, 'سوال باید حداقل ۵ کاراکتر باشد.')
+            elif not answer or len(answer) < 5:
+                messages.error(request, 'پاسخ سوال باید حداقل ۵ کاراکتر باشد.')
+            elif not category_id:
+                messages.error(request, 'انتخاب تب (دسته‌بندی) الزامی است.')
+            else:
+                if not section:
+                    section = FAQSection.objects.create()
+                
+                category = FAQCategory.objects.filter(id=category_id).first()
+                
+                FAQItem.objects.create(
+                    section=section,
+                    category=category,  # ✅ اختصاص به تب
+                    question=question,
+                    answer=answer,
+                    order=FAQItem.objects.filter(category=category).count() if category else FAQItem.objects.count(),
+                )
+                messages.success(request, 'سوال جدید با موفقیت اضافه شد.')
+
+        elif action == 'toggle_item':
+            item_id = request.POST.get('item_id')
+            try:
+                item = FAQItem.objects.get(id=item_id)
+                item.is_active = not item.is_active
+                item.save(update_fields=['is_active'])
+                messages.success(request, 'وضعیت نمایش سوال تغییر کرد.')
+            except FAQItem.DoesNotExist:
+                messages.error(request, 'سوال یافت نشد.')
+
+        elif action == 'delete_item':
+            item_id = request.POST.get('item_id')
+            deleted, _ = FAQItem.objects.filter(id=item_id).delete()
+            if deleted:
+                messages.success(request, 'سوال با موفقیت حذف شد.')
+            else:
+                messages.error(request, 'سوال یافت نشد.')
+
+        else:
+            messages.error(request, f'عملیات "{action}" ناشناخته است.')
+
+        return redirect(reverse('dashboard:landing_faq'))
+
+    # ─── دریافت داده‌ها برای نمایش در تمپلیت ───
+    faqs = FAQItem.objects.filter(section=section).order_by('order') if section else []
+    
+    # ✅ اضافه شدن دسته‌بندی‌ها به کانتکست
+    categories = FAQCategory.objects.filter(section=section).order_by('order') if section else []
+    active_categories = FAQCategory.objects.filter(section=section, is_active=True).order_by('order') if section else []
+
+    context = {
+        'section': section, 
+        'faqs': faqs,
+        'categories': categories,
+        'active_categories': active_categories,
+    }
+    return render(request, 'dashboard/settings/landing_faq.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش تماس با ما
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_contact_view(request):
+    """مدیریت بخش تماس با ما"""
+    section = ContactSection.objects.first()
+
+    if request.method == 'POST':
+        if not section:
+            section = ContactSection()
+
+        text_fields = [
+            'badge_text', 'badge_icon', 'title', 'subtitle',
+            'card_title', 'card_description',
+            'form_title', 'form_description', 'form_success_message',
+        ]
+        for field in text_fields:
+            value = request.POST.get(field)
+            if value is not None:
+                setattr(section, field, value)
+
+        section.is_active = request.POST.get('is_active') == 'on'
+        section.save()
+        messages.success(request, 'بخش تماس با ما بروزرسانی شد.')
+        return redirect(reverse('dashboard:landing_contact'))
+
+    context = {'section': section}
+    return render(request, 'dashboard/settings/landing_contact.html', context)
+
+
+# ═══════════════════════════════════════════════
+#   لندینگ — بخش دانلود
+# ═══════════════════════════════════════════════
+@role_required('super_admin')
+@admin_login_required
+def landing_download_view(request):
+    """مدیریت بخش دانلود"""
+    section = DownloadSection.objects.first()
+
+    if request.method == 'POST':
+        if not section:
+            section = DownloadSection()
+
+        text_fields = ['title', 'description', 'hint_text']
+        for field in text_fields:
+            value = request.POST.get(field)
+            if value is not None:
+                setattr(section, field, value)
+
+        section.show_cafebazaar = request.POST.get('show_cafebazaar') == 'on'
+        section.show_myket = request.POST.get('show_myket') == 'on'
+        section.show_google_play = request.POST.get('show_google_play') == 'on'
+        section.show_app_store = request.POST.get('show_app_store') == 'on'
+        section.is_active = request.POST.get('is_active') == 'on'
+
+        section.save()
+        messages.success(request, 'بخش دانلود بروزرسانی شد.')
+        return redirect(reverse('dashboard:landing_download'))
+
+    context = {'section': section}
+    return render(request, 'dashboard/settings/landing_download.html', context)

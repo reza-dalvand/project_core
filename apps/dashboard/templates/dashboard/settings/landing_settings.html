@@ -8,6 +8,25 @@
                 <h4 class="fw-bold mb-0">🌐 تنظیمات لندینگ</h4>
                 <a href="{% url 'dashboard:settings' %}" class="btn btn-outline-secondary btn-sm">← بازگشت</a>
             </div>
+
+            <!-- ─── لینک به بخش‌های لندینگ ─── -->
+            <div class="alert alert-info mb-4">
+                <strong>📋 بخش‌های لندینگ:</strong>
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <a href="{% url 'dashboard:landing_hero' %}" class="btn btn-sm btn-outline-primary">🎯 هیرو</a>
+                    <a href="{% url 'dashboard:landing_features' %}" class="btn btn-sm btn-outline-primary">⭐ ویژگی‌ها</a>
+                    <a href="{% url 'dashboard:landing_howto' %}" class="btn btn-sm btn-outline-primary">🔄 نحوه کار</a>
+                    <a href="{% url 'dashboard:landing_services' %}" class="btn btn-sm btn-outline-primary">💅 خدمات</a>
+                    <a href="{% url 'dashboard:landing_about' %}" class="btn btn-sm btn-outline-primary">📖 درباره ما</a>
+                    <a href="{% url 'dashboard:landing_team' %}" class="btn btn-sm btn-outline-primary">👥 تیم</a>
+                    <a href="{% url 'dashboard:landing_stats' %}" class="btn btn-sm btn-outline-primary">📊 آمار</a>
+                    <a href="{% url 'dashboard:landing_faq' %}" class="btn btn-sm btn-outline-primary">❓ سوالات</a>
+                    <a href="{% url 'dashboard:landing_contact' %}" class="btn btn-sm btn-outline-primary">📞 تماس</a>
+                    <a href="{% url 'dashboard:landing_download' %}" class="btn btn-sm btn-outline-primary">📱 دانلود</a>
+                    <a href="{% url 'dashboard:landing_items' %}" class="btn btn-sm btn-outline-primary">🔗 ناوبری/فوتر</a>
+                </div>
+            </div>
+
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <!-- ─── برندینگ ─── -->
@@ -37,6 +56,53 @@
                             <small class="text-success">✅ لوگوی فعلی موجود است</small>
                         {% endif %}
                     </div>
+
+                    <!-- ✅ آپلود عکس گروهی تیم -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">📸 عکس گروهی تیم</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-4 text-center">
+                                    {% if team_section and team_section.team_image %}
+                                        <img src="{{ team_section.team_image.url }}" alt="عکس تیم" 
+                                            class="img-fluid rounded shadow-sm" style="max-height: 200px; object-fit: cover;">
+                                        <p class="text-muted mt-2 small">عکس فعلی</p>
+                                    {% else %}
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                            style="height: 200px; border: 2px dashed #dee2e6;">
+                                            <div class="text-center text-muted">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                                                    <circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/>
+                                                    <circle cx="17" cy="8" r="3"/><path d="M15 20c0-3 2.7-5 6-5"/>
+                                                </svg>
+                                                <p class="mt-2 mb-0 small">پیش‌فرض: آدمک‌ها</p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-8">
+                                    <label for="team_image" class="form-label fw-bold">آپلود عکس جدید</label>
+                                    <input type="file" name="team_image" id="team_image" class="form-control" accept="image/*">
+                                    <div class="form-text">
+                                        فرمت‌های مجاز: JPG, PNG, WebP — حداکثر حجم: ۵ مگابایت<br>
+                                        اگر عکسی آپلود نکنید، تصویر پیش‌فرض (آدمک‌ها) نمایش داده می‌شود.
+                                    </div>
+                                    {% if team_section and team_section.team_image %}
+                                    <div class="mt-3">
+                                        <a href="{% url 'dashboard:landing_settings' %}?remove_team_image=1" 
+                                        class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('آیا از حذف عکس تیم مطمئن هستید؟');">
+                                            🗑️ حذف عکس فعلی
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-md-4">
                         <label class="form-label">فاویکون (آپلود تصویر)</label>
                         <input type="file" class="form-control" name="favicon" accept="image/*">
@@ -45,7 +111,9 @@
                         {% endif %}
                     </div>
                 </div>
-                <!-- ✅ فاز ۷: رنگ‌بندی -->
+
+                
+                <!-- ─── رنگ‌بندی ─── -->
                 <hr>
                 <h6 class="fw-bold mb-3">🎨 رنگ‌بندی</h6>
                 <div class="row mb-3">
@@ -74,7 +142,7 @@
                         <small class="text-muted">{{ settings.background_color|default:'#F5F0EC' }}</small>
                     </div>
                 </div>
-                <!-- ✅ فاز ۷: سئو -->
+                <!-- ─── سئو ─── -->
                 <hr>
                 <h6 class="fw-bold mb-3">🔍 سئو (SEO)</h6>
                 <div class="mb-3">
@@ -166,7 +234,7 @@
                                value="{{ settings.app_store_url|default:'' }}">
                     </div>
                 </div>
-                <!-- ✅ فاز ۷: ای‌نماد -->
+                <!-- ─── ای‌نماد ─── -->
                 <hr>
                 <h6 class="fw-bold mb-3">🛡️ ای‌نماد</h6>
                 <div class="row mb-3">

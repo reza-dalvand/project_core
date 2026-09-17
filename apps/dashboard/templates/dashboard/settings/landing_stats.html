@@ -1,0 +1,106 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}بخش آمار{% endblock %}
+{% block extra_head %}
+<style>
+.item-card {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.item-card .label { font-weight: 600; font-size: 14px; }
+.item-card .meta { font-size: 12px; color: var(--text-2); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="stat-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0">📊 بخش آمار</h4>
+                <a href="{% url 'dashboard:landing_settings' %}" class="btn btn-outline-secondary btn-sm">← تنظیمات لندینگ</a>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_section">
+                <h6 class="fw-bold mb-3">⚙️ تنظیمات بخش</h6>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="sectionActive"
+                               {% if section.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="sectionActive">نمایش بخش</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">💾 ذخیره تنظیمات بخش</button>
+            </form>
+        </div>
+
+        <!-- ─── لیست آمارها ─── -->
+        <div class="stat-card mb-4">
+            <h5 class="fw-bold mb-3">📈 آمارها ({{ stats|length }})</h5>
+            {% for stat in stats %}
+            <div class="item-card">
+                <div>
+                    <span class="material-icons" style="font-size:18px;color:#A88B7D;">{{ stat.icon }}</span>
+                    <span class="label">{{ stat.display_text }}</span>
+                    <span class="meta"> — {{ stat.label }}</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_item">
+                        <input type="hidden" name="item_id" value="{{ stat.id }}">
+                        <button type="submit" class="btn btn-sm {% if stat.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                            {% if stat.is_active %}🚫{% else %}✅{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" class="d-inline"
+                          onsubmit="return confirm('آیا از حذف این آمار مطمئن هستید؟');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_item">
+                        <input type="hidden" name="item_id" value="{{ stat.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">✕</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted small">آماری وجود ندارد.</p>
+            {% endfor %}
+        </div>
+
+        <!-- ─── افزودن آمار جدید ─── -->
+        <div class="stat-card">
+            <h5 class="fw-bold mb-3">➕ افزودن آمار جدید</h5>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_item">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">مقدار عددی</label>
+                        <input type="number" class="form-control" name="value" required placeholder="مثلاً: 2500">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">متن نمایشی</label>
+                        <input type="text" class="form-control" name="display_text" required placeholder="مثلاً: ۲۵۰۰+">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">برچسب</label>
+                        <input type="text" class="form-control" name="label" required placeholder="مثلاً: کسب‌وکار فعال">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">آیکون (Material Icon)</label>
+                        <input type="text" class="form-control" name="icon" required placeholder="مثلاً: store">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">➕ افزودن آمار</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+<!-- ═══════════ سؤالات متداول ═══════════ -->
+{% if faq_categories %}
+<section id="faq" class="py-24 lg:py-32 bg-gray-50/50">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-12 reveal">
+      <p class="text-rose-600 font-extrabold text-sm mb-3">{{ faq_section.badge_text|default:"سؤالات متداول" }}</p>
+      <h2 class="font-display text-4xl lg:text-5xl text-ink">{{ faq_section.title|default:"هر چه می‌خواهی بدانی" }}</h2>
+      {% if faq_section.subtitle %}
+      <p class="mt-4 text-ink/60 max-w-xl mx-auto">{{ faq_section.subtitle }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-10 reveal">
+      {% for cat in faq_categories %}
+      <button class="faq-tab-btn px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-sm {% if forloop.first %}bg-rose-600 text-white shadow-rose-200{% else %}bg-white text-ink/70 hover:bg-rose-50 border border-gray-100{% endif %}" data-tab="{{ cat.id }}">
+        {% if cat.icon %}<span class="material-icons-outlined text-base align-middle ml-1">{{ cat.icon }}</span>{% endif %}
+        {{ cat.name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Tabs Content -->
+    <div class="relative min-h-[200px]">
+      {% for cat in faq_categories %}
+      <div class="faq-tab-content {% if not forloop.first %}hidden{% endif %}" id="tab-{{ cat.id }}">
+        <div class="space-y-4" data-stagger>
+          {% for faq in cat.items.all %}
+          {% if faq.is_active %}
+          <div class="faq-item bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md">
+            <button class="faq-btn w-full flex items-center justify-between gap-4 px-6 py-5 text-start font-bold text-ink/90" aria-expanded="false">
+              <span>{{ faq.question }}</span>
+              <span class="faq-ico shrink-0 w-8 h-8 rounded-full bg-rose-50 text-rose-600 grid place-items-center transition-transform duration-300">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+            </button>
+            
+            <div class="faq-body max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+              <div class="px-6 pb-6 text-sm text-ink/60 leading-8 prose prose-sm max-w-none rtl:prose-right border-t border-gray-50 pt-4">
+                {{ faq.answer|safe }}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <p class="mt-12 text-center text-sm text-ink/50 reveal">سؤال دیگری داری؟ <a href="#footer" class="font-bold text-rose-600 hover:underline">با پشتیبانی در تماس باش</a></p>
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Tab Switching Logic
+  const tabBtns = document.querySelectorAll('.faq-tab-btn');
+  const tabContents = document.querySelectorAll('.faq-tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+
+      tabBtns.forEach(b => {
+        b.classList.remove('bg-rose-600', 'text-white', 'shadow-rose-200');
+        b.classList.add('bg-white', 'text-ink/70', 'border', 'border-gray-100');
+      });
+      btn.classList.remove('bg-white', 'text-ink/70', 'border', 'border-gray-100');
+      btn.classList.add('bg-rose-600', 'text-white', 'shadow-rose-200');
+
+      tabContents.forEach(c => c.classList.add('hidden'));
+      document.getElementById('tab-' + targetTab).classList.remove('hidden');
+    });
+  });
+
+  // FAQ Accordion Logic
+  document.querySelectorAll('.faq-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.parentElement;
+      const body = item.querySelector('.faq-body');
+      const ico = item.querySelector('.faq-ico');
+      const isOpen = btn.getAttribute('aria-expanded') === 'true';
+
+      const currentTab = item.closest('.faq-tab-content');
+      currentTab.querySelectorAll('.faq-item').forEach(otherItem => {
+        if (otherItem !== item) {
+          otherItem.querySelector('.faq-btn').setAttribute('aria-expanded', 'false');
+          otherItem.querySelector('.faq-body').style.maxHeight = null;
+          otherItem.querySelector('.faq-ico').style.transform = 'rotate(0deg)';
+        }
+      });
+
+      if (isOpen) {
+        btn.setAttribute('aria-expanded', 'false');
+        body.style.maxHeight = null;
+        ico.style.transform = 'rotate(0deg)';
+      } else {
+        btn.setAttribute('aria-expanded', 'true');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        ico.style.transform = 'rotate(45deg)';
+      }
+    });
+  });
+});
+</script>
+{% endif %}

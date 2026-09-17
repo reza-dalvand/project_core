@@ -1,0 +1,88 @@
+<!-- ═══════════ تیم ═══════════ -->
+{% if team_section and team_section.is_active %}
+<section id="team" class="py-24 lg:py-32 bg-white/40 border-y border-ink/5 relative overflow-hidden">
+  <!-- هاله‌های نور پس‌زمینه برای زیبایی بصری -->
+  <div class="absolute top-0 left-1/4 w-96 h-96 bg-rose-100/40 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+  <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-100/40 rounded-full blur-3xl pointer-events-none" aria-hidden="true"></div>
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
+
+    <!-- ─── هدر بخش ─── -->
+    <div class="text-center max-w-2xl mx-auto mb-16 reveal">
+      <span class="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-100 px-4 py-1.5 text-xs font-bold text-rose-600 mb-4 shadow-sm">
+        <span class="material-icons" style="font-size:14px;">{{ team_section.badge_icon|default:"groups" }}</span>
+        {{ team_section.badge_text|default:"تیم ما" }}
+      </span>
+      <h2 class="font-display text-4xl lg:text-5xl leading-tight text-ink">{{ team_section.title|default:"افراد پشت بیو کلاب" }}</h2>
+      {% if team_section.subtitle %}
+        <p class="mt-4 text-ink/60 leading-8 text-lg">{{ team_section.subtitle }}</p>
+      {% endif %}
+    </div>
+
+    <!-- ─── کارت‌های اعضا ─── -->
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8" data-stagger>
+      {% for member in team_members %}
+      {% if member.is_active %}
+      <article class="group relative bg-white/90 backdrop-blur-md rounded-3xl p-8 text-center border border-ink/5 shadow-soft hover:shadow-xl hover:-translate-y-2 transition-all duration-500 ease-out">
+        
+        <!-- آواتار با هاله هاور -->
+        <div class="relative w-24 h-24 mx-auto mb-6">
+          <div class="absolute -inset-2 rounded-full bg-gradient-to-br from-rose-200 to-amber-100 opacity-0 group-hover:opacity-100 blur-lg transition-opacity duration-500" aria-hidden="true"></div>
+          <div class="relative w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-md group-hover:ring-rose-100 bg-gradient-to-br from-rose-50 to-cream grid place-items-center transition-all duration-500">
+            {% if member.avatar %}
+              <img src="{{ member.avatar.url }}" alt="{{ member.full_name }}" loading="lazy" class="w-full h-full object-cover">
+            {% else %}
+              <!-- ✅ آیکون آدمک مینیمال (جایگزین حروف اختصاری) -->
+              <svg class="w-12 h-12 text-rose-300 group-hover:text-rose-400 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- نام و سمت -->
+        <h3 class="font-display text-xl font-bold text-ink mb-1 group-hover:text-rose-600 transition-colors duration-300">{{ member.full_name }}</h3>
+        <span class="inline-block text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-full px-3 py-1 mb-4">{{ member.role }}</span>
+
+        {% if member.description %}
+          <p class="text-sm text-ink/50 leading-6 mb-4 min-h-[48px]">{{ member.description|truncatewords:12 }}</p>
+        {% else %}
+          <p class="text-sm text-ink/30 leading-6 mb-4 min-h-[48px] italic">عضو تیم بیو کلاب</p>
+        {% endif %}
+
+        <!-- شبکه‌های اجتماعی -->
+        {% if member.linkedin_url or member.twitter_url or member.email %}
+        <div class="mt-4 pt-4 border-t border-ink/5 flex items-center justify-center gap-2">
+          {% if member.linkedin_url %}
+          <a href="{{ member.linkedin_url }}" target="_blank" rel="noopener" aria-label="لینکدین {{ member.full_name }}" class="w-8 h-8 rounded-full grid place-items-center text-ink/30 hover:text-white hover:bg-[#0077b5] transition-all duration-300">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1s2.48 1.12 2.48 2.5zM.24 8.31h4.52V23H.24V8.31zM8.34 8.31h4.33v2h.06c.6-1.14 2.08-2.34 4.28-2.34 4.58 0 5.42 3.01 5.42 6.92V23h-4.51v-7.12c0-1.7-.03-3.89-2.37-3.89-2.37 0-2.73 1.85-2.73 3.76V23H8.34V8.31z"/></svg>
+          </a>
+          {% endif %}
+          {% if member.twitter_url %}
+          <a href="{{ member.twitter_url }}" target="_blank" rel="noopener" aria-label="توییتر {{ member.full_name }}" class="w-8 h-8 rounded-full grid place-items-center text-ink/30 hover:text-white hover:bg-black transition-all duration-300">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.41l-5.8-7.58-6.64 7.58H.47l8.6-9.83L0 1.15h7.59l5.24 6.93 6.07-6.93z"/></svg>
+          </a>
+          {% endif %}
+          {% if member.email %}
+          <a href="mailto:{{ member.email }}" aria-label="ایمیل {{ member.full_name }}" class="w-8 h-8 rounded-full grid place-items-center text-ink/30 hover:text-white hover:bg-rose-500 transition-all duration-300">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </article>
+      {% endif %}
+      {% empty %}
+      <div class="sm:col-span-2 lg:col-span-4 text-center py-16">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-50 mb-4">
+          <span class="material-icons text-rose-400" style="font-size:32px;">groups</span>
+        </div>
+        <p class="text-ink/50 font-medium">به‌زودی با تیم ما آشنا می‌شوید 🌸</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+{% endif %}

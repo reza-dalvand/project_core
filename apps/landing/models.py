@@ -556,20 +556,17 @@ class TeamSection(models.Model):
         default='تیمی متعهد و متخصص که با عشق به زیبایی و فناوری، بیو کلاب را برای شما می‌سازند.',
     )
 
+    # ✅ فیلد جدید: عکس گروهی تیم
+    team_image = models.ImageField(
+        'عکس گروهی تیم',
+        upload_to='team/group/',
+        blank=True,
+        null=True,
+        help_text='اگر خالی باشد، تصویر پیش‌فرض آدمک‌ها نمایش داده می‌شود',
+    )
+
     is_active = models.BooleanField('نمایش بخش', default=True)
     order = models.IntegerField('ترتیب نمایش', default=6)
-
-    class Meta:
-        verbose_name = '👥 تنظیمات بخش تیم'
-        verbose_name_plural = '👥 تنظیمات بخش تیم'
-
-    def __str__(self):
-        return f'بخش تیم: {self.title}'
-
-    def save(self, *args, **kwargs):
-        if not self.pk and TeamSection.objects.exists():
-            TeamSection.objects.exclude(pk=self.pk).delete()
-        super().save(*args, **kwargs)
 
 
 class TeamMember(models.Model):
@@ -700,6 +697,37 @@ class FAQSection(models.Model):
         super().save(*args, **kwargs)
 
 
+
+class FAQCategory(models.Model):
+    """دسته‌بندی (تب) سوالات متداول"""
+    section = models.ForeignKey(
+        'FAQSection',
+        on_delete=models.CASCADE,
+        related_name='categories',
+        null=True, blank=True,
+        verbose_name='بخش سوالات'
+    )
+    name = models.CharField('عنوان تب', max_length=100)
+    icon = models.CharField('آیکون (Material Icon)', max_length=50, blank=True, default='')
+    order = models.IntegerField('ترتیب', default=0)
+    is_active = models.BooleanField('فعال', default=True)
+
+    class Meta:
+        verbose_name = '📂 دسته‌بندی سوال'
+        verbose_name_plural = '📂 دسته‌بندی‌های سوالات'
+        ordering = ['order']
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.section_id:
+            self.section = FAQSection.objects.first()
+            if not self.section:
+                self.section = FAQSection.objects.create()
+        super().save(*args, **kwargs)
+
+
 class FAQItem(models.Model):
     """سوال متداول"""
     section = models.ForeignKey(
@@ -708,6 +736,14 @@ class FAQItem(models.Model):
         related_name='faqs',
         null=True, blank=True,
         verbose_name='بخش سوالات'
+    )
+    # ✅ فیلد جدید برای ارتباط با تب‌ها
+    category = models.ForeignKey(
+        'FAQCategory',
+        on_delete=models.CASCADE,
+        related_name='items',
+        null=True, blank=True,
+        verbose_name='دسته‌بندی (تب)'
     )
     question = models.CharField('سوال', max_length=300)
     answer = CKEditor5Field('پاسخ', config_name='default')
@@ -728,6 +764,7 @@ class FAQItem(models.Model):
             if not self.section:
                 self.section = FAQSection.objects.create()
         super().save(*args, **kwargs)
+
 
 # ═══════════════════════════════════════════════════════════════
 #                    تماس با ما

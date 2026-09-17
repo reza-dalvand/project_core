@@ -1,0 +1,153 @@
+<!-- ═══════════ هدر / نوبار ═══════════ -->
+<header id="siteHeader" class="fixed top-0 inset-x-0 z-50 transition-all duration-300">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+    <nav class="nav-pill glass rounded-full px-5 sm:px-7 py-3.5 flex items-center justify-between gap-4 transition-all duration-300">
+
+      <!-- لوگو -->
+      <a href="#hero" class="group flex items-center gap-2.5 shrink-0">
+        <span class="w-9 h-9 rounded-full bg-gradient-to-br from-rose-500 to-rose-700 grid place-items-center text-white shadow-soft group-hover:rotate-12 group-hover:scale-105 transition-transform duration-500">
+          <span class="material-icons" style="font-size:17px;">{{ site_settings.logo_icon|default:"spa" }}</span>
+        </span>
+        <span class="font-display text-2xl leading-none pt-1 text-ink">{{ site_settings.site_name|default:"بیو کلاب" }}</span>
+      </a>
+
+      <!-- لینک‌های دسکتاپ -->
+      <ul class="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-medium text-ink/60">
+        {% for item in nav_items %}
+        <li><a href="#{{ item.anchor }}" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">{{ item.label }}</a></li>
+        {% endfor %}
+        {% if not nav_items %}
+        <li><a href="#features" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">امکانات</a></li>
+        <li><a href="#steps" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">مراحل رزرو</a></li>
+        <li><a href="#services" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">خدمات</a></li>
+        <li><a href="#about" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">درباره ما</a></li>
+        <li><a href="#team" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">تیم ما</a></li>
+        <li><a href="#faq" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">سؤالات</a></li>
+        <li><a href="#contact" data-spy class="nav-link relative py-1 hover:text-rose-600 transition-colors">تماس با ما</a></li>
+        {% endif %}
+      </ul>
+
+      <!-- اکشن‌ها -->
+      <div class="flex items-center gap-2 shrink-0">
+        <a href="#download" class="hidden sm:inline-flex items-center gap-2 rounded-full bg-ink text-cream text-sm font-bold px-5 py-2.5 hover:bg-rose-600 hover:-translate-y-0.5 hover:shadow-lift transition-all duration-300">
+          دانلود اپ
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        </a>
+        <button id="menuBtn" class="md:hidden w-10 h-10 grid place-items-center rounded-full border border-ink/15 bg-white/60 backdrop-blur-sm text-ink" aria-label="منو" aria-expanded="false">
+          <span class="flex flex-col gap-[5px]">
+            <span class="menu-line line-1"></span>
+            <span class="menu-line line-2"></span>
+            <span class="menu-line line-3"></span>
+          </span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- منوی موبایل -->
+    <div id="mobileMenu" class="hidden md:hidden mt-2 glass rounded-3xl p-4 shadow-lift">
+      <ul class="space-y-1 font-medium text-sm">
+        {% for item in nav_items %}
+        <li style="--i:{{ forloop.counter }}">
+          <a href="#{{ item.anchor }}" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">
+            {{ item.label }}
+            <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </a>
+        </li>
+        {% endfor %}
+        {% if not nav_items %}
+        <li style="--i:1"><a href="#features" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">امکانات <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:2"><a href="#steps" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">مراحل رزرو <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:3"><a href="#services" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">خدمات <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:4"><a href="#about" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">درباره ما <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:5"><a href="#team" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">تیم ما <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:6"><a href="#faq" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">سؤالات <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        <li style="--i:7"><a href="#contact" data-spy class="mobile-link flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition">تماس با ما <svg class="w-4 h-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></a></li>
+        {% endif %}
+      </ul>
+      <a href="#download" class="mobile-link mt-2 flex items-center justify-center gap-2 rounded-full bg-ink text-cream font-bold px-5 py-3 text-sm hover:bg-rose-600 transition-colors">
+        دانلود اپلیکیشن
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ استایل‌های نوبار ═══ -->
+  <style>
+    /* حالت اسکرول: شفاف‌تر + فشرده‌تر (همراه با !py-2.5 که scripts.html اعمال می‌کند) */
+    #siteHeader.is-scrolled .nav-pill{
+      background:rgba(255,255,255,.88);
+      border-color:rgba(255,255,255,.9);
+      box-shadow:0 14px 34px -16px rgba(58,36,48,.2);
+    }
+    /* زیرخط گرادیانتی لینک‌ها */
+    .nav-link::after{
+      content:''; position:absolute; right:0; left:0; bottom:-2px; height:2px; border-radius:2px;
+      background:linear-gradient(90deg,#D8556B,#C79A6D);
+      transform:scaleX(0); transition:transform .35s cubic-bezier(.2,.7,.2,1);
+    }
+    .nav-link:hover::after, .nav-link.nav-active::after{ transform:scaleX(1); }
+    .nav-link.nav-active{ color:#C13E55; }
+    /* همبرگری → ضربدر */
+    .menu-line{ display:block; width:18px; height:2px; border-radius:2px; background:currentColor; transition:transform .3s ease, opacity .3s ease; }
+    #menuBtn.open .line-1{ transform:translateY(7px) rotate(45deg); }
+    #menuBtn.open .line-2{ opacity:0; }
+    #menuBtn.open .line-3{ transform:translateY(-7px) rotate(-45deg); }
+    /* ورود منوی موبایل با پله‌ای */
+    #mobileMenu:not(.hidden){ animation:menuIn .4s cubic-bezier(.2,.7,.2,1); }
+    #mobileMenu:not(.hidden) li{ animation:menuItemIn .45s cubic-bezier(.2,.7,.2,1) both; animation-delay:calc(var(--i,0) * 45ms); }
+    @keyframes menuIn{ from{ opacity:0; transform:translateY(-10px) scale(.98); } to{ opacity:1; transform:none; } }
+    @keyframes menuItemIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:none; } }
+    @media (prefers-reduced-motion: reduce){
+      #mobileMenu:not(.hidden), #mobileMenu:not(.hidden) li{ animation:none; }
+    }
+  </style>
+
+  <!-- ═══ رفتار نوبار ═══ -->
+  <script>
+  (function(){
+    var header = document.getElementById('siteHeader');
+    var menuBtn = document.getElementById('menuBtn');
+    var mobileMenu = document.getElementById('mobileMenu');
+
+    /* ۱) حالت اسکرول هدر */
+    function onScroll(){ header.classList.toggle('is-scrolled', window.scrollY > 24); }
+    onScroll();
+    window.addEventListener('scroll', onScroll, {passive:true});
+
+    /* ۲) مورف همبرگری به ضربدر */
+    if(menuBtn && mobileMenu){
+      menuBtn.addEventListener('click', function(){
+        var willOpen = mobileMenu.classList.contains('hidden');
+        menuBtn.classList.toggle('open', willOpen);
+        menuBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      });
+    }
+
+    /* ۳) اسکرول‌اسپای: هایلایت لینک بخش فعال */
+    var spyLinks = Array.prototype.slice.call(header.querySelectorAll('[data-spy]'));
+    if(spyLinks.length && 'IntersectionObserver' in window){
+      var sections = [];
+      spyLinks.forEach(function(a){
+        var sec = document.getElementById(a.getAttribute('href').slice(1));
+        if(sec && sections.indexOf(sec) === -1) sections.push(sec);
+      });
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            var id = '#' + e.target.id;
+            spyLinks.forEach(function(l){ l.classList.toggle('nav-active', l.getAttribute('href') === id); });
+          }
+        });
+      }, {rootMargin:'-40% 0px -55% 0px'});
+      sections.forEach(function(s){ io.observe(s); });
+      /* هایلایت آنی هنگام کلیک */
+      spyLinks.forEach(function(l){
+        l.addEventListener('click', function(){
+          var id = l.getAttribute('href');
+          spyLinks.forEach(function(x){ x.classList.toggle('nav-active', x.getAttribute('href') === id); });
+        });
+      });
+    }
+  })();
+  </script>
+</header>
