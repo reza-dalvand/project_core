@@ -1,44 +1,35 @@
 # shared/national_id/__init__.py
-# جایگزین کامل فایل
-
 """
 National ID Verifier Factory
-
-✅ FIX: شرایط انتخاب:
-- اگر DEBUG=True → ماک
-- اگر SHAHAR_API_KEY فیک است → ماک (با هشدار)
-- در غیر این صورت → سرویس واقعی
 """
+import logging
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
 
 def get_national_id_verifier():
     """
-    Factory برای دریافت verifier بر اساس محیط
+    Factory برای دریافت verifier.
+    استراتژی: همیشه از API واقعی استفاده می‌کند.
     """
     api_key = getattr(settings, 'SHAHKAR_API_KEY', '')
     api_url = getattr(settings, 'SHAHKAR_API_URL', None)
 
-    # ✅ FIX: اگر DEBUG=True یا کلید فیک باشد، ماک استفاده شود
-    is_fake_key = (
-        not api_key
-        or api_key == 'fake-api-key-for-dev'
-        or 'your-token' in api_key.lower()
+    # بررسی وجود توکن واقعی
+    is_invalid_key = (
+        not api_key or 
+        'your-shahkar-api-token' in api_key or 
+        'fake' in api_key.lower() or
+        'test' in api_key.lower()
     )
 
-    if settings.DEBUG or is_fake_key:
-        if is_fake_key:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                'SHAHKAR_API_KEY تنظیم نشده یا فیک است. '
-                'از ماک استفاده می‌شود.'
-            )
-        from .mock import MockNationalIdVerifier
-        return MockNationalIdVerifier()
+    if is_invalid_key:
+        logger.error("❌ SHAHKAR_API_KEY is missing or invalid in settings.")
+        raise ValueError(
+            "سرویس استعلام کد ملی در دسترس نیست. "
+            "لطفاً توکن معتبر SHAHKAR_API_KEY را در فایل .env تنظیم کنید."
+        )
 
+    # بازگرداندن سرویس واقعی
     from .api_ir import ApiIrNationalIdVerifier
-    return ApiIrNationalIdVerifier(
-        api_key=api_key,
-        api_url=api_url,
-    )
+    return ApiIrNationalIdVerifier(api_key=api_key, api_url=api_url)

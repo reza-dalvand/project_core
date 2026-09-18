@@ -256,11 +256,8 @@ class LogoutView(APIView, StandardResponseMixin):
 
 
 # ═══════════════════════════════════════════════
-#   National ID Verification
+# National ID Verification
 # ═══════════════════════════════════════════════
-
-# apps/accounts/views/auth.py
-# فقط کلاس NationalIdVerificationView را پیدا کنید و متد post را جایگزین کنید
 
 class NationalIdVerificationView(APIView, StandardResponseMixin):
     permission_classes = [permissions.IsAuthenticated]
@@ -279,32 +276,36 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
         try:
             from shared.national_id import get_national_id_verifier
             verifier = get_national_id_verifier()
-
-            # ✅ FIX: شماره موبایل کاربر به فرمت صحیح ارسال شود
-            # متد _normalize_phone در verifier این کار را انجام می‌دهد
+            
+            # ارسال درخواست به API واقعی شاهکار
+            # فرانت فقط national_id را می‌فرستد، بنابراین نام از پروفایل کاربر خوانده می‌شود
             result = verifier.verify(
-                national_id=national_id,
+                national_id=national_id, 
                 phone=request.user.phone,
-                full_name=request.user.full_name,
+                full_name=request.user.full_name
             )
 
             if result.success:
-                # ذخیره در دیتابیس
-                request.user.national_id = national_id
-                request.user.is_national_id_verified = True
-                request.user.verified_name = result.verified_name
-                request.user.save(update_fields=[
+                # ✅ منطق ذخیره نام تایید شده
+                # اولویت: نام و نام خانوادگی ثبت شده در پروفایل کاربر
+                final_verified_name = request.user.full_name or result.verified_name
+                
+                user = request.user
+                user.national_id = national_id
+                user.is_national_id_verified = True
+                user.verified_name = final_verified_name
+                user.save(update_fields=[
                     'national_id',
                     'is_national_id_verified',
                     'verified_name',
                 ])
 
-                # همگام‌سازی با کسب‌وکار
-                business = request.user.businesses.first()
+                # همگام‌سازی با کسب‌وکار (در صورت وجود)
+                business = user.businesses.first()
                 if business:
                     business.national_id = national_id
                     business.is_national_id_verified = True
-                    business.verified_name = result.verified_name
+                    business.verified_name = final_verified_name
                     business.save(update_fields=[
                         'national_id',
                         'is_national_id_verified',
@@ -313,21 +314,28 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
 
                 return self.success_response(
                     data={
-                        'verified_name': result.verified_name,
+                        'verified_name': final_verified_name,
                         'national_id': national_id,
-                        'phone_display': mask_phone(request.user.phone),
+                        'phone_display': mask_phone(user.phone),
                     },
                     message='هویت شما با موفقیت تایید شد',
                 )
             else:
+                # عدم تطابق یا خطا از سمت API
                 return self.error_response(
-                    message=result.error_message or (
-                        'کد ملی با شماره موبایل تطابق ندارد'
-                    ),
+                    message=result.error_message or 'کد ملی با شماره موبایل تطابق ندارد',
                     code=result.error_code or 'MISMATCH',
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        except ValueError as e:
+            # خطای تنظیمات (مثلا توکن در .env ست نشده یا فیک است)
+            logger.error(f"National ID config error: {e}")
+            return self.error_response(
+                message=str(e),
+                code='CONFIG_ERROR',
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
         except Exception as e:
             logger.exception(f"National ID verification error: {e}")
             return self.error_response(
@@ -336,7 +344,7 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        
+           
 # ═══════════════════════════════════════════════
 #   Active Devices
 # ═══════════════════════════════════════════════

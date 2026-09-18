@@ -20,6 +20,7 @@ from apps.accounts.serializers.auth import (
     ChangePhoneConfirmSerializer,
 )
 
+
 logger = logging.getLogger(__name__)
 
 class ProfileView(generics.RetrieveUpdateAPIView, StandardResponseMixin):
