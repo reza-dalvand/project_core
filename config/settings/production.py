@@ -115,54 +115,59 @@ if SENTRY_DSN:
         profiles_sample_rate=0.1,
     )
 
-# ─── Storage: فایل سیستم محلی (اگر مقادیر ابر آروان تنظیم نشده باشد) ───
+# ─── Storage: S3 (Arvan Cloud) ───
 _storage_access = env('ARVAN_ACCESS_KEY', default='')
 _storage_secret = env('ARVAN_SECRET_KEY', default='')
 
 if _storage_access and _storage_secret:
-    # استفاده از ابر آروان
-    from shared.storage.arvan import ArvanCloudStorage
+    ARVAN_BUCKET = env('ARVAN_BUCKET_NAME', default='beau')
+    ARVAN_ENDPOINT = env('ARVAN_ENDPOINT', default='https://s3.ir-thr-at1.arvanstorage.ir')
+    ARVAN_REGION = env('ARVAN_REGION', default='ir-thr-at1')
+    ARVAN_CDN = env('ARVAN_CDN_URL', default='')
 
-    # Storage برای فایل‌های آپلود (رسانه‌ای)
+    # تنظیمات پایه S3
+    s3_options = {
+        "access_key": _storage_access,
+        "secret_key": _storage_secret,
+        "bucket_name": ARVAN_BUCKET,
+        "endpoint_url": ARVAN_ENDPOINT,
+        "region_name": ARVAN_REGION,
+        "default_acl": "public-read",
+        "querystring_auth": False,
+        "url_protocol": "https:",  # ✅ تضمین استفاده از HTTPS برای لینک‌ها
+    }
+    if ARVAN_CDN:
+        s3_options["custom_domain"] = ARVAN_CDN
+
+    # ۱. Media Files (فایل‌های آپلودی کاربران مثل عکس پروفایل، گالری و ...)
+    media_options = s3_options.copy()
+    media_options["file_overwrite"] = False
+    media_options["location"] = "media"  # ✅ تفکیک پوشه در باکت
+    
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "access_key": _storage_access,
-            "secret_key": _storage_secret,
-            "bucket_name": env('ARVAN_BUCKET_NAME', default='beau'),
-            "endpoint_url": env(
-                'ARVAN_ENDPOINT',
-                default='https://s3.ir-thr-at1.arvanstorage.ir',
-            ),
-            "region_name": env('ARVAN_REGION', default='ir-thr-at1'),
-            "default_acl": "public-read",
-            "querystring_auth": False,
-            "file_overwrite": False,
-            "custom_domain": env('ARVAN_CDN_URL', default=''),
-        },
+        "OPTIONS": media_options,
     }
 
-    # ✅ اصلاح: Static files را فقط وقتی S3 فعال است override کن
-    # در غیر این صورت whitenoise استفاده می‌شود
+    # ۲. Static Files (فایل‌های CSS, JS, فونت‌ها و ...)
+    static_options = s3_options.copy()
+    static_options["file_overwrite"] = True
+    static_options["location"] = "static"  # ✅ تفکیک پوشه در باکت
+
+    
     STORAGES["staticfiles"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "access_key": _storage_access,
-            "secret_key": _storage_secret,
-            "bucket_name": env('ARVAN_BUCKET_NAME', default='beau'),
-            "endpoint_url": env(
-                'ARVAN_ENDPOINT',
-                default='https://s3.ir-thr-at1.arvanstorage.ir',
-            ),
-            "region_name": env('ARVAN_REGION', default='ir-thr-at1'),
-            "default_acl": "public-read",
-            "querystring_auth": False,
-            "file_overwrite": True,
-            "location": "static",
-            "custom_domain": env('ARVAN_CDN_URL', default=''),
-        },
+        "OPTIONS": static_options,
     }
 
+    WHITENOISE_MANIFEST_STRICT = False
+    
+    # تنظیم URLهای پایه برای fallback
+    if ARVAN_CDN:
+        STATIC_URL = f'https://{ARVAN_CDN}/static/'
+        MEDIA_URL = f'https://{ARVAN_CDN}/media/'
+
+        
 # ─── CORS — Production ───
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [

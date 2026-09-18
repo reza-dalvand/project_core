@@ -1,32 +1,51 @@
+{% load static %}
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ site_settings.site_name|default:"بیو کلاب" }} | {{ site_settings.site_slogan|default:"نوبت‌دهی آنلاین خدمات زیبایی و سلامت بانوان" }}</title>
-<meta name="description" content="{{ site_settings.meta_description|default:"بیو کلاب؛ نوبت‌دهی آنلاین خدمات زیبایی و سلامت بانوان. سالن موردعلاقه‌ات را پیدا کن و در چند ثانیه نوبت بگیر." }}">
-<link rel="icon" href="{% if site_settings.favicon %}{{ site_settings.favicon.url }}{% else %}data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23D8556B'/><text x='50' y='66' font-size='46' text-anchor='middle' fill='white'>✿</text></svg>{% endif %}">
+<meta name="description" content="{{ site_settings.meta_description|default:'بیو کلاب؛ نوبت‌دهی آنلاین خدمات زیبایی و سلامت بانوان.' }}">
 
-<!-- فونت‌ها -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Vazirmatn:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<!-- Favicon -->
+<link rel="icon" href="{% if site_settings.favicon %}{{ site_settings.favicon.url }}{% else %}data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🌸%3C/text%3E%3C/svg%3E{% endif %}">
 
-<!-- ✅ خط زیر را برای رفع مشکل آیکون‌ها اضافه کنید -->
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- ═══════════ فونت‌های لوکال ═══════════ -->
+<link rel="stylesheet" href="{% static 'vendor/vazirmatn/Vazirmatn.css' %}">
+<link rel="stylesheet" href="{% static 'vendor/lalezar/lalezar.css' %}">
+<link rel="stylesheet" href="{% static 'vendor/material-icons/material-icons.css' %}">
 
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Preload فونت‌های اصلی برای عملکرد بهتر -->
+<link rel="preload" href="{% static 'vendor/vazirmatn/fonts/Vazirmatn-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{% static 'vendor/vazirmatn/fonts/Vazirmatn-Bold.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{% static 'vendor/material-icons/fonts/MaterialIcons-Regular.woff2' %}" as="font" type="font/woff2" crossorigin>
+
+<!-- ═══════════ Tailwind CSS ═══════════ -->
+<!-- روش ۱: فایل کامپایل شده (توصیه شده برای پروداکشن) -->
+<link rel="stylesheet" href="{% static 'vendor/tailwind/tailwind.css' %}">
+
+<!-- روش ۲: Tailwind Play CDN (فقط برای توسعه) -->
+<!-- <script src="{% static 'vendor/tailwind/tailwind.min.js' %}"></script> -->
+
 <script>
+// ═══ Tailwind Config ═══
+// اگر از روش CDN استفاده می‌کنید، این کانفیگ لازم است
+// اگر از CSS کامپایل شده استفاده می‌کنید، این کانفیگ در tailwind.config.js اعمال شده
+{% if debug %}
 tailwind.config = {
   theme: {
     extend: {
       colors: {
         cream: '#FBF7F2',
         ink:   '#3A2430',
-        rose: {50:'#FDF3F5',100:'#FAE4E9',200:'#F4C6D0',300:'#EBA0B0',400:'#E0768C',500:'#D8556B',600:'#C13E55',700:'#A02F44'},
-        gold:  '#C79A6D',
+        rose: {
+          50:'#FDF3F5', 100:'#FAE4E9', 200:'#F4C6D0',
+          300:'#EBA0B0', 400:'#E0768C', 500:'#D8556B',
+          600:'#C13E55', 700:'#A02F44'
+        },
+        gold: '#C79A6D',
       },
       fontFamily: {
-        display: ['Lalezar','cursive'],
-        body: ['Vazirmatn','sans-serif'],
+        display: ['Lalezar', 'cursive'],
+        body: ['Vazirmatn', 'sans-serif'],
       },
       boxShadow: {
         soft: '0 8px 30px -12px rgba(58,36,48,.12)',
@@ -35,102 +54,112 @@ tailwind.config = {
     }
   }
 }
+{% endif %}
 </script>
 
 <style>
 html { scroll-behavior: smooth; }
-body { font-family: 'Vazirmatn', sans-serif; background:{{ site_settings.background_color|default:"#FBF7F2" }}; color:#3A2430; overflow-x:hidden; }
-::selection { background:{{ site_settings.primary_color|default:"#D8556B" }}; color:#fff; }
+body {
+  font-family: 'Vazirmatn', sans-serif;
+  background: {{ site_settings.background_color|default:"#FBF7F2" }};
+  color: #3A2430;
+  overflow-x: hidden;
+}
+::selection {
+  background: {{ site_settings.primary_color|default:"#D8556B" }};
+  color: #fff;
+}
 section { scroll-margin-top: 100px; }
 
-/* شیشه سبک */
-.glass{
-  background:rgba(255,255,255,.6);
-  backdrop-filter:blur(16px) saturate(1.1);
-  -webkit-backdrop-filter:blur(16px) saturate(1.1);
-  border:1px solid rgba(255,255,255,.8);
-  box-shadow:0 8px 30px -12px rgba(58,36,48,.1);
+/* ═══════════ بقیه استایل‌ها مثل قبل ═══════════ */
+.glass {
+  background: rgba(255,255,255,.6);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  border: 1px solid rgba(255,255,255,.8);
+  box-shadow: 0 8px 30px -12px rgba(58,36,48,.1);
 }
 
-/* خط‌کشی ورودی تیتر */
-.line-mask{ display:block; overflow:hidden; }
-.line-mask > span{ display:block; transform:translateY(110%); transition:transform 1s cubic-bezier(.19,1,.22,1); }
-body.loaded .line-mask > span{ transform:translateY(0); }
+.line-mask { display: block; overflow: hidden; }
+.line-mask > span {
+  display: block;
+  transform: translateY(110%);
+  transition: transform 1s cubic-bezier(.19,1,.22,1);
+}
+body.loaded .line-mask > span { transform: translateY(0); }
 
-/* Reveal ساده */
-.reveal{ opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); transition-delay:var(--d,0ms); }
-.reveal.in{ opacity:1; transform:none; }
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1);
+  transition-delay: var(--d, 0ms);
+}
+.reveal.in { opacity: 1; transform: none; }
 
-/* حرکات */
-@keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-.anim-float{ animation:floaty 6s ease-in-out infinite; }
-@keyframes kenburns { from{transform:scale(1)} to{transform:scale(1.08)} }
-.kb > img{ animation:kenburns 20s ease-in-out infinite alternate; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) }
+  50% { transform: translateY(-8px) }
+}
+.anim-float { animation: floaty 6s ease-in-out infinite; }
 
-/* ═══════════ اسلایدر ═══════════ */
-.slider{ position:relative; overflow:hidden; border-radius:1.5rem; }
-.slider-track{ display:flex; transition:transform .7s cubic-bezier(.2,.7,.2,1); }
-.slide{ min-width:100%; position:relative; padding:2rem 1.75rem; min-height:340px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; }
-.slide::before{
-  content:''; position:absolute; inset:0; z-index:0;
+/* ═══ اسلایدر ═══ */
+.slider { position: relative; overflow: hidden; border-radius: 1.5rem; }
+.slider-track { display: flex; transition: transform .7s cubic-bezier(.2,.7,.2,1); }
+.slide {
+  min-width: 100%;
+  position: relative;
+  padding: 2rem 1.75rem;
+  min-height: 340px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background:
     radial-gradient(120% 80% at 100% 0%, rgba(255,255,255,.35) 0%, transparent 55%),
     radial-gradient(100% 80% at 0% 100%, rgba(255,255,255,.2) 0%, transparent 50%);
-  pointer-events:none;
+  pointer-events: none;
 }
-.slide > *{ position:relative; z-index:1; }
-.slide-bg{
-  position:absolute; inset:0; z-index:0;
-  background-size:cover; background-position:center;
-  opacity:.22; filter:saturate(1.1);
-}
-.slide-1{ background:linear-gradient(135deg, #FDF3F5 0%, #FAE4E9 45%, #F4C6D0 100%); }
-.slide-2{ background:linear-gradient(135deg, #FBF7F2 0%, #F5E9D7 50%, #EAD4B4 100%); }
-.slide-3{ background:linear-gradient(135deg, #F0F4F8 0%, #E3ECF5 50%, #C7D8EA 100%); }
-.slide-4{ background:linear-gradient(135deg, #FDF3F5 0%, #FADADD 50%, #F4C2C2 100%); }
+.slide > * { position: relative; z-index: 1; }
 
-.slide-icon{
-  width:68px; height:68px; border-radius:22px;
-  display:grid; place-items:center;
-  background:rgba(255,255,255,.85);
-  box-shadow:0 10px 30px -8px rgba(58,36,48,.18);
-  backdrop-filter:blur(8px);
-}
+.slide-1 { background: linear-gradient(135deg, #FDF3F5 0%, #FAE4E9 45%, #F4C6D0 100%); }
+.slide-2 { background: linear-gradient(135deg, #FBF7F2 0%, #F5E9D7 50%, #EAD4B4 100%); }
+.slide-3 { background: linear-gradient(135deg, #F0F4F8 0%, #E3ECF5 50%, #C7D8EA 100%); }
+.slide-4 { background: linear-gradient(135deg, #FDF3F5 0%, #FADADD 50%, #F4C2C2 100%); }
 
-/* نقاط اسلایدر */
-.slider-dots{ display:flex; justify-content:center; gap:8px; padding:14px 0 4px; }
-.slider-dot{
-  width:8px; height:8px; border-radius:50%;
-  background:rgba(58,36,48,.15); border:none; cursor:pointer;
-  transition:all .4s cubic-bezier(.2,.7,.2,1);
+.slider-dots { display: flex; justify-content: center; gap: 8px; padding: 14px 0 4px; }
+.slider-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(58,36,48,.15); border: none; cursor: pointer;
+  transition: all .4s cubic-bezier(.2,.7,.2,1);
 }
-.slider-dot.active{ width:26px; border-radius:99px; background:linear-gradient(90deg, #D8556B, #C13E55); }
-
-/* دکمه‌های قبلی/بعدی */
-.slider-nav{
-  position:absolute; top:50%; transform:translateY(-50%);
-  width:38px; height:38px; border-radius:50%;
-  background:rgba(255,255,255,.85); backdrop-filter:blur(8px);
-  display:grid; place-items:center; cursor:pointer; border:none;
-  box-shadow:0 6px 20px -6px rgba(58,36,48,.2);
-  z-index:5; opacity:0; transition:opacity .3s ease, transform .3s ease;
-}
-.slider:hover .slider-nav{ opacity:1; }
-.slider-nav:hover{ background:#fff; transform:translateY(-50%) scale(1.08); }
-.slider-nav.prev{ right:14px; }
-.slider-nav.next{ left:14px; }
-
-/* progress bar */
-.slider-progress{
-  position:absolute; bottom:0; left:0; right:0; height:3px;
-  background:rgba(58,36,48,.08); z-index:3;
-}
-.slider-progress-bar{
-  height:100%; background:linear-gradient(90deg, #D8556B, #C13E55);
-  width:0%; transition:width .05s linear;
+.slider-dot.active {
+  width: 26px; border-radius: 99px;
+  background: linear-gradient(90deg, #D8556B, #C13E55);
 }
 
-/* ═══════════ Hero Animations ═══════════ */
+/* آکاردئون FAQ */
+.faq-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .45s cubic-bezier(.2,.7,.2,1);
+}
+.faq-item.open .faq-body { grid-template-rows: 1fr; }
+.faq-item.open .faq-ico {
+  transform: rotate(45deg);
+  background: #D8556B;
+  color: #fff;
+}
+.faq-ico {
+  transition: transform .45s cubic-bezier(.2,.7,.2,1), background .3s, color .3s;
+}
+
+/* Hero Animations */
 @keyframes fade-in-up {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -146,56 +175,12 @@ body.loaded .line-mask > span{ transform:translateY(0); }
 }
 .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
 
-@keyframes float-medium {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-.animate-float-medium { animation: float-medium 4.5s ease-in-out infinite; }
-
-@keyframes float-fast {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-}
-.animate-float-fast { animation: float-fast 5s ease-in-out infinite; }
-
-/* آکاردئون */
-.faq-body{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .45s cubic-bezier(.2,.7,.2,1); }
-.faq-item.open .faq-body{ grid-template-rows:1fr; }
-.faq-item.open .faq-ico{ transform:rotate(45deg); background:#D8556B; color:#fff; }
-.faq-ico{ transition:transform .45s cubic-bezier(.2,.7,.2,1), background .3s, color .3s; }
-
-/* floating shapes داخل اسلاید */
-.shape{ position:absolute; border-radius:50%; opacity:.5; z-index:0; }
-.shape-1{ width:120px; height:120px; top:-30px; left:-30px; background:radial-gradient(circle, rgba(255,255,255,.7), transparent 70%); }
-.shape-2{ width:80px; height:80px; bottom:-20px; right:-20px; background:radial-gradient(circle, rgba(255,255,255,.6), transparent 70%); }
-
-/* ═══════════ کارت‌های مراحل رزرو ═══════════ */
+/* Step Cards */
 .step-card {
   position: relative;
   transition: all 0.5s cubic-bezier(.2,.7,.2,1);
 }
-
-.step-card:hover {
-  transform: translateY(-12px);
-}
-
-.step-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 2rem;
-  padding: 2px;
-  background: linear-gradient(135deg, transparent 40%, rgba(216,85,107,0.3));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.step-card:hover::before {
-  opacity: 1;
-}
+.step-card:hover { transform: translateY(-12px); }
 
 .step-icon-wrapper {
   position: relative;
@@ -206,23 +191,9 @@ body.loaded .line-mask > span{ transform:translateY(0); }
   place-items: center;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(216,85,107,0.1), rgba(193,62,85,0.05));
-  box-shadow: 
+  box-shadow:
     0 10px 40px -10px rgba(216,85,107,0.3),
     inset 0 2px 10px rgba(255,255,255,0.8);
-}
-
-.step-icon-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent, rgba(216,85,107,0.2), transparent);
-  animation: rotate 8s linear infinite;
-  z-index: -1;
-}
-
-@keyframes rotate {
-  to { transform: rotate(360deg); }
 }
 
 .step-number {
@@ -242,27 +213,16 @@ body.loaded .line-mask > span{ transform:translateY(0); }
   border: 3px solid white;
 }
 
-.step-connector {
-  position: absolute;
-  top: 50px;
-  left: -50%;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(216,85,107,0.3), transparent);
-  z-index: -1;
-}
-
-@media (max-width: 768px) {
-  .step-connector {
-    display: none;
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
   }
-}
-
-@media (prefers-reduced-motion: reduce){
-  html{ scroll-behavior:auto; }
-  *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
-  .reveal{ opacity:1; transform:none; }
-  .line-mask > span{ transform:none; }
+  .reveal { opacity: 1; transform: none; }
+  .line-mask > span { transform: none; }
 }
 </style>
 </head>

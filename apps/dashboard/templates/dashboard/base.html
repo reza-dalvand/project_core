@@ -11,28 +11,28 @@
 <style>
 @font-face {
 font-family: 'Vazirmatn';
-src: url('{% static "dashboard/fonts/Vazirmatn-Regular.woff2" %}') format('woff2');
+src: url('{% static "vendor/vazirmatn/fonts/Vazirmatn-Regular.woff2" %}') format('woff2');
 font-weight: 400;
 font-style: normal;
 font-display: swap;
 }
 @font-face {
 font-family: 'Vazirmatn';
-src: url('{% static "dashboard/fonts/Vazirmatn-Medium.woff2" %}') format('woff2');
+src: url('{% static "vendor/vazirmatn/fonts/Vazirmatn-Medium.woff2" %}') format('woff2');
 font-weight: 500;
 font-style: normal;
 font-display: swap;
 }
 @font-face {
 font-family: 'Vazirmatn';
-src: url('{% static "dashboard/fonts/Vazirmatn-Bold.woff2" %}') format('woff2');
+src: url('{% static "vendor/vazirmatn/fonts/Vazirmatn-Bold.woff2" %}') format('woff2');
 font-weight: 700;
 font-style: normal;
 font-display: swap;
 }
 @font-face {
 font-family: 'Vazirmatn';
-src: url('{% static "dashboard/fonts/Vazirmatn-ExtraBold.woff2" %}') format('woff2');
+src: url('{% static "vendor/vazirmatn/fonts/Vazirmatn-ExtraBold.woff2" %}') format('woff2');
 font-weight: 800;
 font-style: normal;
 font-display: swap;
@@ -40,7 +40,7 @@ font-display: swap;
 </style>
 
 <!-- ✅ فاز ۴: Bootstrap محلی — حذف وابستگی به CDN -->
-<link rel="stylesheet" href="{% static 'dashboard/vendor/bootstrap.min.css' %}">
+<link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
 
 <!-- استایل سفارشی پنل -->
 <link rel="stylesheet" href="{% static 'dashboard/css/style.css' %}">
@@ -240,7 +240,7 @@ color: #fff;
 </div>
 
 <!-- ✅ فاز ۴: اسکریپت‌های محلی — حذف وابستگی به CDN -->
-<script src="{% static 'dashboard/vendor/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'dashboard/js/main.js' %}"></script>
 
 {% block extra_js %}{% endblock %}
