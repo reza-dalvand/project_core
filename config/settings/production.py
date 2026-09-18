@@ -153,12 +153,15 @@ if _storage_access and _storage_secret:
     static_options = s3_options.copy()
     static_options["file_overwrite"] = True
     static_options["location"] = "static"  # ✅ تفکیک پوشه در باکت
+
     
     STORAGES["staticfiles"] = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": static_options,
     }
 
+    WHITENOISE_MANIFEST_STRICT = False
+    
     # تنظیم URLهای پایه برای fallback
     if ARVAN_CDN:
         STATIC_URL = f'https://{ARVAN_CDN}/static/'
