@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-beau}
       POSTGRES_USER: ${DB_USER:-beau}
-      POSTGRES_PASSWORD: ***REDACTED***
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -79,13 +79,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: |
-      sh -c '
+    command: >
+      sh -c "
         python manage.py migrate --noinput &&
-        python manage.py create_initial_data || echo "WARN: Initial data creation skipped or failed" &&
-        { python manage.py collectstatic --noinput || echo "WARN: collectstatic failed; using local static fallback"; } &&
-        exec gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120 --access-logfile - --error-logfile - config.wsgi:application
-      '
+        gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120 --access-logfile - --error-logfile - config.wsgi:application
+      "
     deploy:
       resources:
         limits:
@@ -170,7 +168,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: ${DB_USER:-beau}
-      PGPASSWORD: ***REDACTED***
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       PGDATABASE: ${DB_NAME:-beau}
     volumes:
       - ./backups:/backups
@@ -178,7 +176,7 @@ services:
       postgres:
         condition: service_healthy
     # ✅ روش پایدار برای آلپاین (بدون نیاز به crond)
-    entrypoint: |
+    entrypoint: >
       sh -c '
         mkdir -p /backups &&
         while true; do
