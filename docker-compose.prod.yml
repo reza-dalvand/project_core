@@ -82,8 +82,6 @@ services:
     command: >
       sh -c "
         python manage.py migrate --noinput &&
-        python manage.py create_initial_data || echo 'WARN: Initial data creation skipped or failed' &&
-        { python manage.py collectstatic --noinput || echo 'WARN: collectstatic failed; using local static fallback'; } &&
         gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120 --access-logfile - --error-logfile - config.wsgi:application
       "
     deploy:
