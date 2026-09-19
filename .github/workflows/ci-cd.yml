@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main, develop] # ✅ اصلاح: تست شدن PRهای سمت develop
+    branches: [main, develop]
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings.test
@@ -115,7 +115,7 @@ jobs:
       - name: SSH & Deploy
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APP_ENV: ${{ vars.APP_ENV }}
+          APP_ENV: "production" # ✅ اجبار به production برای هر دو برنچ
           COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
           BACKEND_PORT: ${{ vars.BACKEND_PORT }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
@@ -137,13 +137,16 @@ jobs:
           ARVAN_REGION: ${{ vars.ARVAN_REGION }}
           ARVAN_CDN_URL: ${{ vars.ARVAN_CDN_URL }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          LANDING_ADMIN_URL: ${{ vars.LANDING_ADMIN_URL }}
+          APP_ADMIN_URL: ${{ vars.APP_ADMIN_URL }}
+          DASHBOARD_ADMIN_URL: ${{ vars.DASHBOARD_ADMIN_URL }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: APP_ENV,COMPOSE_PROJECT_NAME,BACKEND_PORT,SECRET_KEY,ALLOWED_HOSTS,SITE_DOMAIN,FRONTEND_URL,DB_NAME,DB_USER,DB_PASSWORD,KAVENEGAR_API_KEY,SHAHKAR_API_KEY,ZARINPAL_MERCHANT_ID,ZARINPAL_SANDBOX,ZARINPAL_CALLBACK_URL,ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,ARVAN_BUCKET_NAME,ARVAN_ENDPOINT,ARVAN_REGION,ARVAN_CDN_URL,CORS_ALLOWED_ORIGINS,SENTRY_DSN
+          envs: APP_ENV,COMPOSE_PROJECT_NAME,BACKEND_PORT,SECRET_KEY,ALLOWED_HOSTS,SITE_DOMAIN,FRONTEND_URL,DB_NAME,DB_USER,DB_PASSWORD,KAVENEGAR_API_KEY,SHAHKAR_API_KEY,ZARINPAL_MERCHANT_ID,ZARINPAL_SANDBOX,ZARINPAL_CALLBACK_URL,ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,ARVAN_BUCKET_NAME,ARVAN_ENDPOINT,ARVAN_REGION,ARVAN_CDN_URL,CORS_ALLOWED_ORIGINS,LANDING_ADMIN_URL,APP_ADMIN_URL,DASHBOARD_ADMIN_URL,SENTRY_DSN
           
           script: |
             set -e
@@ -158,7 +161,7 @@ jobs:
             fi
 
             echo "══════════════════════════════════════"
-            echo "🎯 Environment: ${{ vars.APP_ENV }}"
+            echo "🎯 Environment: production (Forced for both branches)"
             echo "📂 Project Dir: $PROJECT_DIR"
             echo "🔢 Port: ${BACKEND_PORT:-8000}"
             echo "══════════════════════════════════════"
@@ -168,38 +171,69 @@ jobs:
             git checkout "$BRANCH"
             git reset --hard origin/"$BRANCH"
 
-            # ✅ تولید فایل .env با Bash (سریع‌تر و بدون نیاز به درگیر کردن Python)
+            # ✅ تولید فایل .env کامل و یکسان برای هر دو برنچ
             cat << EOF > .env
-            APP_ENV=${APP_ENV:-production}
+            # ═══════════ Global App Environment ═══════════
+            APP_ENV=production
+
+            # ═══════════ Docker Environment ═══════════
             COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-beau_prod}
             BACKEND_PORT=${BACKEND_PORT:-8000}
+
+            # ═══════════ Django ═══════════
             SECRET_KEY=${SECRET_KEY}
             DEBUG=False
-            ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+            ALLOWED_HOSTS=${ALLOWED_HOSTS:-beauclub.ir,beuclub.ir,buclub.ir,api.beauclub.ir,localhost,127.0.0.1}
+
+            # ═══════════ Database ═══════════
             DB_ENGINE=django.contrib.gis.db.backends.postgis
             DB_NAME=${DB_NAME:-beau}
             DB_USER=${DB_USER:-beau}
             DB_PASSWORD=${DB_PASSWORD}
             DB_HOST=postgres
             DB_PORT=5432
-            REDIS_URL=redis://redis:6379/0
+
+            # ═══════════ Site ═══════════
             SITE_NAME=بیو کلاب
             SITE_DOMAIN=${SITE_DOMAIN:-https://api.beauclub.ir}
             FRONTEND_URL=${FRONTEND_URL:-https://beauclub.ir}
+
+            # ═══════════ Redis ═══════════
+            REDIS_URL=redis://redis:6379/0
+
+            # ═══════════ SMS (Kavenegar) ═══════════
             KAVENEGAR_API_KEY=${KAVENEGAR_API_KEY}
+
+            # ═══════════ Shahkar (api.ir) ═══════════
             SHAHKAR_API_URL=https://s.api.ir/api/sw1/ShahkarLite
             SHAHKAR_API_KEY=${SHAHKAR_API_KEY}
+
+            # ═══════════ Payment (ZarinPal) ═══════════
             ZARINPAL_MERCHANT_ID=${ZARINPAL_MERCHANT_ID}
             ZARINPAL_SANDBOX=${ZARINPAL_SANDBOX:-False}
             ZARINPAL_CALLBACK_URL=${ZARINPAL_CALLBACK_URL:-https://api.beauclub.ir/api/v1/payments/callback/}
+
+            # ═══════════ Storage (Arvan Cloud S3) ═══════════
             ARVAN_ACCESS_KEY=${ARVAN_ACCESS_KEY}
             ARVAN_SECRET_KEY=${ARVAN_SECRET_KEY}
             ARVAN_BUCKET_NAME=${ARVAN_BUCKET_NAME:-beau}
             ARVAN_ENDPOINT=${ARVAN_ENDPOINT:-https://s3.ir-thr-at1.arvanstorage.ir}
             ARVAN_REGION=${ARVAN_REGION:-ir-thr-at1}
             ARVAN_CDN_URL=${ARVAN_CDN_URL:-cdn.beauclub.ir}
-            CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://beauclub.ir}
+
+            # ═══════════ CORS ═══════════
+            CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://beauclub.ir,https://beuclub.ir,https://buclub.ir,https://app.beauclub.ir,capacitor://localhost}
+
+            # ═══════════ Admin URLs ═══════════
+            LANDING_ADMIN_URL=${LANDING_ADMIN_URL:-admin/}
+            APP_ADMIN_URL=${APP_ADMIN_URL:-app-admin/}
+            DASHBOARD_ADMIN_URL=${DASHBOARD_ADMIN_URL:-dashboard-admin/}
+
+            # ═══════════ Sentry ═══════════
             SENTRY_DSN=${SENTRY_DSN}
+
+            MEDIA_URL=/media/
+            STATIC_URL=/static/
             EOF
             chmod 600 .env
             echo "✅ .env file generated successfully"
