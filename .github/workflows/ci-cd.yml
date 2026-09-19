@@ -258,17 +258,16 @@ jobs:
             $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
             $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
 
-            # ═══════════ Health Check ═══════════
-            # ✅ صبر اولیه برای اتمام migrationها
+                        # ═══════════ Health Check ═══════════
             echo "⏳ Waiting 30s for migrations to complete..."
             sleep 30
 
-            echo "🏥 Running health check on port ${ENV_BACKEND_PORT}..."
+            # ✅ اصلاح: استفاده از CURRENT_BACKEND_PORT به جای ENV_BACKEND_PORT
+            echo "🏥 Running health check on port ${CURRENT_BACKEND_PORT}..."
             MAX_RETRIES=30
             RETRY_COUNT=0
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              # ✅ اصلاح: استفاده از endpoint maintenance-status (همان‌ که Dockerfile استفاده می‌کند)
-              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${ENV_BACKEND_PORT}/api/v1/config/maintenance-status/" 2>/dev/null)
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${CURRENT_BACKEND_PORT}/api/v1/config/maintenance-status/" 2>/dev/null)
               if [ "$HTTP_CODE" = "200" ]; then
                 echo "✅ Backend is healthy! (HTTP $HTTP_CODE)"
                 break
