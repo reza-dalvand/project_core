@@ -258,26 +258,29 @@ jobs:
             $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
             $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
 
-            # Health Check
-            echo "🏥 Running health check on port $CURRENT_BACKEND_PORT..."
-            MAX_RETRIES=15
+            # ═══════════ Health Check ═══════════
+            # ✅ صبر اولیه برای اتمام migrationها
+            echo "⏳ Waiting 30s for migrations to complete..."
+            sleep 30
+
+            echo "🏥 Running health check on port ${ENV_BACKEND_PORT}..."
+            MAX_RETRIES=30
             RETRY_COUNT=0
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if curl -sf "http://127.0.0.1:${CURRENT_BACKEND_PORT}/api/v1/config/app-version/" > /dev/null 2>&1; then
-                echo "✅ Backend is healthy!"
+              # ✅ اصلاح: استفاده از endpoint maintenance-status (همان‌ که Dockerfile استفاده می‌کند)
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${ENV_BACKEND_PORT}/api/v1/config/maintenance-status/" 2>/dev/null)
+              if [ "$HTTP_CODE" = "200" ]; then
+                echo "✅ Backend is healthy! (HTTP $HTTP_CODE)"
                 break
               fi
+              echo "   Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES - HTTP $HTTP_CODE - waiting..."
               RETRY_COUNT=$((RETRY_COUNT + 1))
               sleep 5
             done
 
             if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
               echo "❌ Backend failed to start!"
+              echo "📋 Last 50 lines of backend logs:"
               $COMPOSE_CMD -f docker-compose.prod.yml logs backend --tail=50
               exit 1
             fi
-
-            # پاکسازی ایمیج‌های قدیمی
-            docker image prune -af --filter "until=168h"
-            docker builder prune -f
-            echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
