@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop] # ✅ اصلاح: تست شدن PRهای سمت develop
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings.test
@@ -108,10 +108,7 @@ jobs:
     name: 🚀 Deploy
     runs-on: ubuntu-latest
     needs: [test]
-    # ✅ فقط زمانی دیپلوی انجام می‌شود که کد Push شده باشد (یعنی PR مرج شده باشد).
-    # روی خودِ Pull Request فقط تست‌ها اجرا می‌شوند.
     if: github.event_name == 'push'
-    # ✅ انتخاب هوشمند Environment بر اساس نام برنچ
     environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
 
     steps:
@@ -135,10 +132,10 @@ jobs:
           ZARINPAL_CALLBACK_URL: ${{ vars.ZARINPAL_CALLBACK_URL }}
           ARVAN_ACCESS_KEY: ${{ secrets.ARVAN_ACCESS_KEY }}
           ARVAN_SECRET_KEY: ${{ secrets.ARVAN_SECRET_KEY }}
-          ARVAN_BUCKET_NAME: ${{ vars.ARVAN_BUCKET_NAME || 'beau' }}
-          ARVAN_ENDPOINT: ${{ vars.ARVAN_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir' }}
-          ARVAN_REGION: ${{ vars.ARVAN_REGION || 'ir-thr-at1' }}
-          ARVAN_CDN_URL: ${{ vars.ARVAN_CDN_URL || 'cdn.beauclub.ir' }}
+          ARVAN_BUCKET_NAME: ${{ vars.ARVAN_BUCKET_NAME }}
+          ARVAN_ENDPOINT: ${{ vars.ARVAN_ENDPOINT }}
+          ARVAN_REGION: ${{ vars.ARVAN_REGION }}
+          ARVAN_CDN_URL: ${{ vars.ARVAN_CDN_URL }}
           CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
@@ -163,7 +160,7 @@ jobs:
             echo "══════════════════════════════════════"
             echo "🎯 Environment: ${{ vars.APP_ENV }}"
             echo "📂 Project Dir: $PROJECT_DIR"
-            echo "🔢 Port: ${{ vars.BACKEND_PORT }}"
+            echo "🔢 Port: ${BACKEND_PORT:-8000}"
             echo "══════════════════════════════════════"
 
             cd "$PROJECT_DIR"
@@ -171,70 +168,60 @@ jobs:
             git checkout "$BRANCH"
             git reset --hard origin/"$BRANCH"
 
-            # ✅ تولید خودکار فایل .env
-            cat << 'EOF' > generate_env.py
-            import os
-
-            env_vars = {
-                "APP_ENV": os.environ.get("APP_ENV", "production"),
-                "COMPOSE_PROJECT_NAME": os.environ.get("COMPOSE_PROJECT_NAME", "beau_prod"),
-                "BACKEND_PORT": os.environ.get("BACKEND_PORT", "8000"),
-                "SECRET_KEY": os.environ.get("SECRET_KEY", ""),
-                "DEBUG": "False",
-                "ALLOWED_HOSTS": os.environ.get("ALLOWED_HOSTS", "localhost"),
-                "DB_ENGINE": "django.contrib.gis.db.backends.postgis",
-                "DB_NAME": os.environ.get("DB_NAME", "beau"),
-                "DB_USER": os.environ.get("DB_USER", "beau"),
-                "DB_PASSWORD": os.environ.get("DB_PASSWORD", ""),
-                "DB_HOST": "postgres",
-                "DB_PORT": "5432",
-                "REDIS_URL": "redis://redis:6379/0",
-                "SITE_NAME": "بیو کلاب",
-                "SITE_DOMAIN": os.environ.get("SITE_DOMAIN", "https://api.beauclub.ir"),
-                "FRONTEND_URL": os.environ.get("FRONTEND_URL", "https://beauclub.ir"),
-                "KAVENEGAR_API_KEY": os.environ.get("KAVENEGAR_API_KEY", ""),
-                "SHAHKAR_API_URL": "https://s.api.ir/api/sw1/ShahkarLite",
-                "SHAHKAR_API_KEY": os.environ.get("SHAHKAR_API_KEY", ""),
-                "ZARINPAL_MERCHANT_ID": os.environ.get("ZARINPAL_MERCHANT_ID", ""),
-                "ZARINPAL_SANDBOX": os.environ.get("ZARINPAL_SANDBOX", "False"),
-                "ZARINPAL_CALLBACK_URL": os.environ.get("ZARINPAL_CALLBACK_URL", "https://api.beauclub.ir/api/v1/payments/callback/"),
-                "ARVAN_ACCESS_KEY": os.environ.get("ARVAN_ACCESS_KEY", ""),
-                "ARVAN_SECRET_KEY": os.environ.get("ARVAN_SECRET_KEY", ""),
-                "ARVAN_BUCKET_NAME": os.environ.get("ARVAN_BUCKET_NAME", "beau"),
-                "ARVAN_ENDPOINT": os.environ.get("ARVAN_ENDPOINT", "https://s3.ir-thr-at1.arvanstorage.ir"),
-                "ARVAN_REGION": os.environ.get("ARVAN_REGION", "ir-thr-at1"),
-                "ARVAN_CDN_URL": os.environ.get("ARVAN_CDN_URL", "cdn.beauclub.ir"),
-                "CORS_ALLOWED_ORIGINS": os.environ.get("CORS_ALLOWED_ORIGINS", "https://beauclub.ir"),
-                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
-            }
-
-            with open(".env", "w") as f:
-                for k, v in env_vars.items():
-                    if v is not None and str(v) != "":
-                        f.write(f"{k}={v}\n")
+            # ✅ تولید فایل .env با Bash (سریع‌تر و بدون نیاز به درگیر کردن Python)
+            cat << EOF > .env
+            APP_ENV=${APP_ENV:-production}
+            COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-beau_prod}
+            BACKEND_PORT=${BACKEND_PORT:-8000}
+            SECRET_KEY=${SECRET_KEY}
+            DEBUG=False
+            ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+            DB_ENGINE=django.contrib.gis.db.backends.postgis
+            DB_NAME=${DB_NAME:-beau}
+            DB_USER=${DB_USER:-beau}
+            DB_PASSWORD=${DB_PASSWORD}
+            DB_HOST=postgres
+            DB_PORT=5432
+            REDIS_URL=redis://redis:6379/0
+            SITE_NAME=بیو کلاب
+            SITE_DOMAIN=${SITE_DOMAIN:-https://api.beauclub.ir}
+            FRONTEND_URL=${FRONTEND_URL:-https://beauclub.ir}
+            KAVENEGAR_API_KEY=${KAVENEGAR_API_KEY}
+            SHAHKAR_API_URL=https://s.api.ir/api/sw1/ShahkarLite
+            SHAHKAR_API_KEY=${SHAHKAR_API_KEY}
+            ZARINPAL_MERCHANT_ID=${ZARINPAL_MERCHANT_ID}
+            ZARINPAL_SANDBOX=${ZARINPAL_SANDBOX:-False}
+            ZARINPAL_CALLBACK_URL=${ZARINPAL_CALLBACK_URL:-https://api.beauclub.ir/api/v1/payments/callback/}
+            ARVAN_ACCESS_KEY=${ARVAN_ACCESS_KEY}
+            ARVAN_SECRET_KEY=${ARVAN_SECRET_KEY}
+            ARVAN_BUCKET_NAME=${ARVAN_BUCKET_NAME:-beau}
+            ARVAN_ENDPOINT=${ARVAN_ENDPOINT:-https://s3.ir-thr-at1.arvanstorage.ir}
+            ARVAN_REGION=${ARVAN_REGION:-ir-thr-at1}
+            ARVAN_CDN_URL=${ARVAN_CDN_URL:-cdn.beauclub.ir}
+            CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://beauclub.ir}
+            SENTRY_DSN=${SENTRY_DSN}
             EOF
-            python3 generate_env.py
-            rm generate_env.py
             chmod 600 .env
             echo "✅ .env file generated successfully"
 
-            # اجرای Docker Compose
+            # انتخاب دستور Docker Compose
             if docker compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker compose"
             else
               COMPOSE_CMD="docker-compose"
             fi
 
+            # بیلد و استارت سرویس‌ها
             $COMPOSE_CMD -f docker-compose.prod.yml build
             $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
-            $COMPOSE_CMD -f docker-compose.prod.yml up -d
+            $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
 
             # Health Check
             echo "🏥 Running health check..."
-            MAX_RETRIES=12
+            MAX_RETRIES=15
             RETRY_COUNT=0
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if curl -sf "http://127.0.0.1:${{ vars.BACKEND_PORT }}/api/v1/config/app-version/" > /dev/null 2>&1; then
+              if curl -sf "http://127.0.0.1:${BACKEND_PORT:-8000}/api/v1/config/app-version/" > /dev/null 2>&1; then
                 echo "✅ Backend is healthy!"
                 break
               fi
@@ -248,5 +235,7 @@ jobs:
               exit 1
             fi
 
-            docker image prune -f --filter "until=168h"
+            # پاکسازی ایمیج‌های قدیمی و کش‌های بدون استفاده برای جلوگیری از پر شدن دیسک سرور
+            docker image prune -af --filter "until=168h"
+            docker builder prune -f
             echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
