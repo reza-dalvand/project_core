@@ -151,19 +151,24 @@ jobs:
           script: |
             set -e
 
-            # تنظیم دایرکتوری بر اساس branch
+            # ═══════════ تنظیم متغیرهای اختصاصی بر اساس برنچ ═══════════
             if [ "${{ github.ref_name }}" == "main" ]; then
               PROJECT_DIR="/home/deploy/beau"
               BRANCH="main"
+              ENV_COMPOSE_PROJECT_NAME="beau_prod"
+              ENV_BACKEND_PORT="8000"
             else
               PROJECT_DIR="/home/deploy/beau-develop"
               BRANCH="develop"
+              ENV_COMPOSE_PROJECT_NAME="beau_dev"
+              ENV_BACKEND_PORT="8001"  # پورت متفاوت برای جلوگیری از تداخل
             fi
 
             echo "══════════════════════════════════════"
-            echo "🎯 Environment: production (Forced for both branches)"
+            echo "🎯 Branch: $BRANCH"
             echo "📂 Project Dir: $PROJECT_DIR"
-            echo "🔢 Port: ${BACKEND_PORT:-8000}"
+            echo "📦 Compose Name: $ENV_COMPOSE_PROJECT_NAME"
+            echo "🔢 Port: $ENV_BACKEND_PORT"
             echo "══════════════════════════════════════"
 
             cd "$PROJECT_DIR"
@@ -171,14 +176,14 @@ jobs:
             git checkout "$BRANCH"
             git reset --hard origin/"$BRANCH"
 
-            # ✅ تولید فایل .env کامل و یکسان برای هر دو برنچ
+            # ✅ تولید فایل .env کامل و مجزا برای هر محیط
             cat << EOF > .env
             # ═══════════ Global App Environment ═══════════
             APP_ENV=production
 
             # ═══════════ Docker Environment ═══════════
-            COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-beau_prod}
-            BACKEND_PORT=${BACKEND_PORT:-8000}
+            COMPOSE_PROJECT_NAME=${ENV_COMPOSE_PROJECT_NAME}
+            BACKEND_PORT=${ENV_BACKEND_PORT}
 
             # ═══════════ Django ═══════════
             SECRET_KEY=${SECRET_KEY}
@@ -245,17 +250,17 @@ jobs:
               COMPOSE_CMD="docker-compose"
             fi
 
-            # بیلد و استارت سرویس‌ها
+            # بیلد و استارت سرویس‌ها (داکر کامپوز به صورت خودکار .env را می‌خواند)
             $COMPOSE_CMD -f docker-compose.prod.yml build
             $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
             $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
 
             # Health Check
-            echo "🏥 Running health check..."
+            echo "🏥 Running health check on port $ENV_BACKEND_PORT..."
             MAX_RETRIES=15
             RETRY_COUNT=0
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if curl -sf "http://127.0.0.1:${BACKEND_PORT:-8000}/api/v1/config/app-version/" > /dev/null 2>&1; then
+              if curl -sf "http://127.0.0.1:${ENV_BACKEND_PORT}/api/v1/config/app-version/" > /dev/null 2>&1; then
                 echo "✅ Backend is healthy!"
                 break
               fi
@@ -269,7 +274,7 @@ jobs:
               exit 1
             fi
 
-            # پاکسازی ایمیج‌های قدیمی و کش‌های بدون استفاده برای جلوگیری از پر شدن دیسک سرور
+            # پاکسازی ایمیج‌های قدیمی
             docker image prune -af --filter "until=168h"
             docker builder prune -f
             echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
