@@ -155,13 +155,9 @@ jobs:
             if [ "${{ github.ref_name }}" == "main" ]; then
               PROJECT_DIR="/home/deploy/beau"
               BRANCH="main"
-              ENV_COMPOSE_PROJECT_NAME="beau_prod"
-              ENV_BACKEND_PORT="8000"
             else
               PROJECT_DIR="/home/deploy/beau-develop"
-              BRANCH="develop"
-              ENV_COMPOSE_PROJECT_NAME="beau_dev"
-              ENV_BACKEND_PORT="8001"  # پورت متفاوت برای جلوگیری از تداخل
+              BRANCH="develop" # پورت متفاوت برای جلوگیری از تداخل
             fi
 
             echo "══════════════════════════════════════"
