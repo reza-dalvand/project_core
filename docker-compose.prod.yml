@@ -69,8 +69,8 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - prod_media:/app/media
-      - prod_static:/app/staticfiles
+      - media:/app/media
+      - static:/app/staticfiles
       - ./logs:/app/logs
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
@@ -110,7 +110,7 @@ services:
       - DB_PORT=5432
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - prod_media:/app/media
+      - media:/app/media
       - ./logs:/app/logs
     depends_on:
       postgres:
@@ -195,10 +195,11 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  prod_media:
-  prod_static:
+  media:      
+  static:
 
 networks:
   beau_net:
     driver: bridge
-    name: beau_production_network
+    # ✅ اصلاح: نام داینامیک برای جلوگیری از تداخل بین dev و prod روی یک سرور
+    name: ${COMPOSE_PROJECT_NAME}_network

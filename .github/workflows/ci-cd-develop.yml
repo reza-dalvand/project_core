@@ -120,164 +120,138 @@ jobs:
         run: pytest tests/ -v --tb=short --no-header
 
 
-  # ═══════════ Deploy Develop ═══════════
+  # ═══════════ Deploy ═══════════
   deploy:
-    name: 🚀 Deploy to Develop
+    name: 🚀 Deploy
     runs-on: ubuntu-latest
     needs: [test]
-
-    environment: develop
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }} # انتخاب خودکار Environment
 
     steps:
       - name: SSH & Deploy
         uses: appleboy/ssh-action@v1.0.3
-
         env:
-          ARVAN_ACCESS_KEY: ${{ secrets.ARVAN_ACCESS_KEY }}
-          ARVAN_SECRET_KEY: ${{ secrets.ARVAN_SECRET_KEY }}
+          APP_ENV: ${{ vars.APP_ENV }}
+          COMPOSE_PROJECT_NAME: ${{ vars.COMPOSE_PROJECT_NAME }}
+          BACKEND_PORT: ${{ vars.BACKEND_PORT }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
+          SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
           SHAHKAR_API_KEY: ${{ secrets.SHAHKAR_API_KEY }}
+          ZARINPAL_MERCHANT_ID: ${{ secrets.ZARINPAL_MERCHANT_ID }}
+          ZARINPAL_SANDBOX: ${{ vars.ZARINPAL_SANDBOX }}
+          ZARINPAL_CALLBACK_URL: ${{ vars.ZARINPAL_CALLBACK_URL }}
+          ARVAN_ACCESS_KEY: ${{ secrets.ARVAN_ACCESS_KEY }}
+          ARVAN_SECRET_KEY: ${{ secrets.ARVAN_SECRET_KEY }}
+          ARVAN_BUCKET_NAME: ${{ vars.ARVAN_BUCKET_NAME || 'beau' }}
+          ARVAN_ENDPOINT: ${{ vars.ARVAN_ENDPOINT || 'https://s3.ir-thr-at1.arvanstorage.ir' }}
+          ARVAN_REGION: ${{ vars.ARVAN_REGION || 'ir-thr-at1' }}
+          ARVAN_CDN_URL: ${{ vars.ARVAN_CDN_URL || 'cdn.beauclub.ir' }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-
-          envs: ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,KAVENEGAR_API_KEY,SHAHKAR_API_KEY
-
+          envs: APP_ENV,COMPOSE_PROJECT_NAME,BACKEND_PORT,SECRET_KEY,ALLOWED_HOSTS,SITE_DOMAIN,FRONTEND_URL,DB_NAME,DB_USER,DB_PASSWORD,KAVENEGAR_API_KEY,SHAHKAR_API_KEY,ZARINPAL_MERCHANT_ID,ZARINPAL_SANDBOX,ZARINPAL_CALLBACK_URL,ARVAN_ACCESS_KEY,ARVAN_SECRET_KEY,ARVAN_BUCKET_NAME,ARVAN_ENDPOINT,ARVAN_REGION,ARVAN_CDN_URL,CORS_ALLOWED_ORIGINS,SENTRY_DSN
+          
           script: |
             set -e
 
-            PROJECT_DIR="/home/deploy/beau-develop"
-            COMPOSE_PROJECT_NAME="beau_dev"
-            BACKEND_PORT="8001"
-            BRANCH="develop"
-
-            echo "══════════════════════════════════════"
-            echo "🎯 Environment: develop"
-            echo "📂 Project Dir: $PROJECT_DIR"
-            echo "🔢 Port: $BACKEND_PORT"
-            echo "🌿 Branch: $BRANCH"
-            echo "══════════════════════════════════════"
-
-            if [ ! -d "$PROJECT_DIR" ]; then
-              echo "❌ Directory $PROJECT_DIR not found!"
-              exit 1
+            # تنظیم دایرکتوری بر اساس branch
+            if [ "${{ github.ref_name }}" == "main" ]; then
+              PROJECT_DIR="/home/deploy/beau"
+              BRANCH="main"
+            else
+              PROJECT_DIR="/home/deploy/beau-develop"
+              BRANCH="develop"
             fi
+
+            echo "══════════════════════════════════════"
+            echo "🎯 Environment: ${{ vars.APP_ENV }}"
+            echo "📂 Project Dir: $PROJECT_DIR"
+            echo "🔢 Port: ${{ vars.BACKEND_PORT }}"
+            echo "══════════════════════════════════════"
 
             cd "$PROJECT_DIR"
-
-            if [ ! -d ".git" ]; then
-              echo "❌ Not a git repository!"
-              exit 1
-            fi
-
             git fetch origin
             git checkout "$BRANCH"
             git reset --hard origin/"$BRANCH"
 
-            echo "Current commit:"
-            git log --oneline -1
-
-            touch .env
-            chmod 600 .env
-
-            export COMPOSE_PROJECT_NAME
-            export BACKEND_PORT
-
-            python3 - <<'PY'
+            # ✅ تولید خودکار فایل .env
+            cat << 'EOF' > generate_env.py
             import os
-            from pathlib import Path
-
-            env_file = Path(".env")
-
-            managed = {
-                "ARVAN_ACCESS_KEY": os.environ["ARVAN_ACCESS_KEY"],
-                "ARVAN_SECRET_KEY": os.environ["ARVAN_SECRET_KEY"],
-                "KAVENEGAR_API_KEY": os.environ["KAVENEGAR_API_KEY"],
-                "SHAHKAR_API_KEY": os.environ["SHAHKAR_API_KEY"],
-            }
-
-            lines = env_file.read_text().splitlines()
-
-            result = []
-            existing_keys = set()
-
-            for line in lines:
-                if not line or line.startswith("#") or "=" not in line:
-                    result.append(line)
-                    continue
-
-                key = line.split("=", 1)[0].strip()
-                existing_keys.add(key)
-
-                if key in managed:
-                    result.append(f"{key}={managed[key]}")
-                else:
-                    result.append(line)
-
-            for key, value in managed.items():
-                if key not in existing_keys:
-                    result.append(f"{key}={value}")
 
             env_vars = {
-                "COMPOSE_PROJECT_NAME": os.environ.get(
-                    "COMPOSE_PROJECT_NAME",
-                    "beau_dev"
-                ),
-                "BACKEND_PORT": os.environ.get(
-                    "BACKEND_PORT",
-                    "8001"
-                ),
+                "APP_ENV": os.environ.get("APP_ENV", "production"),
+                "COMPOSE_PROJECT_NAME": os.environ.get("COMPOSE_PROJECT_NAME", "beau_prod"),
+                "BACKEND_PORT": os.environ.get("BACKEND_PORT", "8000"),
+                "SECRET_KEY": os.environ.get("SECRET_KEY", ""),
+                "DEBUG": "False",
+                "ALLOWED_HOSTS": os.environ.get("ALLOWED_HOSTS", "localhost"),
+                "DB_ENGINE": "django.contrib.gis.db.backends.postgis",
+                "DB_NAME": os.environ.get("DB_NAME", "beau"),
+                "DB_USER": os.environ.get("DB_USER", "beau"),
+                "DB_PASSWORD": os.environ.get("DB_PASSWORD", ""),
+                "DB_HOST": "postgres",
+                "DB_PORT": "5432",
+                "REDIS_URL": "redis://redis:6379/0",
+                "SITE_NAME": "بیو کلاب",
+                "SITE_DOMAIN": os.environ.get("SITE_DOMAIN", "https://api.beauclub.ir"),
+                "FRONTEND_URL": os.environ.get("FRONTEND_URL", "https://beauclub.ir"),
+                "KAVENEGAR_API_KEY": os.environ.get("KAVENEGAR_API_KEY", ""),
+                "SHAHKAR_API_URL": "https://s.api.ir/api/sw1/ShahkarLite",
+                "SHAHKAR_API_KEY": os.environ.get("SHAHKAR_API_KEY", ""),
+                "ZARINPAL_MERCHANT_ID": os.environ.get("ZARINPAL_MERCHANT_ID", ""),
+                "ZARINPAL_SANDBOX": os.environ.get("ZARINPAL_SANDBOX", "False"),
+                "ZARINPAL_CALLBACK_URL": os.environ.get("ZARINPAL_CALLBACK_URL", "https://api.beauclub.ir/api/v1/payments/callback/"),
+                "ARVAN_ACCESS_KEY": os.environ.get("ARVAN_ACCESS_KEY", ""),
+                "ARVAN_SECRET_KEY": os.environ.get("ARVAN_SECRET_KEY", ""),
+                "ARVAN_BUCKET_NAME": os.environ.get("ARVAN_BUCKET_NAME", "beau"),
+                "ARVAN_ENDPOINT": os.environ.get("ARVAN_ENDPOINT", "https://s3.ir-thr-at1.arvanstorage.ir"),
+                "ARVAN_REGION": os.environ.get("ARVAN_REGION", "ir-thr-at1"),
+                "ARVAN_CDN_URL": os.environ.get("ARVAN_CDN_URL", "cdn.beauclub.ir"),
+                "CORS_ALLOWED_ORIGINS": os.environ.get("CORS_ALLOWED_ORIGINS", "https://beauclub.ir"),
+                "SENTRY_DSN": os.environ.get("SENTRY_DSN", ""),
             }
 
-            for key, value in env_vars.items():
-                if key in existing_keys:
-                    result = [
-                        f"{key}={value}"
-                        if line.startswith(f"{key}=")
-                        else line
-                        for line in result
-                    ]
-                else:
-                    result.append(f"{key}={value}")
+            with open(".env", "w") as f:
+                for k, v in env_vars.items():
+                    if v is not None and str(v) != "":
+                        f.write(f"{k}={v}\n")
+            EOF
+            python3 generate_env.py
+            rm generate_env.py
+            chmod 600 .env
+            echo "✅ .env file generated successfully"
 
-            env_file.write_text("\n".join(result) + "\n")
-
-            PY
-
-            echo "✅ Secrets and env vars updated"
-
+            # اجرای Docker Compose
             if docker compose version > /dev/null 2>&1; then
               COMPOSE_CMD="docker compose"
-            elif docker-compose version > /dev/null 2>&1; then
-              COMPOSE_CMD="docker-compose"
             else
-              echo "❌ Docker Compose not found!"
-              exit 1
+              COMPOSE_CMD="docker-compose"
             fi
 
-            # Build بدون --no-cache (خیلی سریع‌تر)
             $COMPOSE_CMD -f docker-compose.prod.yml build
-
-            # Down اول — تضمین آزاد شدن پورت‌ها
             $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
-
-            # Up
             $COMPOSE_CMD -f docker-compose.prod.yml up -d
 
-            # Health Check واقعی
+            # Health Check
             echo "🏥 Running health check..."
             MAX_RETRIES=12
             RETRY_COUNT=0
-
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if curl -sf "http://127.0.0.1:${BACKEND_PORT}/api/v1/config/app-version/" > /dev/null 2>&1; then
+              if curl -sf "http://127.0.0.1:${{ vars.BACKEND_PORT }}/api/v1/config/app-version/" > /dev/null 2>&1; then
                 echo "✅ Backend is healthy!"
                 break
               fi
               RETRY_COUNT=$((RETRY_COUNT + 1))
-              echo "⏳ Waiting for backend... ($RETRY_COUNT/$MAX_RETRIES)"
               sleep 5
             done
 
@@ -287,11 +261,5 @@ jobs:
               exit 1
             fi
 
-            $COMPOSE_CMD -f docker-compose.prod.yml ps
-
-            # Cleanup ایمن (فقط image های قدیمی)
             docker image prune -f --filter "until=168h"
-
-            echo ""
-            echo "✅ Develop deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
-            echo "Commit: $(git log --oneline -1)"
+            echo "✅ Deploy done at $(date '+%Y-%m-%d %H:%M:%S')"
