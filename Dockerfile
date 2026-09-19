@@ -55,8 +55,8 @@ USER appuser
 EXPOSE 8000
 
 # ✅ Healthcheck برای مانیتورینگ توسط Docker و Nginx
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/config/maintenance-status/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/config/app-version/ || exit 1
 
 CMD ["gunicorn", \
     "--bind", "0.0.0.0:8000", \
