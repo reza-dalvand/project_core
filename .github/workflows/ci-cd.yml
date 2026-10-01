@@ -350,7 +350,7 @@ jobs:
 
             # ═══════════ SMS (Kavenegar) ═══════════
             KAVENEGAR_API_KEY=${KAVENEGAR_API_KEY}
-
+            KAVENEGAR_OTP_TEMPLATE=${KAVENEGAR_OTP_TEMPLATE:-test}
 
             # ═══════════ Shahkar ═══════════
             SHAHKAR_API_URL=https://s.api.ir/api/sw1/ShahkarLite
