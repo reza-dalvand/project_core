@@ -135,7 +135,7 @@ TEMPLATES = [
         'OPTIONS': {
             'environment': 'config.jinja2_env.environment',
             "match_extension": ".jinja",
-            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/|dashboard/).*\.html$',
+            'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/).*\.html$',
             'app_dirname': 'templates', 'app_dirname': 'templates',
             'context_processors': [
                 'django.template.context_processors.debug',
