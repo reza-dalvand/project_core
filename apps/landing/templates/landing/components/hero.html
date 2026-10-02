@@ -44,22 +44,13 @@
 
       <!-- CTAs -->
       <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12 animate-fade-in-up" style="animation-delay: 300ms;">
-          {% if download_section.show_cafebazaar or download_section.show_myket or download_section.show_google_play %}        <a href="{{ site_settings.cafebazaar_url|default:site_settings.myket_url|default:'#download' }}" class="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-ink text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-ink/10 hover:shadow-2xl hover:shadow-ink/20 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+        <a href="https://app.beauclub.ir" target="_blank" rel="noopener noreferrer" class="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-ink text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-ink/10 hover:shadow-2xl hover:shadow-ink/20 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
           <span class="absolute inset-0 bg-gradient-to-l from-rose-600 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
           <span class="relative flex items-center gap-2">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
             {{ hero.primary_btn_text|default:"دانلود رایگان اپلیکیشن" }}
           </span>
         </a>
-        {% else %}
-        <a href="app.beauclub.ir" class="group relative w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-ink text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-ink/10 hover:shadow-2xl hover:shadow-ink/20 hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
-          <span class="absolute inset-0 bg-gradient-to-l from-rose-600 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-          <span class="relative flex items-center gap-2">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
-            {{ hero.primary_btn_text|default:"دانلود رایگان اپلیکیشن" }}
-          </span>
-        </a>
-        {% endif %}
         
         <a href="#how-it-works" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-ink/5 text-ink font-semibold px-8 py-4 rounded-2xl hover:bg-white hover:border-ink/10 transition-all duration-300">
           {{ hero.secondary_btn_text|default:"نحوه کار" }}
