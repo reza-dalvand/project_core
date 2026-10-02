@@ -24,28 +24,12 @@
       </ul>
 
       <div class="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-        {% if download_section.show_cafebazaar or download_section.show_myket or download_section.show_google_play %}
-          {% if site_settings.cafebazaar_url and site_settings.cafebazaar_url != "#" %}
-          <a href="{{ site_settings.cafebazaar_url }}" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-ink text-cream font-bold px-8 py-4 hover:bg-rose-600 hover:-translate-y-1 transition-all duration-300 shadow-soft">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5 19.3 6.6c.1-.2 0-.4-.2-.5-.2-.1-.4 0-.5.2l-1.7 2.9A10.7 10.7 0 0 0 12 8.5c-1.7 0-3.4.2-4.9.7L5.4 6.3c-.1-.2-.3-.3-.5-.2-.2.1-.3.3-.2.5l1.7 2.9C3.5 11 1.5 13.9 1.3 17.3h21.4c-.2-3.4-2.2-6.3-5.1-7.8zM7.7 14.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm8.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
-            <span class="text-start leading-tight"><small class="block text-[10px] opacity-60 font-normal">دریافت مستقیم</small>دانلود برای اندروید</span>
-          </a>
-          {% endif %}
-          
-          {% if site_settings.myket_url and site_settings.myket_url != "#" %}
-          <a href="{{ site_settings.myket_url }}" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl glass font-bold px-8 py-4 hover:bg-white hover:-translate-y-1 transition-all duration-300">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
-            <span class="text-start leading-tight"><small class="block text-[10px] opacity-60 font-normal">مایکت</small>دانلود از مایکت</span>
-          </a>
-          {% endif %}
-        {% else %}
-          <a href="app.beauclub.ir" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-ink text-cream font-bold px-8 py-4 hover:bg-rose-600 hover:-translate-y-1 transition-all duration-300 shadow-soft">
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5 19.3 6.6c.1-.2 0-.4-.2-.5-.2-.1-.4 0-.5.2l-1.7 2.9A10.7 10.7 0 0 0 12 8.5c-1.7 0-3.4.2-4.9.7L5.4 6.3c-.1-.2-.3-.3-.5-.2-.2.1-.3.3-.2.5l1.7 2.9C3.5 11 1.5 13.9 1.3 17.3h21.4c-.2-3.4-2.2-6.3-5.1-7.8zM7.7 14.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm8.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
-            <span class="text-start leading-tight"><small class="block text-[10px] opacity-60 font-normal">دریافت مستقیم</small>دانلود برای اندروید</span>
-          </a>
-        {% endif %}
-        
-        <a href="app.beauclub.ir" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl glass font-bold px-8 py-4 hover:bg-white hover:-translate-y-1 transition-all duration-300">
+        <a href="https://app.beauclub.ir" target="_blank" rel="noopener noreferrer" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-ink text-cream font-bold px-8 py-4 hover:bg-rose-600 hover:-translate-y-1 transition-all duration-300 shadow-soft">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5 19.3 6.6c.1-.2 0-.4-.2-.5-.2-.1-.4 0-.5.2l-1.7 2.9A10.7 10.7 0 0 0 12 8.5c-1.7 0-3.4.2-4.9.7L5.4 6.3c-.1-.2-.3-.3-.5-.2-.2.1-.3.3-.2.5l1.7 2.9C3.5 11 1.5 13.9 1.3 17.3h21.4c-.2-3.4-2.2-6.3-5.1-7.8zM7.7 14.4a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2zm8.6 0a1.1 1.1 0 1 1 0-2.2 1.1 1.1 0 0 1 0 2.2z"/></svg>
+          <span class="text-start leading-tight"><small class="block text-[10px] opacity-60 font-normal">دریافت مستقیم</small>دانلود برای اندروید</span>
+        </a>
+
+        <a href="https://app.beauclub.ir" target="_blank" rel="noopener noreferrer" class="group w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl glass font-bold px-8 py-4 hover:bg-white hover:-translate-y-1 transition-all duration-300">
           <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg>
           <span class="text-start leading-tight"><small class="block text-[10px] opacity-60 font-normal">بدون نصب</small>ورود به وب‌اپ</span>
         </a>
