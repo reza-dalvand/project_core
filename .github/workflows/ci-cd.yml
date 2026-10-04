@@ -326,8 +326,16 @@ jobs:
             # ═══════════ Django ═══════════
             SECRET_KEY=${SECRET_KEY}
             DEBUG=False
-            ALLOWED_HOSTS=${ALLOWED_HOSTS:-beauclub.ir,beuclub.ir,buclub.ir,api.beauclub.ir,localhost,127.0.0.1}
 
+            RAW_ALLOWED="${ALLOWED_HOSTS:-beauclub.ir,beuclub.ir,buclub.ir}"
+            if [ "$BRANCH" = "main" ]; then
+              BRANCH_DOMAIN="api.beauclub.ir"
+            else
+              BRANCH_DOMAIN="develop.beauclub.ir"
+            fi
+            FINAL_ALLOWED_HOSTS="${RAW_ALLOWED},${BRANCH_DOMAIN},localhost,127.0.0.1"
+
+            ALLOWED_HOSTS=${FINAL_ALLOWED_HOSTS}
 
             # ═══════════ Database ═══════════
             DB_ENGINE=django.contrib.gis.db.backends.postgis
@@ -417,6 +425,13 @@ jobs:
 
             echo "🔍 Validating Docker Compose configuration..."
 
+            # ═══════════════════════════════════════════════════════
+            # Prepare Directories (Fix Permissions for Bind Mounts)
+            # ═══════════════════════════════════════════════════════
+            echo "📁 Preparing directories and fixing permissions..."
+            mkdir -p logs
+            chmod 777 logs  # اجازه نوشتن به appuser داخل کانتینر رو می‌ده
+            
             $COMPOSE_CMD \
               -f docker-compose.prod.yml \
               config --quiet
