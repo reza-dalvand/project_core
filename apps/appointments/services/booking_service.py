@@ -100,6 +100,21 @@ class BookingService:
         if not slot_available:
             raise SlotNotAvailableException()
 
+        # ═══════════════════════════════════════════════
+        #   ✅ FIX باگ ۲.۳: جلوگیری از Race Condition
+        #   قفل کردن نوبت‌های این کسب‌وکار در این تاریخ با select_for_update
+        # ═══════════════════════════════════════════════
+        locked_appointments = Appointment.objects.select_for_update().filter(
+            business=business,
+            jy=jy, jm=jm, jd=jd,
+            status=Appointment.Status.RESERVED,
+        )
+        
+        # بررسی اینکه آیا این اسلات خاص توسط کاربر دیگری رزرو شده است یا خیر
+        if locked_appointments.filter(time_slot=time_slot).exists():
+            raise SlotNotAvailableException()
+
+        # بررسی اینکه آیا خود کاربر در این ساعت نوبت دیگری (در هر کسب‌وکاری) دارد یا خیر
         has_existing = Appointment.objects.filter(
             customer=customer,
             jy=jy, jm=jm, jd=jd,
@@ -158,7 +173,6 @@ class BookingService:
         return appointment
 
 
-    
     @classmethod
     def regenerate_verification_code(cls, appointment: Appointment) -> str:
         if appointment.updated_at:
@@ -196,8 +210,6 @@ class BookingService:
             'status', 'is_verified', 'verified_at', 'done_at', 'updated_at',
         ])
         return True
-
-
 
     @classmethod
     @transaction.atomic

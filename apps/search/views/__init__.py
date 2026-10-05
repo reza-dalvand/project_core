@@ -354,7 +354,6 @@ class NearbyView(APIView, StandardResponseMixin):
 
         from apps.businesses.models import Business
         from apps.ads.models import ModelRequest, LineRental
-        from apps.businesses.serializers.business import BusinessListSerializer
         from apps.ads.serializers import (
             ModelRequestListSerializer,
             LineRentalListSerializer,
