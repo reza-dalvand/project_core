@@ -1146,7 +1146,7 @@ def suspend_business_view(request, business_id):
         business.suspended_at = timezone.now()
         business.save(update_fields=['is_suspended', 'suspension_reason', 'suspended_at'])
         
-        # رسیدگی شده标记 شود
+        # رسیدگی‌شده علامت‌گذاری شود
         BusinessViolation.objects.filter(business=business, is_resolved=False).update(is_resolved=True)
         
         # ثبت در لاگ حسابرسی
