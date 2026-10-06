@@ -1,5 +1,6 @@
 """
 Views مربوط به احراز هویت — بدون role
+✅ FIX F-15: اضافه شدن SessionStatusView
 """
 import logging
 import uuid
@@ -14,7 +15,6 @@ from rest_framework_simplejwt.token_blacklist.models import (
     BlacklistedToken, OutstandingToken,
 )
 from drf_spectacular.utils import extend_schema
-from rest_framework_simplejwt.tokens import SlidingToken
 from apps.core.mixins import StandardResponseMixin
 from apps.core.utils import get_client_ip, get_device_info, mask_phone
 from apps.core.exceptions import OTPException, ShahkarException
@@ -45,9 +45,6 @@ logger = logging.getLogger(__name__)
 #   Send OTP
 # ═══════════════════════════════════════════════
 
-# apps/accounts/views/auth.py
-# فقط کلاس SendOTPView را پیدا کنید و متد post را جایگزین کنید:
-
 class SendOTPView(APIView, StandardResponseMixin):
     """ارسال کد تایید به شماره موبایل"""
     permission_classes = [permissions.AllowAny]
@@ -76,7 +73,6 @@ class SendOTPView(APIView, StandardResponseMixin):
                 message=f'کد تایید به شماره {mask_phone(phone)} ارسال شد',
             )
         except OTPException as e:
-            # ✅ FIX: خطاهای ارسال پیامک هم اینجا هندل می‌شوند
             return e.as_response()
         except Exception as e:
             logger.exception(f"Send OTP error: {e}")
@@ -85,6 +81,8 @@ class SendOTPView(APIView, StandardResponseMixin):
                 code='OTP_SEND_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 # ═══════════════════════════════════════════════
 #   Verify OTP
 # ═══════════════════════════════════════════════
@@ -106,16 +104,13 @@ class VerifyOTPView(APIView, StandardResponseMixin):
         code = serializer.validated_data['code']
 
         try:
-            # 1. اعتبارسنجی کد
             OTPService.verify_otp(phone, code)
 
-            # 2. دریافت یا ایجاد کاربر
             user, is_new_user = User.objects.get_or_create(
                 phone=phone,
                 defaults={'is_verified': True},
             )
 
-            # ✅ FIX فاز ۳: بررسی is_active قبل از اجازه ورود
             if not is_new_user and not user.is_active:
                 return self.error_response(
                     message='این حساب کاربری غیرفعال شده است. لطفاً با پشتیبانی تماس بگیرید.',
@@ -123,22 +118,16 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # ✅ NEW: بررسی وضعیت تعلیق — کاربر وارد می‌شود اما با flag تعلیق
-            # توکن تولید می‌شود ولی در سمت فرانت مدال تعلیق نمایش داده می‌شود
             is_suspended = user.is_suspended
             suspension_reason = user.suspension_reason if is_suspended else ''
 
-            # اگر کاربر قدیمی است اما هنوز وریفای نشده
             if not is_new_user and not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=['is_verified'])
 
-
-            # آپدیت آخرین ورود
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
 
-             # 3. ثبت دستگاه (Device Tracking)
             device_info = get_device_info(request)
             client_ip = get_client_ip(request)
 
@@ -148,17 +137,15 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                     device_type=device_info['device_type'],
                     defaults={
                         'device_name': device_info.get('device_name') or f'{device_info["device_type"]} Device',
-                        'ip_address': client_ip or '127.0.0.1',  # ✅ FIX: None → fallback
+                        'ip_address': client_ip or '127.0.0.1',
                         'os_info': device_info.get('os_info') or device_info.get('os_version') or 'Unknown',
-                        'location': 'Unknown',  # ✅ FIX: فیلد اجباری NOT NULL
+                        'location': 'Unknown',
                         'is_current': True,
                     },
                 )
             except Exception as device_err:
-                # ✅ FIX: اگر ثبت دستگاه ناموفق بود، ورود نباید فیل شود
                 logger.warning(f"Device registration failed: {device_err}")
 
-             # 4. تولید JWT Token
             refresh = RefreshToken.for_user(user)
             refresh['user_id'] = user.id
             refresh['is_verified'] = user.is_verified
@@ -166,7 +153,6 @@ class VerifyOTPView(APIView, StandardResponseMixin):
             access_token['user_id'] = user.id
             access_token['is_verified'] = user.is_verified
 
-            # ✅ FIX PHASE 1: محاسبه دقیق نیاز به تکمیل پروفایل
             needs_profile_completion = (
                 is_new_user or
                 not user.first_name or
@@ -189,7 +175,6 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 message='ورود موفقیت‌آمیز' if not is_new_user else 'ثبت‌نام و ورود موفقیت‌آمیز',
             )
 
-        
         except OTPException as e:
             return e.as_response()
         except Exception as e:
@@ -199,6 +184,8 @@ class VerifyOTPView(APIView, StandardResponseMixin):
                 code='VERIFY_ERROR',
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 # ═══════════════════════════════════════════════
 #   Token Refresh
 # ═══════════════════════════════════════════════
@@ -206,6 +193,53 @@ class VerifyOTPView(APIView, StandardResponseMixin):
 class CustomTokenRefreshView(TokenRefreshView):
     """Refresh Token با چرخش خودکار"""
     serializer_class = CustomTokenRefreshSerializer
+
+
+# ═══════════════════════════════════════════════
+#   ✅ FIX F-15: Session Status Check
+# ═══════════════════════════════════════════════
+
+class SessionStatusView(APIView, StandardResponseMixin):
+    """
+    بررسی وضعیت فعلی session کاربر
+    
+    این اندپوینت سبک برای بررسی:
+    - وضعیت تعلیق کاربر
+    - وضعیت فعال بودن حساب
+    - اطلاعات ضروری پروفایل
+    
+    فرانت‌اند هر ۵ دقیقه یکبار (هنگام focus/visibility) این را صدا می‌زند.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=['Authentication'],
+        summary='بررسی وضعیت session',
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'isSuspended': {'type': 'boolean'},
+                    'suspensionReason': {'type': 'string'},
+                    'isDeactivated': {'type': 'boolean'},
+                    'isActive': {'type': 'boolean'},
+                    'isVerified': {'type': 'boolean'},
+                }
+            }
+        },
+    )
+    def get(self, request):
+        user = request.user
+        
+        return self.success_response(
+            data={
+                'isSuspended': getattr(user, 'is_suspended', False),
+                'suspensionReason': getattr(user, 'suspension_reason', '') or '',
+                'isDeactivated': not user.is_active,
+                'isActive': user.is_active,
+                'isVerified': user.is_verified,
+            }
+        )
 
 
 # ═══════════════════════════════════════════════
@@ -277,8 +311,6 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
             from shared.national_id import get_national_id_verifier
             verifier = get_national_id_verifier()
             
-            # ارسال درخواست به API واقعی شاهکار
-            # فرانت فقط national_id را می‌فرستد، بنابراین نام از پروفایل کاربر خوانده می‌شود
             result = verifier.verify(
                 national_id=national_id, 
                 phone=request.user.phone,
@@ -286,8 +318,6 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
             )
 
             if result.success:
-                # ✅ منطق ذخیره نام تایید شده
-                # اولویت: نام و نام خانوادگی ثبت شده در پروفایل کاربر
                 final_verified_name = request.user.full_name or result.verified_name
                 
                 user = request.user
@@ -300,7 +330,6 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                     'verified_name',
                 ])
 
-                # همگام‌سازی با کسب‌وکار (در صورت وجود)
                 business = user.businesses.first()
                 if business:
                     business.national_id = national_id
@@ -321,7 +350,6 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                     message='هویت شما با موفقیت تایید شد',
                 )
             else:
-                # عدم تطابق یا خطا از سمت API
                 return self.error_response(
                     message=result.error_message or 'کد ملی با شماره موبایل تطابق ندارد',
                     code=result.error_code or 'MISMATCH',
@@ -329,7 +357,6 @@ class NationalIdVerificationView(APIView, StandardResponseMixin):
                 )
 
         except ValueError as e:
-            # خطای تنظیمات (مثلا توکن در .env ست نشده یا فیک است)
             logger.error(f"National ID config error: {e}")
             return self.error_response(
                 message=str(e),
@@ -403,9 +430,6 @@ class RevokeDeviceView(APIView, StandardResponseMixin):
 #   Delete Account
 # ═══════════════════════════════════════════════
 
-# apps/accounts/views/auth.py
-# فقط کلاس DeleteAccountView را پیدا و جایگزین کنید:
-
 class DeleteAccountView(APIView, StandardResponseMixin):
     """حذف حساب کاربری"""
     permission_classes = [permissions.IsAuthenticated]
@@ -422,17 +446,15 @@ class DeleteAccountView(APIView, StandardResponseMixin):
         confirmation_code = serializer.validated_data['confirmation_code']
 
         try:
-            # ✅ تغییر: purpose از LOGIN به DELETE_ACCOUNT
             OTPService.verify_otp(
                 request.user.phone,
                 confirmation_code,
-                purpose=OtpCode.Purpose.DELETE_ACCOUNT,  # ✅ تغییر
+                purpose=OtpCode.Purpose.DELETE_ACCOUNT,
             )
 
             user = request.user
             phone = user.phone
 
-            # Soft delete
             user.is_active = False
             user.phone = f'del_{uuid.uuid4().hex[:7]}'
             user.first_name = ''
@@ -441,7 +463,6 @@ class DeleteAccountView(APIView, StandardResponseMixin):
             user.national_id = ''
             user.save()
 
-            # Blacklist همه tokens
             try:
                 tokens = OutstandingToken.objects.filter(user=user)
                 for token in tokens:
@@ -465,7 +486,6 @@ class DeleteAccountView(APIView, StandardResponseMixin):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-# apps/accounts/views/auth.py
 
 class SendDeleteAccountOTPView(APIView, StandardResponseMixin):
     """ارسال کد تایید برای حذف حساب"""

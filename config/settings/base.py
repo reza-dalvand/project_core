@@ -136,7 +136,7 @@ TEMPLATES = [
             'environment': 'config.jinja2_env.environment',
             "match_extension": ".jinja",
             'match_regex': r'^(?!admin/|jazzmin/|rest_framework/|debug_toolbar/|import_export/|ckeditor/|dashboard/).*\.html$',
-            'app_dirname': 'templates', 'app_dirname': 'templates',
+            'app_dirname': 'templates',
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -339,7 +339,6 @@ ZARINPAL_MERCHANT_ID = env(
 )
 
 ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True) 
-ZARINPAL_SANDBOX = env.bool('ZARINPAL_SANDBOX', default=True)
 
 ZARINPAL_CALLBACK_URL = env(
     'ZARINPAL_CALLBACK_URL',

@@ -13,7 +13,8 @@ from .views.auth import (
     UserDeviceListView,
     RevokeDeviceView,
     DeleteAccountView,
-    SendDeleteAccountOTPView,  # ✅ جدید
+    SendDeleteAccountOTPView, 
+    SessionStatusView,
 )
 
 from .views.profile import (
@@ -32,6 +33,8 @@ urlpatterns = [
     path('auth/token/refresh/', CustomTokenRefreshView.as_view(), name='token-refresh'),
     path('auth/token/verify/', TokenVerifyView.as_view(), name='token-verify'),
     path('auth/logout/', LogoutView.as_view(), name='logout'),
+    path('auth/session-status/', SessionStatusView.as_view(), name='session-status'), 
+
 
     # ═══════════ National ID ═══════════
     path('auth/national-id/verify/', NationalIdVerificationView.as_view(), name='national-id-verify'),

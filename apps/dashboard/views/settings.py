@@ -686,19 +686,13 @@ def landing_settings_view(request):
     """تنظیمات لندینگ — نسخه کامل با تمام فیلدها"""
     settings_obj = SiteSettings.objects.first()
 
-    @role_required('super_admin')
-    @admin_login_required
-    def landing_settings_view(request):
-        """تنظیمات لندینگ — نسخه کامل با تمام فیلدها"""
-        settings_obj = SiteSettings.objects.first()
-
-        if request.GET.get('remove_team_image'):
-            from apps.landing.models import TeamSection
-            team_section = TeamSection.objects.first()
-            if team_section and team_section.team_image:
-                team_section.team_image.delete(save=True)
-                messages.success(request, 'عکس تیم حذف شد. تصویر پیش‌فرض نمایش داده می‌شود.')
-            return redirect(reverse('dashboard:landing_settings'))
+    if request.GET.get('remove_team_image'):
+        from apps.landing.models import TeamSection
+        team_section = TeamSection.objects.first()
+        if team_section and team_section.team_image:
+            team_section.team_image.delete(save=True)
+            messages.success(request, 'عکس تیم حذف شد. تصویر پیش‌فرض نمایش داده می‌شود.')
+        return redirect(reverse('dashboard:landing_settings'))
 
     if request.method == 'POST':
         if not settings_obj:

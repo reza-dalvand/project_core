@@ -3,6 +3,7 @@
 """
 مدیریت کسب‌وکارها — لیست، فیلتر، جزئیات، تایید/رد
 ✅ فاز ۵: رفع N+1 + select_related + only()
+✅ فاز ۶: رفع باگ ۴.۲ (یکپارچگی تراکنش و اعلان)
 """
 
 import logging
@@ -10,10 +11,12 @@ import secrets
 
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction  # ✅ Added for FIX 4.2
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.text import slugify
+from django.utils import timezone
 
 from apps.appointments.models import Appointment
 from apps.businesses.models import Business, BusinessGallery, BusinessViolation
@@ -24,7 +27,6 @@ from apps.dashboard.services.cache_service import DashboardCacheService
 from apps.locations.models import City, Province
 from apps.services.models import Service
 from apps.notifications.services import NotificationService
-from django.utils import timezone 
 
 logger = logging.getLogger(__name__)
 
@@ -685,7 +687,7 @@ def business_reset_slug_view(request, business_id):
 
 
 # ═══════════════════════════════════════════════
-#   تایید کسب‌وکار (بدون تغییر از فاز ۳)
+#   ✅ FIX باگ ۴.۲: تایید کسب‌وکار (یکپارچگی با transaction.atomic)
 # ═══════════════════════════════════════════════
 
 @role_required("app_admin", "super_admin")
@@ -699,36 +701,43 @@ def business_approve_view(request, business_id):
     )
 
     if request.method == "POST":
-        business.status = Business.Status.APPROVED
-        business.rejection_reason = ""
-        business.save(
-            update_fields=[
-                "status",
-                "rejection_reason",
-            ]
-        )
-
-        DashboardCacheService.invalidate_dashboard_stats()
-        DashboardAuditService.log_business_approved(
-            request,
-            business,
-        )
-
-        messages.success(
-            request,
-            f'کسب‌وکار "{business.name}" تایید شد.',
-        )
-
         try:
-            from apps.notifications.services import NotificationService
+            # ✅ FIX 4.2: یکپارچگی عملیات دیتابیس و ارسال اعلان با transaction.atomic
+            # اگر ارسال نوتیفیکیشن خطا دهد، کل عملیات Rollback می‌شود تا کسب‌وکار در حالت "تایید شده ولی بدون اعلان" نماند.
+            with transaction.atomic():
+                business.status = Business.Status.APPROVED
+                business.rejection_reason = ""
+                business.save(
+                    update_fields=[
+                        "status",
+                        "rejection_reason",
+                    ]
+                )
 
-            NotificationService.send_business_approved(
-                business
+                DashboardCacheService.invalidate_dashboard_stats()
+                DashboardAuditService.log_business_approved(
+                    request,
+                    business,
+                )
+
+                from apps.notifications.services import NotificationService
+                NotificationService.send_business_approved(
+                    business
+                )
+
+            messages.success(
+                request,
+                f'کسب‌وکار "{business.name}" تایید شد و اعلان ارسال گردید.',
             )
 
         except Exception as e:
             logger.error(
-                f"Failed to send approval notification: {e}"
+                f"Failed to approve business or send notification: {e}",
+                exc_info=True,
+            )
+            messages.error(
+                request,
+                "خطا در تایید کسب‌وکار یا ارسال اعلان. عملیات به طور کامل لغو شد.",
             )
 
     return redirect(
@@ -740,7 +749,7 @@ def business_approve_view(request, business_id):
 
 
 # ═══════════════════════════════════════════════
-#   رد کسب‌وکار (بدون تغییر از فاز ۳)
+#   ✅ FIX باگ ۴.۲: رد کسب‌وکار (یکپارچگی با transaction.atomic)
 # ═══════════════════════════════════════════════
 
 @role_required("app_admin", "super_admin")
@@ -771,37 +780,43 @@ def business_reject_view(request, business_id):
                 )
             )
 
-        business.status = Business.Status.REJECTED
-        business.rejection_reason = reason
-        business.save(
-            update_fields=[
-                "status",
-                "rejection_reason",
-            ]
-        )
-
-        DashboardCacheService.invalidate_dashboard_stats()
-        DashboardAuditService.log_business_rejected(
-            request,
-            business,
-            reason,
-        )
-
-        messages.warning(
-            request,
-            f'کسب‌وکار "{business.name}" رد شد.',
-        )
-
         try:
-            from apps.notifications.services import NotificationService
+            # ✅ FIX 4.2: یکپارچگی عملیات دیتابیس و ارسال اعلان با transaction.atomic
+            with transaction.atomic():
+                business.status = Business.Status.REJECTED
+                business.rejection_reason = reason
+                business.save(
+                    update_fields=[
+                        "status",
+                        "rejection_reason",
+                    ]
+                )
 
-            NotificationService.send_business_rejected(
-                business
+                DashboardCacheService.invalidate_dashboard_stats()
+                DashboardAuditService.log_business_rejected(
+                    request,
+                    business,
+                    reason,
+                )
+
+                from apps.notifications.services import NotificationService
+                NotificationService.send_business_rejected(
+                    business
+                )
+
+            messages.warning(
+                request,
+                f'کسب‌وکار "{business.name}" رد شد و اعلان ارسال گردید.',
             )
 
         except Exception as e:
             logger.error(
-                f"Failed to send rejection notification: {e}"
+                f"Failed to reject business or send notification: {e}",
+                exc_info=True,
+            )
+            messages.error(
+                request,
+                "خطا در رد کسب‌وکار یا ارسال اعلان. عملیات به طور کامل لغو شد.",
             )
 
     return redirect(
@@ -1050,8 +1065,6 @@ def business_appointment_cancel_view(
             )
 
         try:
-            from django.utils import timezone
-
             appointment.status = (
                 Appointment.Status.CANCELLED_BY_SALON
             )
@@ -1166,8 +1179,8 @@ def suspend_business_view(request, business_id):
             logger.error(f"Failed to send suspension notification: {e}")
 
         return redirect(
-        reverse('dashboard:business_detail', kwargs={'business_id': business.id})
-    )
+            reverse('dashboard:business_detail', kwargs={'business_id': business.id})
+        )
 
 
 @role_required('super_admin', 'app_admin')
@@ -1191,7 +1204,7 @@ def reactivate_business_view(request, business_id):
             severity='warning',
         )
 
-                # ارسال اعلان فعال‌سازی مجدد
+        # ارسال اعلان فعال‌سازی مجدد
         try:
             NotificationService.send(
                 user=business.owner,
@@ -1274,9 +1287,6 @@ def violators_send_sms_view(request):
 @admin_login_required
 def business_send_sms_view(request, business_id):
     """ارسال پیامک تکی به صاحب کسب‌وکار"""
-    from django.utils import timezone
-    from apps.notifications.models import Notification  # یا هر مدلی که notification ها را ذخیره می‌کند
-    
     business = get_object_or_404(Business, id=business_id)
 
     if request.method == 'POST':

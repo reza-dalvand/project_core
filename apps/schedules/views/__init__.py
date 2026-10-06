@@ -26,29 +26,9 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
             return ServiceScheduleCreateSerializer
         return ServiceScheduleSerializer
 
-    def get_queryset(self):
-        return ServiceSchedule.objects.filter(
-            business__owner=self.request.user,
-            business__is_active=True,
-        ).select_related('service', 'business').order_by('jy', 'jm', 'jd')
-
     # ✅ اصلاح: اعتبارسنجی کسب‌وکار قبل از ایجاد
     def perform_create(self, serializer):
         serializer.save()
-
-    @extend_schema(
-        summary='لیست زمان‌بندی‌ها',
-        tags=['Schedules'],
-        parameters=[
-            OpenApiParameter(
-                name='service_id',
-                type=int,
-                required=False,
-                description='فیلتر بر اساس شناسه خدمت',
-            ),
-        ],
-        responses={200: ServiceScheduleSerializer(many=True)},
-    )
 
     def get_queryset(self):
         qs = ServiceSchedule.objects.filter(
