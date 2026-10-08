@@ -18,6 +18,8 @@ from apps.core.mixins import StandardResponseMixin
 from apps.search.models import SearchHistory
 from apps.search.serializers import SearchHistorySerializer
 from apps.search.services.search_service import SearchService
+from apps.businesses.serializers.business import BusinessDetailSerializer
+
 
 logger = logging.getLogger(__name__)
 
@@ -393,7 +395,7 @@ class NearbyView(APIView, StandardResponseMixin):
         ).distance(point).order_by('distance')[:10]
 
         # سریالایز
-        business_data = BusinessListSerializer(
+        business_data = BusinessDetailSerializer(
             businesses, many=True, context={'request': request}
         ).data
 

@@ -12,12 +12,11 @@ class IsNotSuspended(permissions.BasePermission):
     message = 'حساب کاربری شما به دلیل تخلف تعلیق شده است. لطفاً با پشتیبانی تماس بگیرید.'
     code = 'ACCOUNT_SUSPENDED'
 
-    # endpointهایی که کاربر تعلیق‌شده هم می‌تواند استفاده کند
     ALLOWED_URLS = [
-        '/accounts/auth/logout/',
-        '/accounts/auth/token/refresh/',
-        '/support/tickets/',  # ارسال تیکت
-        '/support/tickets/create/',
+        '/api/v1/accounts/auth/logout/',
+        '/api/v1/accounts/auth/token/refresh/',
+        '/api/v1/support/tickets/',
+        '/api/v1/support/tickets/create/',
     ]
 
     def has_permission(self, request, view):

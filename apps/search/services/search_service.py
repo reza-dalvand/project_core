@@ -41,24 +41,10 @@ class SearchService:
     def search_businesses(cls, query, province_id=None, city_id=None,
                       category_id=None, min_rating=0, has_discount=False,
                       limit=20, lat=None, lng=None, radius=10):
-        """
-        جستجو در کسب‌وکارها
-        
-        Args:
-            query: عبارت جستجو
-            province_id: فیلتر استان
-            city_id: فیلتر شهر
-            category_id: فیلتر دسته‌بندی
-            min_rating: حداقل امتیاز
-            has_discount: فقط کسب‌وکارهای دارای تخفیف
-            limit: حداکثر تعداد نتایج
-            
-        Returns:
-            QuerySet از کسب‌وکارهای یافت شده
-        """
         qs = Business.objects.filter(
             status=Business.Status.APPROVED,
-            is_suspended=False, 
+            is_active=True,
+            is_suspended=False,
         )
         if province_id:
             qs = qs.filter(province_id=province_id)
@@ -71,8 +57,20 @@ class SearchService:
         if has_discount:
             qs = qs.filter(services__discount_percent__gt=0).distinct()
 
+        # ✅ FIX D1: اعمال فیلتر موقعیت مکانی
+        if lat is not None and lng is not None:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                point = Point(float(lng), float(lat), srid=4326)
+                qs = qs.filter(
+                    location__isnull=False,
+                    location__distance_lte=(point, D(km=float(radius))),
+                ).distance(point).order_by('distance')
+            except (ValueError, TypeError):
+                pass
+
         if query and len(query) >= cls.MIN_QUERY_LENGTH:
-            # تلاش برای استفاده از TrigramSimilarity (فقط PostgreSQL با pg_trgm)
             if _is_postgres() and _pg_trgm_available():
                 try:
                     from django.contrib.postgres.search import TrigramSimilarity
@@ -83,12 +81,10 @@ class SearchService:
                     logger.warning(
                         f"TrigramSimilarity failed, falling back to icontains: {e}"
                     )
-                    # Fallback به جستجوی عادی
                     qs = qs.filter(
                         Q(name__icontains=query) | Q(about__icontains=query)
                     ).order_by('-rating', '-created_at')
             else:
-                # جستجوی عادی برای SQLite و PostgreSQL بدون pg_trgm
                 qs = qs.filter(
                     Q(name__icontains=query) | Q(about__icontains=query)
                 ).order_by('-rating', '-created_at')
@@ -99,31 +95,43 @@ class SearchService:
             'category', 'province', 'city', 'owner'
         )[:limit]
 
+
+    
     @classmethod
     def search_services(cls, query, business_id=None, category_id=None, province_id=None, city_id=None,
                         min_price=0, max_price=None, has_discount=False, lat=None, lng=None,
                         limit=20):
-        """
-        جستجو در خدمات
-        
-        Args:
-            query: عبارت جستجو
-            business_id: فیلتر کسب‌وکار
-            category_id: فیلتر دسته‌بندی
-            min_price: حداقل قیمت
-            max_price: حداکثر قیمت
-            has_discount: فقط خدمات دارای تخفیف
-            limit: حداکثر تعداد نتایج
-            
-        Returns:
-            QuerySet از خدمات یافت شده
-        """
-        qs = Service.objects.filter(is_active=True)
+        qs = Service.objects.filter(
+            is_active=True,
+            business__status=Business.Status.APPROVED,
+            business__is_active=True,
+            business__is_suspended=False,
+        )
 
         if business_id:
             qs = qs.filter(business_id=business_id)
         if category_id:
             qs = qs.filter(category_id=category_id)
+
+        # ✅ FIX D2: اعمال فیلتر استان/شهر
+        if province_id:
+            qs = qs.filter(business__province_id=province_id)
+        if city_id:
+            qs = qs.filter(business__city_id=city_id)
+
+        # ✅ FIX D2: اعمال فیلتر موقعیت مکانی
+        if lat is not None and lng is not None:
+            try:
+                from django.contrib.gis.geos import Point
+                from django.contrib.gis.measure import D
+                point = Point(float(lng), float(lat), srid=4326)
+                qs = qs.filter(
+                    business__location__isnull=False,
+                    business__location__distance_lte=(point, D(km=10)),
+                )
+            except (ValueError, TypeError):
+                pass
+
         if min_price:
             qs = qs.filter(original_price__gte=min_price)
         if max_price:
@@ -132,7 +140,6 @@ class SearchService:
             qs = qs.filter(discount_percent__gt=0)
 
         if query and len(query) >= cls.MIN_QUERY_LENGTH:
-            # تلاش برای استفاده از TrigramSimilarity
             if _is_postgres() and _pg_trgm_available():
                 try:
                     from django.contrib.postgres.search import TrigramSimilarity
@@ -155,6 +162,8 @@ class SearchService:
 
         return qs.select_related('business', 'category')[:limit]
 
+
+    
     @classmethod
     def global_search(cls, query, user=None, limit_per_type=5):
         """
