@@ -6,6 +6,7 @@
 - ۳.۶.۲: هندل خطای آپلود فایل در لندینگ
 - ۳.۶.۳: بررسی تکراری نبودن provider_template_id
 - ۳.۶.۴: اعتبارسنجی بهتر در landing_items_view
+✅ فاز ۴ عملکردی: اینویدیت کش لندینگ در تمام ویوهای تغییردهنده
 """
 import json
 import logging
@@ -32,6 +33,8 @@ from apps.dashboard.models import AdminRole, AdminUser
 from apps.dashboard.decorators import admin_login_required, role_required
 from apps.dashboard.services.cache_service import DashboardCacheService
 from apps.dashboard.services.audit_service import DashboardAuditService
+# ✅ کش لندینگ: اینویدیت کش هنگام تغییر داده‌ها
+from apps.landing.cache import invalidate_landing_cache
 
 logger = logging.getLogger(__name__)
 
@@ -691,6 +694,8 @@ def landing_settings_view(request):
         team_section = TeamSection.objects.first()
         if team_section and team_section.team_image:
             team_section.team_image.delete(save=True)
+            # ✅ کش لندینگ: اینویدیت بعد از حذف عکس تیم
+            invalidate_landing_cache()
             messages.success(request, 'عکس تیم حذف شد. تصویر پیش‌فرض نمایش داده می‌شود.')
         return redirect(reverse('dashboard:landing_settings'))
 
@@ -837,6 +842,8 @@ def landing_settings_view(request):
 
         settings_obj.save()
         DashboardCacheService.invalidate_landing_settings()
+        # ✅ کش لندینگ: اینویدیت بعد از ذخیره تنظیمات
+        invalidate_landing_cache()
         DashboardAuditService.log_landing_settings_updated(request)
         messages.success(request, 'تنظیمات لندینگ بروزرسانی شد.')
         return redirect(reverse('dashboard:landing_settings'))
@@ -988,6 +995,8 @@ def landing_items_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در آیتم‌های لندینگ
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_items'))
 
     # ─── دریافت داده‌ها برای نمایش ───
@@ -1046,6 +1055,8 @@ def landing_hero_view(request):
                     messages.error(request, 'خطا در آپلود تصویر هیرو.')
 
         hero.save()
+        # ✅ کش لندینگ: اینویدیت بعد از ذخیره هیرو
+        invalidate_landing_cache()
         messages.success(request, 'بخش هیرو بروزرسانی شد.')
         return redirect(reverse('dashboard:landing_hero'))
 
@@ -1121,6 +1132,8 @@ def landing_features_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در ویژگی‌ها
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_features'))
 
     features = Feature.objects.filter(section=section).order_by('order') if section else []
@@ -1200,6 +1213,8 @@ def landing_howto_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در نحوه کار
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_howto'))
 
     steps = HowToStep.objects.filter(section=section).order_by('order', 'step_number') if section else []
@@ -1271,6 +1286,8 @@ def landing_services_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در خدمات
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_services'))
 
     categories = ServiceCategory.objects.filter(section=section).order_by('order') if section else []
@@ -1351,6 +1368,8 @@ def landing_about_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در درباره ما
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_about'))
 
     points = AboutPoint.objects.filter(section=section).order_by('order') if section else []
@@ -1441,6 +1460,8 @@ def landing_team_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در تیم
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_team'))
 
     members = TeamMember.objects.filter(section=section).order_by('order') if section else []
@@ -1514,6 +1535,8 @@ def landing_stats_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در آمار
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_stats'))
 
     stats = StatItem.objects.filter(section=section).order_by('order') if section else []
@@ -1583,7 +1606,7 @@ def landing_faq_view(request):
         elif action == 'add_item':
             question = request.POST.get('question', '').strip()
             answer = request.POST.get('answer', '').strip()
-            category_id = request.POST.get('category_id')  # ✅ دریافت تب انتخاب شده
+            category_id = request.POST.get('category_id')
 
             if not question or len(question) < 5:
                 messages.error(request, 'سوال باید حداقل ۵ کاراکتر باشد.')
@@ -1594,12 +1617,12 @@ def landing_faq_view(request):
             else:
                 if not section:
                     section = FAQSection.objects.create()
-                
+
                 category = FAQCategory.objects.filter(id=category_id).first()
-                
+
                 FAQItem.objects.create(
                     section=section,
-                    category=category,  # ✅ اختصاص به تب
+                    category=category,
                     question=question,
                     answer=answer,
                     order=FAQItem.objects.filter(category=category).count() if category else FAQItem.objects.count(),
@@ -1627,17 +1650,17 @@ def landing_faq_view(request):
         else:
             messages.error(request, f'عملیات "{action}" ناشناخته است.')
 
+        # ✅ کش لندینگ: اینویدیت بعد از هر تغییر در سوالات
+        invalidate_landing_cache()
         return redirect(reverse('dashboard:landing_faq'))
 
     # ─── دریافت داده‌ها برای نمایش در تمپلیت ───
     faqs = FAQItem.objects.filter(section=section).order_by('order') if section else []
-    
-    # ✅ اضافه شدن دسته‌بندی‌ها به کانتکست
     categories = FAQCategory.objects.filter(section=section).order_by('order') if section else []
     active_categories = FAQCategory.objects.filter(section=section, is_active=True).order_by('order') if section else []
 
     context = {
-        'section': section, 
+        'section': section,
         'faqs': faqs,
         'categories': categories,
         'active_categories': active_categories,
@@ -1670,6 +1693,8 @@ def landing_contact_view(request):
 
         section.is_active = request.POST.get('is_active') == 'on'
         section.save()
+        # ✅ کش لندینگ: اینویدیت بعد از ذخیره تماس با ما
+        invalidate_landing_cache()
         messages.success(request, 'بخش تماس با ما بروزرسانی شد.')
         return redirect(reverse('dashboard:landing_contact'))
 
@@ -1703,6 +1728,8 @@ def landing_download_view(request):
         section.is_active = request.POST.get('is_active') == 'on'
 
         section.save()
+        # ✅ کش لندینگ: اینویدیت بعد از ذخیره بخش دانلود
+        invalidate_landing_cache()
         messages.success(request, 'بخش دانلود بروزرسانی شد.')
         return redirect(reverse('dashboard:landing_download'))
 

@@ -1,21 +1,27 @@
 """
 Views برای نظرات — ساده‌سازی شده
+✅ باگ‌های ۲۱ و ۲۲: بهینه‌سازی کوئری‌ها در PendingReviewsView
 """
 import logging
+
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema
-from django.utils import timezone  
+
 from apps.core.mixins import StandardResponseMixin
-from apps.core.permissions import IsApprovedBusinessOwner
 from apps.core.pagination import StandardResultsSetPagination
+from apps.core.permissions import IsApprovedBusinessOwner
 from apps.reviews.models import Review
 from apps.reviews.serializers import (
-    ReviewListSerializer,
-    ReviewDetailSerializer,
     CreateReviewSerializer,
-    )
-from apps.reviews.services.review_service import ReviewService, ReviewException
+    ReviewDetailSerializer,
+    ReviewListSerializer,
+)
+from apps.reviews.services.review_service import (
+    ReviewException,
+    ReviewService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +45,8 @@ class CreateReviewView(APIView, StandardResponseMixin):
                 customer=request.user,
                 appointment_id=serializer.validated_data['appointment_id'],
                 comment=serializer.validated_data.get('comment', ''),
-                tag_votes=serializer.validated_data.get('tag_votes', []), 
+                tag_votes=serializer.validated_data.get('tag_votes', []),
             )
-
 
             return self.success_response(
                 data=ReviewDetailSerializer(review).data,
@@ -71,7 +76,6 @@ class BusinessReviewsView(generics.ListAPIView, StandardResponseMixin):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
 
-        # محاسبه میانگین امتیاز
         from django.db.models import Avg
         avg_rating = queryset.aggregate(avg=Avg('rating'))['avg'] or 0
 
@@ -185,9 +189,15 @@ class BusinessReviewReplyView(APIView, StandardResponseMixin):
 class PendingReviewsView(APIView, StandardResponseMixin):
     """
     لیست نوبت‌های آماده نظردهی
+
     منطق جدید:
     - برای هر کسب‌وکار که کاربر نظر نداده، آخرین نوبت DONE را برمی‌گرداند
-    - اگر کاربر برای کسب‌وکار نظر داده باشد، هیچ نوبتی از آن کسب‌وکار برگردانده نمی‌شود
+    - اگر کاربر برای کسب‌وکار نظر داده باشد، هیچ نوبتی برگردانده نمی‌شود
+
+    ✅ بهینه‌سازی‌ها:
+    - تبدیل reviewed_business_ids به list (جلوگیری از ارزیابی مکرر)
+    - استفاده از iterator() برای جلوگیری از بارگذاری کل کوئری‌ست
+    - فیلتر دیتابیسی برای حذف نوبت‌های اخیر (کمتر از ۶ ساعت)
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -196,40 +206,49 @@ class PendingReviewsView(APIView, StandardResponseMixin):
         summary='نوبت‌های آماده نظردهی',
     )
     def get(self, request):
-        from apps.appointments.models import Appointment
-        from apps.appointments.serializers import AppointmentListSerializer
-        from apps.reviews.models import Review
         from datetime import timedelta
+
         from django.utils import timezone as django_timezone
 
-        # ✅ کسب‌وکارهایی که کاربر قبلاً برای آن‌ها نظر ثبت کرده
-        reviewed_business_ids = Review.objects.filter(
-            customer=request.user,
-        ).values_list('business_id', flat=True)
+        from apps.appointments.models import Appointment
+        from apps.appointments.serializers import AppointmentListSerializer
 
-        # ✅ نوبت‌های DONE کاربر که کسب‌وکارشان در لیست نظر داده‌شده‌ها نیست
+        now = django_timezone.now()
+        review_available_threshold = now - timedelta(hours=6)
+
+        # ✅ FIX باگ ۲۲: تبدیل به list برای جلوگیری از ارزیابی مکرر
+        reviewed_business_ids = list(
+            Review.objects.filter(
+                customer=request.user,
+            ).values_list('business_id', flat=True)
+        )
+
+        # نوبت‌های DONE کاربر که:
+        # ۱. کسب‌وکارشان در لیست نظر داده‌شده‌ها نیست
+        # ۲. حداقل ۶ ساعت از انجام آن‌ها گذشته است
         appointments = Appointment.objects.filter(
             customer=request.user,
             status=Appointment.Status.DONE,
             done_at__isnull=False,
+            done_at__lte=review_available_threshold,
         ).exclude(
             business_id__in=reviewed_business_ids,
-        ).select_related('business', 'service').order_by('-done_at')
+        ).select_related(
+            'business', 'service',
+        ).order_by('-done_at')
 
-        now = django_timezone.now()
         pending_reviews = []
-        added_business_ids = set()  # فقط آخرین نوبت برای هر کسب‌وکار
+        added_business_ids = set()
 
-        for apt in appointments:
+        # ✅ FIX باگ ۲۱: استفاده از iterator() برای جلوگیری از
+        # بارگذاری کل کوئری‌ست در حافظه
+        for apt in appointments.iterator(chunk_size=100):
             # فقط آخرین نوبت DONE برای هر کسب‌وکار
-            # (چون appointments مرتب شده بر اساس -done_at، اولین بار که می‌بینیم = آخرین)
             if apt.business_id in added_business_ids:
                 continue
 
-            review_available_time = apt.done_at + timedelta(hours=6)
-            if now >= review_available_time:
-                pending_reviews.append(apt)
-                added_business_ids.add(apt.business_id)
+            pending_reviews.append(apt)
+            added_business_ids.add(apt.business_id)
 
         serializer = AppointmentListSerializer(
             pending_reviews, many=True, context={'request': request}
@@ -241,30 +260,32 @@ class PendingReviewsView(APIView, StandardResponseMixin):
         )
 
 
-    
 class BusinessTagVotesView(APIView, StandardResponseMixin):
-    """دریافت آمار تگ‌ها — فقط آخرین رای هر کاربر شمرده می‌شود (منطق ویرایش)"""
+    """دریافت آمار تگ‌ها — فقط آخرین رای هر کاربر شمرده می‌شود"""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, business_id):
         from apps.reviews.models import ReviewTagVote
 
-        # دریافت تمام رای‌های این کسب‌وکار به ترتیب جدیدترین
         all_votes = ReviewTagVote.objects.filter(
             review__business_id=business_id
         ).select_related('review').order_by('-created_at')
 
-        # ✅ استخراج آخرین رای هر کاربر برای هر تگ (جلوگیری از شمارش تکراری)
-        user_latest_votes = {} # key: (user_id, tag_id), value: vote_type
+        user_latest_votes = {}
         for vote in all_votes:
             key = (vote.user_id, vote.tag_id)
             if key not in user_latest_votes:
                 user_latest_votes[key] = vote.vote_type
 
-        all_tags = ['clean', 'punctual', 'quality', 'polite', 'fair_price', 'recommend']
-        result = {tag: {'selected_count': 0, 'likes': 0, 'dislikes': 0} for tag in all_tags}
+        all_tags = [
+            'clean', 'punctual', 'quality',
+            'polite', 'fair_price', 'recommend',
+        ]
+        result = {
+            tag: {'selected_count': 0, 'likes': 0, 'dislikes': 0}
+            for tag in all_tags
+        }
 
-        # محاسبه آمار نهایی
         for (user_id, tag_id), vote_type in user_latest_votes.items():
             if tag_id in result:
                 result[tag_id]['selected_count'] += 1
@@ -273,16 +294,17 @@ class BusinessTagVotesView(APIView, StandardResponseMixin):
                 else:
                     result[tag_id]['dislikes'] += 1
 
-        # رای فعلی کاربر لاگین کرده (برای نمایش در مدال در صورت نیاز)
         user_votes = {}
         if request.user.is_authenticated:
             for (uid, tid), vtype in user_latest_votes.items():
                 if uid == request.user.id:
                     user_votes[tid] = vtype
 
-        return self.success_response(data={'tag_stats': result, 'user_votes': user_votes})
+        return self.success_response(
+            data={'tag_stats': result, 'user_votes': user_votes}
+        )
 
-    
+
 class ToggleTagVoteView(APIView, StandardResponseMixin):
     """ثبت/تغییر لایک یا دیسلایک تگ"""
     permission_classes = [permissions.IsAuthenticated]
@@ -296,7 +318,7 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
 
         business_id = request.data.get('business_id')
         tag_id = request.data.get('tag_id')
-        vote_type = request.data.get('vote_type')  # 'like' | 'dislike'
+        vote_type = request.data.get('vote_type')
 
         if not all([business_id, tag_id, vote_type]):
             return self.error_response(
@@ -310,14 +332,16 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
                 code='INVALID_VOTE_TYPE',
             )
 
-        valid_tags = ['clean', 'punctual', 'quality', 'polite', 'fair_price', 'recommend']
+        valid_tags = [
+            'clean', 'punctual', 'quality',
+            'polite', 'fair_price', 'recommend',
+        ]
         if tag_id not in valid_tags:
             return self.error_response(
                 message='تگ نامعتبر است',
                 code='INVALID_TAG',
             )
 
-        # ✅ اصلاح باگ: پیدا کردن آخرین نظر خود کاربر برای این کسب‌وکار
         review = Review.objects.filter(
             business_id=business_id,
             customer=request.user,
@@ -329,7 +353,6 @@ class ToggleTagVoteView(APIView, StandardResponseMixin):
                 code='NO_USER_REVIEW',
             )
 
-        # بررسی رای قبلی
         existing_vote = ReviewTagVote.objects.filter(
             review=review,
             tag_id=tag_id,
