@@ -276,8 +276,7 @@ jobs:
             ARVAN_REGION=${ARVAN_REGION:-ir-thr-at1}
             ARVAN_CDN_URL=${ARVAN_CDN_URL:-cdn.beauclub.ir}
 
-            CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://beauclub.ir,https://beuclub.ir,https://buclub.ir,https://app.beauclub.ir,capacitor://localhost}
-
+            CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-https://beauclub.ir,https://beuclub.ir,https://buclub.ir,https://app.beauclub.ir,capacitor://localhost,https://localhost}
             LANDING_ADMIN_URL=${LANDING_ADMIN_URL:-admin/}
             APP_ADMIN_URL=${APP_ADMIN_URL:-app-admin/}
             DASHBOARD_ADMIN_URL=${DASHBOARD_ADMIN_URL:-dashboard-admin/}

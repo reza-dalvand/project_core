@@ -384,6 +384,7 @@ CORS_ALLOWED_ORIGINS = env.list(
         'http://127.0.0.1:8081',
         'capacitor://localhost',
         'http://192.168.1.43:3000',
+        "https://localhost",
     ]
 )
 CORS_ALLOW_CREDENTIALS = True
