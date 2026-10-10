@@ -47,6 +47,7 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.buclub.ir',
     env('FRONTEND_URL', default='https://app.beauclub.ir'),
     'capacitor://localhost',
+    'https://localhost',
 ]
 
 # ─── Security Headers ───
@@ -182,12 +183,13 @@ CORS_ALLOWED_ORIGINS = [
     'https://www.beuclub.ir',
     'https://www.buclub.ir',
     env('FRONTEND_URL', default='https://app.beauclub.ir'),
-    'capacitor://localhost',
+    'capacitor://localhost',"https://localhost",
 ]
 
 # ═══ 🆕 فاز ۵: پشتیبان با Regex ═══
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r'^capacitor://localhost$',
+    r'^https://localhost$',
     r'^https://beauclub\.ir$',
     r'^https://app\.beauclub\.ir$',
     r'^https://.*\.beauclub\.ir$',
