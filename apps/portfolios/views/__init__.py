@@ -1,5 +1,4 @@
 # apps/portfolios/views/__init__.py
-# افزودن ۴ view جدید برای "my-portfolios"
 
 """
 Views برای نمونه‌کارها
@@ -38,17 +37,26 @@ class PortfolioListView(APIView, StandardResponseMixin):
             business__is_active=True,
         ).select_related(
             'business', 'business__city', 'business__province', 'category', 'sub_service',
-        ).prefetch_related('images').order_by('-created_at')  # ✅ FIX: حذف '-is_pinned'
+        ).prefetch_related('images').order_by('-created_at')
 
         category_id = request.query_params.get('category_id')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
 
+        # ✅ فیلتر اختیاری زیرخدمت برای lazy loading اصولی ویترین
+        sub_service_id = request.query_params.get('sub_service_id')
+        if sub_service_id:
+            try:
+                sub_service_id = int(sub_service_id)
+                queryset = queryset.filter(sub_service_id=sub_service_id)
+            except (TypeError, ValueError):
+                pass
+
         business_id = request.query_params.get('business_id')
         if business_id:
             queryset = queryset.filter(business_id=business_id)
 
-        # ═══ 🆕 فیلترهای مکانی ═══
+        # ═══ فیلترهای مکانی ═══
         province_id = request.query_params.get('province_id')
         city_id = request.query_params.get('city_id')
         lat = request.query_params.get('lat')
@@ -58,9 +66,11 @@ class PortfolioListView(APIView, StandardResponseMixin):
             try:
                 from django.contrib.gis.geos import Point
                 from django.contrib.gis.measure import D
+
                 lat, lng = float(lat), float(lng)
                 radius = float(request.query_params.get('radius', 10))
                 point = Point(lng, lat, srid=4326)
+
                 queryset = queryset.filter(
                     business__location__isnull=False,
                     business__location__distance_lte=(point, D(km=radius))
@@ -74,17 +84,27 @@ class PortfolioListView(APIView, StandardResponseMixin):
 
         pagination = StandardResultsSetPagination()
         page = pagination.paginate_queryset(queryset, request)
+
         if page is not None:
-            serializer = PortfolioListSerializer(page, many=True, context={'request': request})
+            serializer = PortfolioListSerializer(
+                page,
+                many=True,
+                context={'request': request}
+            )
             return pagination.get_paginated_response(serializer.data)
 
-        serializer = PortfolioListSerializer(queryset, many=True, context={'request': request})
+        serializer = PortfolioListSerializer(
+            queryset,
+            many=True,
+            context={'request': request}
+        )
+
         return self.success_response(
             data=serializer.data,
             meta={'count': queryset.count()},
         )
 
-    
+
 class PortfolioDetailView(APIView, StandardResponseMixin):
     """جزئیات نمونه‌کار"""
     permission_classes = [permissions.AllowAny]
@@ -102,6 +122,7 @@ class PortfolioDetailView(APIView, StandardResponseMixin):
             business__status='approved',
             business__is_active=True,
         )
+
         serializer = PortfolioDetailSerializer(portfolio)
         return self.success_response(data=serializer.data)
 
@@ -125,11 +146,14 @@ class BusinessPortfolioListView(APIView, StandardResponseMixin):
 
         portfolios = Portfolio.objects.filter(
             business=business,
-        ).select_related('category', 'sub_service').prefetch_related(
+        ).select_related(
+            'category', 'sub_service'
+        ).prefetch_related(
             'images'
         ).order_by('-created_at')
 
         serializer = PortfolioListSerializer(portfolios, many=True)
+
         return self.success_response(
             data=serializer.data,
             meta={'count': portfolios.count()},
@@ -155,6 +179,7 @@ class BusinessPortfolioCreateView(APIView, StandardResponseMixin):
 
         try:
             portfolio = serializer.save()
+
             return self.success_response(
                 data=PortfolioDetailSerializer(portfolio).data,
                 message='نمونه‌کار با موفقیت ایجاد شد',
@@ -199,6 +224,7 @@ class BusinessPortfolioUpdateView(APIView, StandardResponseMixin):
 
         try:
             updated = serializer.save()
+
             return self.success_response(
                 data=PortfolioDetailSerializer(updated).data,
                 message='نمونه‌کار با موفقیت ویرایش شد',
@@ -231,4 +257,5 @@ class BusinessPortfolioDeleteView(APIView, StandardResponseMixin):
         )
 
         portfolio.delete()
+
         return self.success_response(message='نمونه‌کار حذف شد')
