@@ -62,7 +62,8 @@ class ServiceSchedule(BaseModel):
             end_minutes = self.work_end.hour * 60 + self.work_end.minute
             total_minutes = end_minutes - start_minutes
 
-            for break_time in self.breaks:
+            # ✅ FIX: جلوگیری از TypeError در صورت None بودن breaks
+            for break_time in (self.breaks or []):
                 try:
                     break_start = (
                         int(break_time['start'].split(':')[0]) * 60
@@ -73,7 +74,7 @@ class ServiceSchedule(BaseModel):
                         + int(break_time['end'].split(':')[1])
                     )
                     total_minutes -= (break_end - break_start)
-                except (KeyError, ValueError, IndexError):
+                except (KeyError, ValueError, IndexError, TypeError):
                     pass
 
             self.slot_count = max(0, total_minutes // self.slot_duration)
