@@ -26,9 +26,15 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
             return ServiceScheduleCreateSerializer
         return ServiceScheduleSerializer
 
-    # ✅ اصلاح: اعتبارسنجی کسب‌وکار قبل از ایجاد
+    # ✅ FIX: تزریق business به serializer هنگام ایجاد
     def perform_create(self, serializer):
-        serializer.save()
+        business = self.request.user.businesses.filter(
+            is_active=True, status='approved'
+        ).first()
+        if not business:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('کسب‌وکار تایید شده یافت نشد')
+        serializer.save(business=business)
 
     def get_queryset(self):
         qs = ServiceSchedule.objects.filter(
@@ -56,8 +62,6 @@ class ScheduleListView(generics.ListCreateAPIView, StandardResponseMixin):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-
-    
 
     @extend_schema(
         summary='ایجاد زمان‌بندی جدید',
@@ -152,6 +156,17 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
                 code='MISSING_PARAMS',
             )
 
+        # ✅ FIX: تبدیل امن به int برای جلوگیری از خطای کوئری
+        try:
+            jy = int(jy)
+            jm = int(jm)
+            jd = int(jd)
+        except (ValueError, TypeError):
+            return self.error_response(
+                message='پارامترهای تاریخ باید عددی باشند',
+                code='INVALID_PARAMS',
+            )
+
         schedules = ServiceSchedule.objects.filter(
             jy=jy, jm=jm, jd=jd,
             business__is_active=True,
@@ -160,12 +175,18 @@ class ScheduleByDateView(APIView, StandardResponseMixin):
 
         service_id = request.query_params.get('service_id')
         if service_id:
-            schedules = schedules.filter(service_id=service_id)
+            try:
+                schedules = schedules.filter(service_id=int(service_id))
+            except (ValueError, TypeError):
+                pass
 
         # ✅ جدید: فیلتر کسب‌وکار
         business_id = request.query_params.get('business_id')
         if business_id:
-            schedules = schedules.filter(business_id=business_id)
+            try:
+                schedules = schedules.filter(business_id=int(business_id))
+            except (ValueError, TypeError):
+                pass
 
         serializer = ServiceScheduleSerializer(schedules, many=True)
 

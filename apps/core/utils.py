@@ -1,3 +1,4 @@
+# apps/core/utils.py
 """
 توابع کمکی مشترک برای کل پروژه
 """
@@ -44,7 +45,6 @@ def jalali_days_remaining(due_date_key: str) -> int:
         return 0
 
 
-# apps/core/utils.py
 # ═══════════════════════════════════════════════
 #   محاسبه کمیسیون — نسخه نهایی (هماهنگ با فرانت)
 # ═══════════════════════════════════════════════
@@ -170,6 +170,12 @@ def normalize_phone(phone):
         cleaned = '0' + cleaned[3:]
     elif cleaned.startswith('0098'):
         cleaned = '0' + cleaned[4:]
+    # ✅ FIX: پشتیبانی از فرمت‌های رایج دیگر (989... و 9...) 
+    # برای جلوگیری از ValueError در shared/sms/base.py
+    elif cleaned.startswith('98') and len(cleaned) == 12:
+        cleaned = '0' + cleaned[2:]
+    elif cleaned.startswith('9') and len(cleaned) == 10:
+        cleaned = '0' + cleaned
 
     return cleaned
 

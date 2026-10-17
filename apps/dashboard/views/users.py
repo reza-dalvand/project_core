@@ -2,11 +2,7 @@
 """
 مدیریت کاربران — لیست، جستجو، فیلتر، جزئیات، فعال/غیرفعال
 ✅ فاز ۳: رفع ۵ باگ
-- ۳.۱.۱: اعتبارسنجی شماره تلفن در user_create_view
-- ۳.۱.۲: جلوگیری از تغییر is_staff سوپریوزر
-- ۳.۱.۳: بررسی کسب‌وکار فعال قبل از حذف
-- ۳.۱.۴: بهینه‌سازی کوئری‌های user_detail_view
-- ۳.۱.۵: فیلتر business_owner با Exists
+✅ فاز عملکرد: بهینه‌سازی کوئری‌های آماری
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -48,7 +44,6 @@ def users_list_view(request):
         messages.error(request, 'خطا در دریافت لیست کاربران.')
         queryset = User.objects.none()
 
-    # جستجو
     if search:
         queryset = queryset.filter(
             Q(phone__icontains=search) |
@@ -57,7 +52,6 @@ def users_list_view(request):
             Q(national_id__icontains=search)
         )
 
-    # فیلتر وضعیت
     if status_filter == 'active':
         queryset = queryset.filter(is_active=True, is_verified=True)
     elif status_filter == 'inactive':
@@ -67,9 +61,6 @@ def users_list_view(request):
     elif status_filter == 'staff':
         queryset = queryset.filter(is_staff=True)
     elif status_filter == 'business_owner':
-        # ✅ FIX ۳.۱.۵: استفاده از Exists به جای distinct()
-        # قبلاً: queryset.filter(businesses__isnull=False).distinct()
-        # مشکل: با annotate تداخل داشت و نتایج تکراری می‌داد
         from apps.businesses.models import Business
         queryset = queryset.filter(
             Exists(
@@ -80,21 +71,18 @@ def users_list_view(request):
             )
         )
 
-    # صفحه‌بندی
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # آمار سریع
+    # ✅ بهینه‌سازی: ۵ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': User.objects.count(),
-            'active': User.objects.filter(
-                is_active=True, is_verified=True
-            ).count(),
-            'inactive': User.objects.filter(is_active=False).count(),
-            'unverified': User.objects.filter(is_verified=False).count(),
-            'staff': User.objects.filter(is_staff=True).count(),
-        }
+        stats = User.objects.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(is_active=True, is_verified=True)),
+            inactive=Count('id', filter=Q(is_active=False)),
+            unverified=Count('id', filter=Q(is_verified=False)),
+            staff=Count('id', filter=Q(is_staff=True)),
+        )
     except DatabaseError:
         stats = {
             'total': 0, 'active': 0, 'inactive': 0,

@@ -161,13 +161,14 @@ def explore_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۴ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': ExplorePost.objects.count(),
-            'pinned': ExplorePost.objects.filter(is_pinned=True).count(),
-            'business': ExplorePost.objects.filter(source='business').count(),
-            'magazine': ExplorePost.objects.filter(source='magazine').count(),
-        }
+        stats = ExplorePost.objects.aggregate(
+            total=Count('id'),
+            pinned=Count('id', filter=Q(is_pinned=True)),
+            business=Count('id', filter=Q(source='business')),
+            magazine=Count('id', filter=Q(source='magazine')),
+        )
     except DatabaseError:
         stats = {'total': 0, 'pinned': 0, 'business': 0, 'magazine': 0}
 
@@ -179,6 +180,7 @@ def explore_list_view(request):
         'stats': stats,
     }
     return render(request, 'dashboard/content/explore_list.html', context)
+
 
 
 # ═══════════════════════════════════════════════

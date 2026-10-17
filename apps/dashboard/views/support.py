@@ -2,11 +2,7 @@
 """
 مدیریت پشتیبانی — تیکت‌ها، پیام‌های تماس، اعلان‌ها
 ✅ فاز ۳: رفع ۵ باگ
-- ۳.۵.۱: اعتبارسنجی انتقال وضعیت تیکت
-- ۳.۵.۲: حذف علامت‌گذاری خودکار خوانده‌شده
-- ۳.۵.۳: محدودیت طول متن نوتیفیکیشن
-- ۳.۵.۴: هندل خطای ارسال پیامک
-- ۳.۵.۵: اعتبارسنجی وضعیت در تغییر دسته‌ای
+✅ فاز عملکرد: بهینه‌سازی کوئری‌های آماری
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -23,9 +19,6 @@ from apps.dashboard.decorators import admin_login_required, role_required
 
 logger = logging.getLogger(__name__)
 
-# ═══════════════════════════════════════════════
-#   ✅ FIX ۳.۵.۱: قوانین انتقال وضعیت تیکت
-# ═══════════════════════════════════════════════
 VALID_TICKET_TRANSITIONS = {
     SupportTicket.Status.OPEN: [
         SupportTicket.Status.IN_PROGRESS,
@@ -46,13 +39,12 @@ VALID_TICKET_TRANSITIONS = {
     ],
 }
 
-# ✅ FIX ۳.۵.۳: حداکثر طول متن نوتیفیکیشن
 MAX_NOTIFICATION_BODY_LENGTH = 1000
 
 
 @admin_login_required
 def support_index_view(request):
-    """داشبورد اصلی پشتیبانی با آمار"""
+    """داشبورد اصلی پشتیبانی با آمار — بدون تغییر"""
     try:
         ticket_stats = SupportTicket.objects.aggregate(
             total=Count('id'),
@@ -136,14 +128,15 @@ def tickets_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۵ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': SupportTicket.objects.count(),
-            'open': SupportTicket.objects.filter(status=SupportTicket.Status.OPEN).count(),
-            'in_progress': SupportTicket.objects.filter(status=SupportTicket.Status.IN_PROGRESS).count(),
-            'resolved': SupportTicket.objects.filter(status=SupportTicket.Status.RESOLVED).count(),
-            'closed': SupportTicket.objects.filter(status=SupportTicket.Status.CLOSED).count(),
-        }
+        stats = SupportTicket.objects.aggregate(
+            total=Count('id'),
+            open=Count('id', filter=Q(status=SupportTicket.Status.OPEN)),
+            in_progress=Count('id', filter=Q(status=SupportTicket.Status.IN_PROGRESS)),
+            resolved=Count('id', filter=Q(status=SupportTicket.Status.RESOLVED)),
+            closed=Count('id', filter=Q(status=SupportTicket.Status.CLOSED)),
+        )
     except DatabaseError:
         stats = {'total': 0, 'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
 
@@ -157,6 +150,7 @@ def tickets_list_view(request):
         'priority_choices': SupportTicket.Priority.choices,
     }
     return render(request, 'dashboard/support/tickets_list.html', context)
+
 
 
 @role_required('support_admin', 'super_admin')
@@ -399,12 +393,13 @@ def messages_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۳ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': ContactMessage.objects.count(),
-            'unread': ContactMessage.objects.filter(is_read=False).count(),
-            'replied': ContactMessage.objects.filter(is_replied=True).count(),
-        }
+        stats = ContactMessage.objects.aggregate(
+            total=Count('id'),
+            unread=Count('id', filter=Q(is_read=False)),
+            replied=Count('id', filter=Q(is_replied=True)),
+        )
     except DatabaseError:
         stats = {'total': 0, 'unread': 0, 'replied': 0}
 
@@ -415,6 +410,7 @@ def messages_list_view(request):
         'stats': stats,
     }
     return render(request, 'dashboard/support/messages_list.html', context)
+
 
 
 # ═══════════════════════════════════════════════
@@ -515,11 +511,12 @@ def notifications_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۲ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': Notification.objects.count(),
-            'unread': Notification.objects.filter(is_read=False).count(),
-        }
+        stats = Notification.objects.aggregate(
+            total=Count('id'),
+            unread=Count('id', filter=Q(is_read=False)),
+        )
     except DatabaseError:
         stats = {'total': 0, 'unread': 0}
 
@@ -531,6 +528,7 @@ def notifications_list_view(request):
         'type_choices': Notification.Type.choices,
     }
     return render(request, 'dashboard/support/notifications_list.html', context)
+
 
 
 # ═══════════════════════════════════════════════
@@ -663,13 +661,14 @@ def sms_logs_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۴ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': SMSLog.objects.count(),
-            'sent': SMSLog.objects.filter(status=SMSLog.Status.SENT).count(),
-            'delivered': SMSLog.objects.filter(status=SMSLog.Status.DELIVERED).count(),
-            'failed': SMSLog.objects.filter(status=SMSLog.Status.FAILED).count(),
-        }
+        stats = SMSLog.objects.aggregate(
+            total=Count('id'),
+            sent=Count('id', filter=Q(status=SMSLog.Status.SENT)),
+            delivered=Count('id', filter=Q(status=SMSLog.Status.DELIVERED)),
+            failed=Count('id', filter=Q(status=SMSLog.Status.FAILED)),
+        )
     except DatabaseError:
         stats = {'total': 0, 'sent': 0, 'delivered': 0, 'failed': 0}
 

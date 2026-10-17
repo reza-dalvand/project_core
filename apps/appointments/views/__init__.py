@@ -6,7 +6,7 @@ import jdatetime
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.utils import timezone
 
 from apps.core.mixins import StandardResponseMixin
@@ -130,6 +130,7 @@ class CustomerAppointmentsView(generics.ListAPIView, StandardResponseMixin):
             )
 
         return qs
+
 
 class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
     """لیست نوبت‌های کسب‌وکار با فیلترهای پیشرفته"""
@@ -400,21 +401,22 @@ class AppointmentStatsView(APIView, StandardResponseMixin):
         today_key = today_jalali_key()
         appointments = Appointment.objects.filter(business=business)
 
-        stats = {
-            'total': appointments.count(),
-            'reserved': appointments.filter(status=Appointment.Status.RESERVED).count(),
-            'done': appointments.filter(status=Appointment.Status.DONE).count(),
-            'cancelled': appointments.filter(
+        # ✅ بهینه‌سازی: ۵ کوئری → ۱ کوئری
+        stats = appointments.aggregate(
+            total=Count('id'),
+            reserved=Count('id', filter=Q(status=Appointment.Status.RESERVED)),
+            done=Count('id', filter=Q(status=Appointment.Status.DONE)),
+            cancelled=Count('id', filter=Q(
                 status__in=[
                     Appointment.Status.CANCELLED_BY_CUSTOMER,
                     Appointment.Status.CANCELLED_BY_SALON,
                 ]
-            ).count(),
-            'today': appointments.filter(date_key=today_key).count(),
-        }
+            )),
+            today=Count('id', filter=Q(date_key=today_key)),
+        )
 
         return self.success_response(data=stats)
-    
+
 
 # ═══════ در انتهای فایل، قبل از آخرین کلاس یا بعد از آن اضافه شود ═══════
 
@@ -461,43 +463,36 @@ class CustomerAppointmentsStatsView(APIView, StandardResponseMixin):
     )
     def get(self, request):
         from apps.core.utils import today_jalali_key
-        
+
         qs = Appointment.objects.filter(customer=request.user)
         today_key = today_jalali_key()
 
-        # نوبت‌های آینده: رزرو شده با تاریخ امروز یا بعد
-        upcoming_count = qs.filter(
-            date_key__gte=today_key,
-            status=Appointment.Status.RESERVED,
-        ).count()
-
-        # نوبت‌های گذشته: انجام شده + رزرو شده‌هایی که تاریخشان گذشته
-        past_count = qs.filter(
-            Q(status=Appointment.Status.DONE) |
-            Q(
+        # ✅ بهینه‌سازی: ۳ کوئری → ۱ کوئری
+        counts = qs.aggregate(
+            upcoming=Count('id', filter=Q(
+                date_key__gte=today_key,
                 status=Appointment.Status.RESERVED,
-                date_key__lt=today_key,
-            )
-        ).exclude(
-            status__in=[
-                Appointment.Status.CANCELLED_BY_SALON,
-                Appointment.Status.CANCELLED_BY_CUSTOMER,
-            ]
-        ).count()
-
-        # نوبت‌های لغو شده
-        cancelled_count = qs.filter(
-            status__in=[
-                Appointment.Status.CANCELLED_BY_SALON,
-                Appointment.Status.CANCELLED_BY_CUSTOMER,
-            ]
-        ).count()
+            )),
+            past=Count('id', filter=Q(
+                Q(status=Appointment.Status.DONE) |
+                Q(
+                    status=Appointment.Status.RESERVED,
+                    date_key__lt=today_key,
+                )
+            )),
+            cancelled=Count('id', filter=Q(
+                status__in=[
+                    Appointment.Status.CANCELLED_BY_SALON,
+                    Appointment.Status.CANCELLED_BY_CUSTOMER,
+                ]
+            )),
+        )
 
         stats = {
-            'upcoming': upcoming_count,
-            'past': past_count,
-            'cancelled': cancelled_count,
-            'total': upcoming_count + past_count + cancelled_count,
+            'upcoming': counts['upcoming'] or 0,
+            'past': counts['past'] or 0,
+            'cancelled': counts['cancelled'] or 0,
+            'total': (counts['upcoming'] or 0) + (counts['past'] or 0) + (counts['cancelled'] or 0),
         }
 
         return self.success_response(data=stats)
