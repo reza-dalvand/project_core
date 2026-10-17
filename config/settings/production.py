@@ -104,8 +104,28 @@ STORAGES = {
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
-# ─── Email: فعلاً غیرفعال (فقط SMS استفاده می‌شود) ───
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# ═══ جایگزین بخش Email شود ═══
+# ─── Email ───
+# ✅ ایمیل فعلاً غیرفعال است (فقط SMS استفاده می‌شود)
+# برای فعال‌سازی SMTP، مقادیر زیر را در .env تنظیم کنید:
+# EMAIL_HOST=smtp.example.com
+# EMAIL_PORT=587
+# EMAIL_HOST_USER=noreply@beauclub.ir
+# EMAIL_HOST_PASSWORD=***REDACTED***
+# EMAIL_USE_TLS=True
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = env('EMAIL_HOST', default='')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = ''
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@beauclub.ir')
+
+# اگر SMTP تنظیم نشده، fallback به console (فقط برای لاگ)
+if not EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 
 # ─── Sentry: فقط اگر DSN تنظیم شده باشد ───
 SENTRY_DSN = env('SENTRY_DSN', default='')
@@ -206,6 +226,8 @@ CORS_ALLOW_HEADERS = [
     'x-app-version', 'x-device-name', 'x-os-version',
 ]
 
+
+# ═══ جایگزین بخش Logging شود ═══
 # ─── Logging به فایل ───
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
@@ -224,22 +246,30 @@ LOGGING = {
         },
     },
     'handlers': {
-        # 'file_app': {
-        #     'level': 'INFO',
-        #     'class': 'logging.handlers.RotatingFileHandler',
-        #     'filename': str(LOG_DIR / 'app.log'),
-        #     'maxBytes': 10 * 1024 * 1024,  # 10MB
-        #     'backupCount': 5,
-        #     'formatter': 'simple',
-        # },
-        # 'file_error': {
-        #     'level': 'ERROR',
-        #     'class': 'logging.handlers.RotatingFileHandler',
-        #     'filename': str(LOG_DIR / 'error.log'),
-        #     'maxBytes': 10 * 1024 * 1024,
-        #     'backupCount': 10,
-        #     'formatter': 'verbose',
-        # },
+        'file_app': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'app.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 5,
+            'formatter': 'simple',
+        },
+        'file_error': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'error.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+        'file_celery': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'celery.log'),
+            'maxBytes': 10 * 1024 * 1024,  # 10MB
+            'backupCount': 5,
+            'formatter': 'simple',
+        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -248,25 +278,24 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_app'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_error'],
             'level': 'ERROR',
             'propagate': False,
         },
         'apps': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_app'],
             'level': 'INFO',
             'propagate': False,
         },
         'celery': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file_celery'],
             'level': 'INFO',
             'propagate': False,
         },
     },
 }
-
