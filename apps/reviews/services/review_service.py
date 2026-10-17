@@ -107,6 +107,8 @@ class ReviewService:
             rating = 3
 
         # ✅ ایجاد نظر جدید (بدون آپدیت قبلی)
+        # ✅ توجه: Review.save() خودش آمار کسب‌وکار را آپدیت می‌کند
+        # بنابراین نیازی به فراخوانی جداگانه _update_business_stats نیست
         review = Review.objects.create(
             business=appointment.business,
             service=appointment.service,
@@ -130,7 +132,6 @@ class ReviewService:
         appointment.has_review = True
         appointment.save(update_fields=['has_review'])
 
-        cls._update_business_stats(appointment.business)
         cls._notify_business(review)
 
         return review
@@ -234,39 +235,6 @@ class ReviewService:
             'avg_rating': float(stats['avg_rating'] or 0),
             'rating_distribution': rating_distribution,
         }
-
-    @classmethod
-    def _update_business_stats(cls, business) -> None:
-        """
-        بروزرسانی آمار کسب‌وکار
-        
-        ✅ قانون جدید:
-        - قبل از ۳ رای: امتیاز پیش‌فرض ۵.۰ نمایش داده می‌شود
-        - بعد از ۳ رای: میانگین واقعی نظرات محاسبه می‌شود
-        """
-        MIN_REVIEWS_THRESHOLD = 3
-        DEFAULT_RATING = 5.0
-
-        stats = Review.objects.filter(
-            business=business,
-        ).aggregate(
-            avg_rating=Avg('rating'),
-            count=Count('id'),
-        )
-
-        count = stats['count'] or 0
-        avg = stats['avg_rating'] or 0
-
-        business.reviews_count = count
-        
-        # ✅ اگر کمتر از ۳ رای باشد، امتیاز پیش‌فرض ۵.۰
-        if count < MIN_REVIEWS_THRESHOLD:
-            business.rating = DEFAULT_RATING
-        else:
-            business.rating = avg
-        
-        business.save(update_fields=['rating', 'reviews_count'])
-
 
     @classmethod
     def _notify_business(cls, review: Review) -> None:
