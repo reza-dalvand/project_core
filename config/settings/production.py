@@ -246,30 +246,30 @@ LOGGING = {
         },
     },
     'handlers': {
-        'file_app': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_DIR / 'app.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10MB
-            'backupCount': 5,
-            'formatter': 'simple',
-        },
-        'file_error': {
-            'level': 'ERROR',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_DIR / 'error.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10MB
-            'backupCount': 10,
-            'formatter': 'verbose',
-        },
-        'file_celery': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_DIR / 'celery.log'),
-            'maxBytes': 10 * 1024 * 1024,  # 10MB
-            'backupCount': 5,
-            'formatter': 'simple',
-        },
+        # 'file_app': {
+        #     'level': 'INFO',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': str(LOG_DIR / 'app.log'),
+        #     'maxBytes': 10 * 1024 * 1024,  # 10MB
+        #     'backupCount': 5,
+        #     'formatter': 'simple',
+        # },
+        # 'file_error': {
+        #     'level': 'ERROR',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': str(LOG_DIR / 'error.log'),
+        #     'maxBytes': 10 * 1024 * 1024,  # 10MB
+        #     'backupCount': 10,
+        #     'formatter': 'verbose',
+        # },
+        # 'file_celery': {
+        #     'level': 'INFO',
+        #     'class': 'logging.handlers.RotatingFileHandler',
+        #     'filename': str(LOG_DIR / 'celery.log'),
+        #     'maxBytes': 10 * 1024 * 1024,  # 10MB
+        #     'backupCount': 5,
+        #     'formatter': 'simple',
+        # },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -278,22 +278,22 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file_app'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console', 'file_error'],
+            'handlers': ['console'],
             'level': 'ERROR',
             'propagate': False,
         },
         'apps': {
-            'handlers': ['console', 'file_app'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'celery': {
-            'handlers': ['console', 'file_celery'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
