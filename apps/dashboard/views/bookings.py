@@ -2,9 +2,7 @@
 """
 مدیریت نوبت‌ها، خدمات و زمان‌بندی‌ها — داشبورد ادمین
 ✅ فاز ۳: رفع ۳ باگ
-- ۳.۷.۱: هندل خطای استرداد وجه در appointment_cancel_view
-- ۳.۷.۲: بررسی نوبت‌های آینده قبل از غیرفعال‌سازی خدمت
-- ۳.۷.۳: فیلتر بازه زمانی در schedules_list_view
+✅ فاز عملکرد: بهینه‌سازی کوئری‌های آماری
 """
 import logging
 import jdatetime
@@ -29,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════
 @admin_login_required
 def bookings_index_view(request):
-    """داشبورد اصلی نوبت‌ها و خدمات"""
+    """داشبورد اصلی نوبت‌ها و خدمات — بدون تغییر"""
     try:
         appointments_stats = Appointment.objects.filter(is_active=True).aggregate(
             total=Count('id'),
@@ -42,17 +40,14 @@ def bookings_index_view(request):
                 ]
             )),
         )
-
         services_stats = Service.objects.filter(is_active=True).aggregate(
             total=Count('id'),
             active=Count('id', filter=Q(is_active=True)),
             with_deposit=Count('id', filter=Q(has_deposit=True)),
         )
-
         schedules_stats = ServiceSchedule.objects.filter(is_active=True).aggregate(
             total=Count('id'),
         )
-
         financial_stats = Appointment.objects.filter(
             is_active=True,
             status=Appointment.Status.RESERVED,
@@ -60,13 +55,10 @@ def bookings_index_view(request):
             total_deposit=Sum('deposit_amount'),
             total_remaining=Sum('remaining_amount'),
         )
-
     except DatabaseError as e:
         logger.error(f"Bookings index DB error: {e}")
         messages.error(request, 'خطا در دریافت آمار نوبت‌ها.')
-        appointments_stats = {
-            'total': 0, 'reserved': 0, 'done': 0, 'cancelled': 0,
-        }
+        appointments_stats = {'total': 0, 'reserved': 0, 'done': 0, 'cancelled': 0}
         services_stats = {'total': 0, 'active': 0, 'with_deposit': 0}
         schedules_stats = {'total': 0}
         financial_stats = {'total_deposit': 0, 'total_remaining': 0}
@@ -152,22 +144,19 @@ def appointments_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۴ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': Appointment.objects.count(),
-            'reserved': Appointment.objects.filter(
-                status=Appointment.Status.RESERVED
-            ).count(),
-            'done': Appointment.objects.filter(
-                status=Appointment.Status.DONE
-            ).count(),
-            'cancelled': Appointment.objects.filter(
+        stats = Appointment.objects.aggregate(
+            total=Count('id'),
+            reserved=Count('id', filter=Q(status=Appointment.Status.RESERVED)),
+            done=Count('id', filter=Q(status=Appointment.Status.DONE)),
+            cancelled=Count('id', filter=Q(
                 status__in=[
                     Appointment.Status.CANCELLED_BY_SALON,
                     Appointment.Status.CANCELLED_BY_CUSTOMER,
                 ]
-            ).count(),
-        }
+            )),
+        )
     except DatabaseError:
         stats = {'total': 0, 'reserved': 0, 'done': 0, 'cancelled': 0}
 
@@ -180,6 +169,8 @@ def appointments_list_view(request):
         'status_choices': Appointment.Status.choices,
     }
     return render(request, 'dashboard/bookings/appointments_list.html', context)
+
+
 
 
 # ═══════════════════════════════════════════════
@@ -366,12 +357,13 @@ def services_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۳ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': Service.objects.count(),
-            'active': Service.objects.filter(is_active=True).count(),
-            'inactive': Service.objects.filter(is_active=False).count(),
-        }
+        stats = Service.objects.aggregate(
+            total=Count('id'),
+            active=Count('id', filter=Q(is_active=True)),
+            inactive=Count('id', filter=Q(is_active=False)),
+        )
     except DatabaseError:
         stats = {'total': 0, 'active': 0, 'inactive': 0}
 
@@ -382,6 +374,7 @@ def services_list_view(request):
         'stats': stats,
     }
     return render(request, 'dashboard/bookings/services_list.html', context)
+
 
 
 # ═══════════════════════════════════════════════

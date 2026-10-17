@@ -2,12 +2,7 @@
 """
 مدیریت مالی — تراکنش‌ها، تسویه‌ها، آمار
 ✅ فاز ۳: رفع ۶ باگ
-- ۳.۳.۱: اعتبارسنجی سقف مبلغ در transaction_create_view
-- ۳.۳.۲: جلوگیری از تغییر مبلغ پس از تسویه
-- ۳.۳.۳: بررسی موجودی قابل تسویه قبل از ایجاد
-- ۳.۳.۴: فرآیند تسویه با وضعیت‌های صحیح
-- ۳.۳.۵: فیلتر تاریخ با timezone awareness
-- ۳.۳.۶: ارسال اعلان در رد تسویه
+✅ فاز عملکرد: رفع باگ کش + بهینه‌سازی کوئری‌ها
 """
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -26,8 +21,7 @@ from apps.dashboard.services.cache_service import DashboardCacheService
 
 logger = logging.getLogger(__name__)
 
-# ✅ FIX ۳.۳.۱: سقف مبلغ تراکنش دستی
-MAX_MANUAL_TRANSACTION_AMOUNT = 500_000_000  # ۵۰۰ میلیون تومان
+MAX_MANUAL_TRANSACTION_AMOUNT = 500_000_000
 
 
 # ═══════════════════════════════════════════════
@@ -37,23 +31,23 @@ MAX_MANUAL_TRANSACTION_AMOUNT = 500_000_000  # ۵۰۰ میلیون تومان
 @admin_login_required
 def financial_index_view(request):
     """داشبورد مالی اصلی با آمار"""
-    tx_stats = DashboardCacheService.get_dashboard_stats()
-    if tx_stats is None:
-        tx_stats = Transaction.objects.filter(is_active=True).aggregate(
-            total_count=Count('id'),
-            total_amount=Sum('amount'),
-            total_fee=Sum('app_fee'),
-            blocked_count=Count('id', filter=Q(status=Transaction.Status.BLOCKED)),
-            blocked_amount=Sum('amount', filter=Q(status=Transaction.Status.BLOCKED)),
-            settling_count=Count('id', filter=Q(status=Transaction.Status.SETTLING)),
-            settling_amount=Sum('amount', filter=Q(status=Transaction.Status.SETTLING)),
-            settled_count=Count('id', filter=Q(status=Transaction.Status.SETTLED)),
-            settled_amount=Sum('amount', filter=Q(status=Transaction.Status.SETTLED)),
-            refunded_count=Count('id', filter=Q(status=Transaction.Status.REFUNDED)),
-            refunded_amount=Sum('amount', filter=Q(status=Transaction.Status.REFUNDED)),
-            failed_count=Count('id', filter=Q(status=Transaction.Status.FAILED)),
-        )
-        DashboardCacheService.set_dashboard_stats(tx_stats)
+
+    # ✅ FIX باگ کش: قبلاً از کلید مشترک dashboard:home_stats استفاده
+    # می‌شد که داده متفاوتی داشت. حالا مستقیم محاسبه می‌شود.
+    tx_stats = Transaction.objects.filter(is_active=True).aggregate(
+        total_count=Count('id'),
+        total_amount=Sum('amount'),
+        total_fee=Sum('app_fee'),
+        blocked_count=Count('id', filter=Q(status=Transaction.Status.BLOCKED)),
+        blocked_amount=Sum('amount', filter=Q(status=Transaction.Status.BLOCKED)),
+        settling_count=Count('id', filter=Q(status=Transaction.Status.SETTLING)),
+        settling_amount=Sum('amount', filter=Q(status=Transaction.Status.SETTLING)),
+        settled_count=Count('id', filter=Q(status=Transaction.Status.SETTLED)),
+        settled_amount=Sum('amount', filter=Q(status=Transaction.Status.SETTLED)),
+        refunded_count=Count('id', filter=Q(status=Transaction.Status.REFUNDED)),
+        refunded_amount=Sum('amount', filter=Q(status=Transaction.Status.REFUNDED)),
+        failed_count=Count('id', filter=Q(status=Transaction.Status.FAILED)),
+    )
 
     settlement_stats = Settlement.objects.filter(is_active=True).aggregate(
         total_count=Count('id'),
@@ -66,23 +60,35 @@ def financial_index_view(request):
         failed_count=Count('id', filter=Q(status=Settlement.Status.FAILED)),
     )
 
-    # آمار روزانه/هفتگی/ماهانه
+    # ✅ بهینه‌سازی: ۳ کوئری جداگانه → ۱ کوئری با فیلتر شرطی
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
     month_start = today_start - timedelta(days=30)
 
-    daily_stats = Transaction.objects.filter(
-        created_at__gte=today_start, is_active=True
-    ).aggregate(count=Count('id'), amount=Sum('amount'))
-
-    weekly_stats = Transaction.objects.filter(
-        created_at__gte=week_start, is_active=True
-    ).aggregate(count=Count('id'), amount=Sum('amount'))
-
-    monthly_stats = Transaction.objects.filter(
+    period_stats = Transaction.objects.filter(
         created_at__gte=month_start, is_active=True
-    ).aggregate(count=Count('id'), amount=Sum('amount'))
+    ).aggregate(
+        daily_count=Count('id', filter=Q(created_at__gte=today_start)),
+        daily_amount=Sum('amount', filter=Q(created_at__gte=today_start)),
+        weekly_count=Count('id', filter=Q(created_at__gte=week_start)),
+        weekly_amount=Sum('amount', filter=Q(created_at__gte=week_start)),
+        monthly_count=Count('id'),
+        monthly_amount=Sum('amount'),
+    )
+
+    daily_stats = {
+        'count': period_stats['daily_count'] or 0,
+        'amount': period_stats['daily_amount'] or 0,
+    }
+    weekly_stats = {
+        'count': period_stats['weekly_count'] or 0,
+        'amount': period_stats['weekly_amount'] or 0,
+    }
+    monthly_stats = {
+        'count': period_stats['monthly_count'] or 0,
+        'amount': period_stats['monthly_amount'] or 0,
+    }
 
     thirty_days_ago = timezone.now() - timedelta(days=30)
     monthly_tx = (
@@ -149,7 +155,6 @@ def transactions_list_view(request):
     if type_filter != 'all':
         queryset = queryset.filter(type=type_filter)
 
-    # ✅ FIX ۳.۳.۵: فیلتر تاریخ با timezone awareness
     if date_from:
         try:
             dt_from = datetime.strptime(date_from, '%Y-%m-%d')
@@ -171,14 +176,15 @@ def transactions_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    stats = {
-        'total': Transaction.objects.count(),
-        'blocked': Transaction.objects.filter(status=Transaction.Status.BLOCKED).count(),
-        'settling': Transaction.objects.filter(status=Transaction.Status.SETTLING).count(),
-        'settled': Transaction.objects.filter(status=Transaction.Status.SETTLED).count(),
-        'refunded': Transaction.objects.filter(status=Transaction.Status.REFUNDED).count(),
-        'failed': Transaction.objects.filter(status=Transaction.Status.FAILED).count(),
-    }
+    # ✅ بهینه‌سازی: ۶ کوئری → ۱ کوئری
+    stats = Transaction.objects.aggregate(
+        total=Count('id'),
+        blocked=Count('id', filter=Q(status=Transaction.Status.BLOCKED)),
+        settling=Count('id', filter=Q(status=Transaction.Status.SETTLING)),
+        settled=Count('id', filter=Q(status=Transaction.Status.SETTLED)),
+        refunded=Count('id', filter=Q(status=Transaction.Status.REFUNDED)),
+        failed=Count('id', filter=Q(status=Transaction.Status.FAILED)),
+    )
 
     context = {
         'page_obj': page_obj,
@@ -195,7 +201,7 @@ def transactions_list_view(request):
 
 
 # ═══════════════════════════════════════════════
-#   ایجاد تراکنش دستی
+#   ایجاد تراکنش دستی (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -215,7 +221,6 @@ def transaction_create_view(request):
         card_number = request.POST.get('card_number', '').strip()
         card_bank = request.POST.get('card_bank', '').strip()
 
-        # اعتبارسنجی
         if not customer_phone:
             messages.error(request, 'شماره تلفن مشتری الزامی است.')
             return redirect(reverse('dashboard:transaction_create'))
@@ -248,7 +253,6 @@ def transaction_create_view(request):
             messages.error(request, 'مبلغ باید عدد مثبت باشد.')
             return redirect(reverse('dashboard:transaction_create'))
 
-        # ✅ FIX ۳.۳.۱: اعتبارسنجی سقف مبلغ
         if amount > MAX_MANUAL_TRANSACTION_AMOUNT:
             messages.error(
                 request,
@@ -257,11 +261,9 @@ def transaction_create_view(request):
             )
             return redirect(reverse('dashboard:transaction_create'))
 
-        # محاسبه کارمزد
         from apps.core.utils import calculate_app_fee
         app_fee = calculate_app_fee(amount)
 
-        # ایجاد تراکنش
         try:
             tx = Transaction.objects.create(
                 business=business,
@@ -292,7 +294,6 @@ def transaction_create_view(request):
             logger.error(f"Transaction create error: {e}", exc_info=True)
             messages.error(request, 'خطا در ایجاد تراکنش.')
 
-    # نمایش فرم
     businesses = Business.objects.filter(is_active=True).order_by('name')
     context = {
         'businesses': businesses,
@@ -302,7 +303,7 @@ def transaction_create_view(request):
 
 
 # ═══════════════════════════════════════════════
-#   ویرایش تراکنش
+#   ویرایش تراکنش (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -318,7 +319,6 @@ def transaction_edit_view(request, transaction_id):
         card_bank = request.POST.get('card_bank', tx.card_bank).strip()
         refund_reason = request.POST.get('refund_reason', tx.refund_reason).strip()
 
-        # اعتبارسنجی وضعیت
         if new_status not in dict(Transaction.Status.choices):
             messages.error(request, 'وضعیت نامعتبر است.')
             return redirect(
@@ -326,7 +326,6 @@ def transaction_edit_view(request, transaction_id):
                         kwargs={'transaction_id': transaction_id})
             )
 
-        # ✅ FIX ۳.۳.۲: جلوگیری از تغییر مبلغ پس از تسویه
         if tx.status in [Transaction.Status.SETTLED, Transaction.Status.REFUNDED]:
             messages.error(
                 request,
@@ -337,7 +336,6 @@ def transaction_edit_view(request, transaction_id):
                         kwargs={'transaction_id': transaction_id})
             )
 
-        # اعتبارسنجی مبلغ
         try:
             amount = int(amount_str)
             if amount <= 0:
@@ -349,7 +347,6 @@ def transaction_edit_view(request, transaction_id):
                         kwargs={'transaction_id': transaction_id})
             )
 
-        # ✅ FIX ۳.۳.۱: اعتبارسنجی سقف مبلغ
         if amount > MAX_MANUAL_TRANSACTION_AMOUNT:
             messages.error(
                 request,
@@ -361,7 +358,6 @@ def transaction_edit_view(request, transaction_id):
                         kwargs={'transaction_id': transaction_id})
             )
 
-        # بروزرسانی
         try:
             tx.status = new_status
             tx.amount = amount
@@ -440,13 +436,14 @@ def settlements_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    stats = {
-        'total': Settlement.objects.count(),
-        'pending': Settlement.objects.filter(status=Settlement.Status.PENDING).count(),
-        'processing': Settlement.objects.filter(status=Settlement.Status.PROCESSING).count(),
-        'completed': Settlement.objects.filter(status=Settlement.Status.COMPLETED).count(),
-        'failed': Settlement.objects.filter(status=Settlement.Status.FAILED).count(),
-    }
+    # ✅ بهینه‌سازی: ۵ کوئری → ۱ کوئری
+    stats = Settlement.objects.aggregate(
+        total=Count('id'),
+        pending=Count('id', filter=Q(status=Settlement.Status.PENDING)),
+        processing=Count('id', filter=Q(status=Settlement.Status.PROCESSING)),
+        completed=Count('id', filter=Q(status=Settlement.Status.COMPLETED)),
+        failed=Count('id', filter=Q(status=Settlement.Status.FAILED)),
+    )
 
     context = {
         'page_obj': page_obj,
@@ -459,7 +456,7 @@ def settlements_list_view(request):
 
 
 # ═══════════════════════════════════════════════
-#   ایجاد تسویه دستی
+#   ایجاد تسویه دستی (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -473,7 +470,6 @@ def settlement_create_view(request):
         bank_sheba = request.POST.get('bank_sheba', '').strip()
         bank_name = request.POST.get('bank_name', '').strip()
 
-        # اعتبارسنجی
         if not business_id:
             messages.error(request, 'انتخاب کسب‌وکار الزامی است.')
             return redirect(reverse('dashboard:settlement_create'))
@@ -500,7 +496,6 @@ def settlement_create_view(request):
             messages.error(request, 'نام بانک الزامی است.')
             return redirect(reverse('dashboard:settlement_create'))
 
-        # ✅ FIX ۳.۳.۳: بررسی موجودی قابل تسویه
         from apps.payments.services.payment_service import PaymentService
         balances = PaymentService.get_business_pending_balance(business)
         available_balance = balances.get('settling', 0)
@@ -513,7 +508,6 @@ def settlement_create_view(request):
             )
             return redirect(reverse('dashboard:settlement_create'))
 
-        # ایجاد تسویه
         try:
             settlement = Settlement.objects.create(
                 business=business,
@@ -536,7 +530,6 @@ def settlement_create_view(request):
             logger.error(f"Settlement create error: {e}", exc_info=True)
             messages.error(request, 'خطا در ایجاد تسویه.')
 
-    # نمایش فرم
     businesses = Business.objects.filter(
         is_active=True, status='approved'
     ).order_by('name')
@@ -547,7 +540,7 @@ def settlement_create_view(request):
 
 
 # ═══════════════════════════════════════════════
-#   ویرایش تسویه
+#   ویرایش تسویه (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -564,7 +557,6 @@ def settlement_edit_view(request, settlement_id):
         bank_sheba = request.POST.get('bank_sheba', settlement.bank_sheba).strip()
         bank_name = request.POST.get('bank_name', settlement.bank_name).strip()
 
-        # اعتبارسنجی
         try:
             amount = int(amount_str)
             if amount <= 0:
@@ -583,7 +575,6 @@ def settlement_edit_view(request, settlement_id):
                         kwargs={'settlement_id': settlement_id})
             )
 
-        # بروزرسانی
         try:
             settlement.amount = amount
             settlement.bank_sheba = bank_sheba
@@ -607,7 +598,7 @@ def settlement_edit_view(request, settlement_id):
 
 
 # ═══════════════════════════════════════════════
-#   حذف تسویه
+#   حذف تسویه (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -647,7 +638,7 @@ def settlement_delete_view(request, settlement_id):
 
 
 # ═══════════════════════════════════════════════
-#   تایید تسویه
+#   تایید تسویه (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -661,7 +652,6 @@ def settlement_approve_view(request, settlement_id):
             return redirect(reverse('dashboard:settlements_list'))
 
         try:
-            # ✅ FIX ۳.۳.۴: فرآیند تسویه با وضعیت‌های صحیح
             with db_transaction.atomic():
                 from apps.payments.services.payment_service import PaymentService
                 PaymentService.process_settlement(settlement)
@@ -682,7 +672,7 @@ def settlement_approve_view(request, settlement_id):
 
 
 # ═══════════════════════════════════════════════
-#   رد تسویه
+#   رد تسویه (بدون تغییر)
 # ═══════════════════════════════════════════════
 @role_required('financial_admin', 'super_admin')
 @admin_login_required
@@ -713,7 +703,6 @@ def settlement_reject_view(request, settlement_id):
             f'تسویه کسب‌وکار "{settlement.business.name}" رد شد.'
         )
 
-        # ✅ FIX ۳.۳.۶: ارسال اعلان به صاحب کسب‌وکار
         try:
             from apps.notifications.services import NotificationService
             NotificationService.send(

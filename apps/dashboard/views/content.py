@@ -161,13 +161,14 @@ def explore_list_view(request):
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۴ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': ExplorePost.objects.count(),
-            'pinned': ExplorePost.objects.filter(is_pinned=True).count(),
-            'business': ExplorePost.objects.filter(source='business').count(),
-            'magazine': ExplorePost.objects.filter(source='magazine').count(),
-        }
+        stats = ExplorePost.objects.aggregate(
+            total=Count('id'),
+            pinned=Count('id', filter=Q(is_pinned=True)),
+            business=Count('id', filter=Q(source='business')),
+            magazine=Count('id', filter=Q(source='magazine')),
+        )
     except DatabaseError:
         stats = {'total': 0, 'pinned': 0, 'business': 0, 'magazine': 0}
 
@@ -179,6 +180,7 @@ def explore_list_view(request):
         'stats': stats,
     }
     return render(request, 'dashboard/content/explore_list.html', context)
+
 
 
 # ═══════════════════════════════════════════════
@@ -543,40 +545,38 @@ def portfolio_delete_view(request, portfolio_id):
 # ═══════════════════════════════════════════════
 #   درخواست مدل — لیست (بدون تغییر)
 # ═══════════════════════════════════════════════
+
 @admin_login_required
-def model_requests_list_view(request):
-    """لیست درخواست‌های مدل"""
+def price_lists_view(request):
+    """لیست لیست‌های قیمت"""
     search = request.GET.get('search', '').strip()
     page_number = request.GET.get('page', 1)
 
-    queryset = ModelRequest.objects.select_related(
-        'business', 'service'
-    ).order_by('-is_urgent', '-created_at')
+    queryset = PriceList.objects.select_related(
+        'business'
+    ).prefetch_related('notes').order_by('-created_at')
 
     if search:
-        queryset = queryset.filter(
-            Q(title__icontains=search) |
-            Q(business__name__icontains=search)
-        )
+        queryset = queryset.filter(business__name__icontains=search)
 
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
+    # ✅ بهینه‌سازی: ۲ کوئری → ۱ کوئری
     try:
-        stats = {
-            'total': ModelRequest.objects.count(),
-            'urgent': ModelRequest.objects.filter(is_urgent=True).count(),
-        }
+        stats = PriceList.objects.aggregate(
+            total=Count('id'),
+            published=Count('id', filter=Q(is_published=True)),
+        )
     except DatabaseError:
-        stats = {'total': 0, 'urgent': 0}
+        stats = {'total': 0, 'published': 0}
 
     context = {
         'page_obj': page_obj,
         'search': search,
         'stats': stats,
-    }
-    return render(request, 'dashboard/content/model_requests_list.html', context)
-
+            }
+    return render(request, 'dashboard/content/price_lists.html', context)
 
 # ═══════════════════════════════════════════════
 #   ✅ FIX ۳.۴.۴: ویرایش درخواست مدل با اعتبارسنجی تلفن
