@@ -545,38 +545,40 @@ def portfolio_delete_view(request, portfolio_id):
 # ═══════════════════════════════════════════════
 #   درخواست مدل — لیست (بدون تغییر)
 # ═══════════════════════════════════════════════
-
 @admin_login_required
-def price_lists_view(request):
-    """لیست لیست‌های قیمت"""
+def model_requests_list_view(request):
+    """لیست درخواست‌های مدل"""
     search = request.GET.get('search', '').strip()
     page_number = request.GET.get('page', 1)
 
-    queryset = PriceList.objects.select_related(
-        'business'
-    ).prefetch_related('notes').order_by('-created_at')
+    queryset = ModelRequest.objects.select_related(
+        'business', 'service'
+    ).order_by('-is_urgent', '-created_at')
 
     if search:
-        queryset = queryset.filter(business__name__icontains=search)
+        queryset = queryset.filter(
+            Q(title__icontains=search) |
+            Q(business__name__icontains=search)
+        )
 
     paginator = Paginator(queryset, 25)
     page_obj = paginator.get_page(page_number)
 
-    # ✅ بهینه‌سازی: ۲ کوئری → ۱ کوئری
     try:
-        stats = PriceList.objects.aggregate(
-            total=Count('id'),
-            published=Count('id', filter=Q(is_published=True)),
-        )
+        stats = {
+            'total': ModelRequest.objects.count(),
+            'urgent': ModelRequest.objects.filter(is_urgent=True).count(),
+        }
     except DatabaseError:
-        stats = {'total': 0, 'published': 0}
+        stats = {'total': 0, 'urgent': 0}
 
     context = {
         'page_obj': page_obj,
         'search': search,
         'stats': stats,
-            }
-    return render(request, 'dashboard/content/price_lists.html', context)
+    }
+    return render(request, 'dashboard/content/model_requests_list.html', context)
+
 
 # ═══════════════════════════════════════════════
 #   ✅ FIX ۳.۴.۴: ویرایش درخواست مدل با اعتبارسنجی تلفن
