@@ -117,7 +117,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A config worker -l info -c 2 --logfile /app/logs/celery_worker.log
+    command: celery -A config worker -l info -c 2
     deploy:
       resources:
         limits:
@@ -151,7 +151,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile /app/logs/celery_beat.log
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     deploy:
       resources:
         limits:
@@ -203,4 +203,3 @@ networks:
     driver: bridge
     # ✅ اصلاح: نام داینامیک برای جلوگیری از تداخل بین dev و prod روی یک سرور
     name: ${COMPOSE_PROJECT_NAME}_network
-    

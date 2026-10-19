@@ -2,6 +2,7 @@
 Booking Service — منطق اصلی ایجاد و مدیریت نوبت
 با تاریخ جلالی
 """
+
 import logging
 import random
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from apps.appointments.models import Appointment
 from apps.businesses.models import Business
 from apps.services.models import Service
 from apps.core.utils import jalali_to_key, calculate_app_fee
+
 # ✅ import از core به جای تعریف محلی
 from apps.core.exceptions import (
     BookingException,
@@ -26,13 +28,13 @@ logger = logging.getLogger(__name__)
 
 # ✅ Exception‌های خاص booking که در core نیستند
 class BusinessNotApprovedException(BookingException):
-    default_message = 'این کسب‌وکار هنوز تایید نشده است'
-    default_code = 'BUSINESS_NOT_APPROVED'
+    default_message = "این کسب‌وکار هنوز تایید نشده است"
+    default_code = "BUSINESS_NOT_APPROVED"
 
 
 class ServiceNotActiveException(BookingException):
-    default_message = 'این خدمت فعال نیست'
-    default_code = 'SERVICE_NOT_ACTIVE'
+    default_message = "این خدمت فعال نیست"
+    default_code = "SERVICE_NOT_ACTIVE"
 
 
 class BookingService:
@@ -56,16 +58,23 @@ class BookingService:
         is_trust_based: bool = False,  # ✅ فاز ۳: پارامتر جدید
     ) -> Appointment:
         try:
-            service = Service.objects.select_related('business').only(
-                'id', 'name', 'original_price', 'discount_percent',
-                'has_deposit', 'deposit_amount', 'duration',
-                'business__id', 'business__name', 'business__status',
-                'business__booking_link_bookings',
+            service = Service.objects.select_related("business").only(
+                "id",
+                "name",
+                "original_price",
+                "discount_percent",
+                "has_deposit",
+                "deposit_amount",
+                "duration",
+                "business__id",
+                "business__name",
+                "business__status",
+                "business__booking_link_bookings",
             ).get(id=service_id, is_active=True)
         except Service.DoesNotExist:
             raise BookingException(
-                message='خدمت مورد نظر یافت نشد',
-                code='SERVICE_NOT_FOUND',
+                message="خدمت مورد نظر یافت نشد",
+                code="SERVICE_NOT_FOUND",
             )
 
         business = service.business
@@ -75,28 +84,33 @@ class BookingService:
         # ✅ جلوگیری از رزرو برای کسب‌وکارهای تعلیق‌شده
         if business.is_suspended:
             raise BookingException(
-                message='این کسب‌وکار در حال حاضر تعلیق است و امکان رزرو وجود ندارد',
-                code='BUSINESS_SUSPENDED',
+                message="این کسب‌وکار در حال حاضر تعلیق است و امکان رزرو وجود ندارد",
+                code="BUSINESS_SUSPENDED",
             )
 
         try:
-            time_slot = datetime.strptime(time_slot_str, '%H:%M').time()
+            time_slot = datetime.strptime(time_slot_str, "%H:%M").time()
         except ValueError:
             raise BookingException(
-                message='فرمت ساعت نامعتبر است (HH:MM)',
-                code='INVALID_TIME_FORMAT',
+                message="فرمت ساعت نامعتبر است (HH:MM)",
+                code="INVALID_TIME_FORMAT",
             )
 
         from apps.appointments.services.slot_service import SlotService
+
         available_slots = SlotService.get_available_slots(
             business_id=business.id,
             service_id=service.id,
-            jy=jy, jm=jm, jd=jd,
+            jy=jy,
+            jm=jm,
+            jd=jd,
         )
+
         slot_available = any(
-            s['start_time'] == time_slot_str
+            s["start_time"] == time_slot_str
             for s in available_slots
         )
+
         if not slot_available:
             raise SlotNotAvailableException()
 
@@ -106,10 +120,12 @@ class BookingService:
         # ═══════════════════════════════════════════════
         locked_appointments = Appointment.objects.select_for_update().filter(
             business=business,
-            jy=jy, jm=jm, jd=jd,
+            jy=jy,
+            jm=jm,
+            jd=jd,
             status=Appointment.Status.RESERVED,
         )
-        
+
         # بررسی اینکه آیا این اسلات خاص توسط کاربر دیگری رزرو شده است یا خیر
         if locked_appointments.filter(time_slot=time_slot).exists():
             raise SlotNotAvailableException()
@@ -117,14 +133,17 @@ class BookingService:
         # بررسی اینکه آیا خود کاربر در این ساعت نوبت دیگری (در هر کسب‌وکاری) دارد یا خیر
         has_existing = Appointment.objects.filter(
             customer=customer,
-            jy=jy, jm=jm, jd=jd,
+            jy=jy,
+            jm=jm,
+            jd=jd,
             time_slot=time_slot,
             status=Appointment.Status.RESERVED,
         ).exists()
+
         if has_existing:
             raise BookingException(
-                message='شما در این تاریخ و ساعت نوبت دیگری دارید',
-                code='DUPLICATE_APPOINTMENT',
+                message="شما در این تاریخ و ساعت نوبت دیگری دارید",
+                code="DUPLICATE_APPOINTMENT",
             )
 
         original_price = service.original_price
@@ -135,12 +154,13 @@ class BookingService:
         deposit_amount = 0
         if service.has_deposit and service.deposit_amount > 0:
             deposit_amount = min(service.deposit_amount, final_price)
+
         remaining_amount = final_price - deposit_amount
 
         # ✅ فاز ۳: منطق کد تایید بر اساس اعتماد
         # فرانت‌اند برای تایید اعتمادی کد '0000' می‌فرستد
         if is_trust_based:
-            verification_code = '0000'
+            verification_code = "0000"
         else:
             verification_code = cls._generate_verification_code()
 
@@ -150,7 +170,9 @@ class BookingService:
             business=business,
             service=service,
             customer=customer,
-            jy=jy, jm=jm, jd=jd,
+            jy=jy,
+            jm=jm,
+            jd=jd,
             date_key=date_key,
             time_slot=time_slot,
             status=Appointment.Status.RESERVED,
@@ -162,7 +184,7 @@ class BookingService:
         )
 
         Business.objects.filter(id=business.id).update(
-            booking_link_bookings=F('booking_link_bookings') + 1,
+            booking_link_bookings=F("booking_link_bookings") + 1,
         )
 
         logger.info(
@@ -170,8 +192,8 @@ class BookingService:
             f"business={business.name}, date_key={date_key}, "
             f"time={time_slot_str}, trust_based={is_trust_based}"
         )
-        return appointment
 
+        return appointment
 
     @classmethod
     def regenerate_verification_code(cls, appointment: Appointment) -> str:
@@ -180,12 +202,14 @@ class BookingService:
             if elapsed.total_seconds() < 300:
                 remaining = int(300 - elapsed.total_seconds())
                 raise BookingException(
-                    message=f'لطفاً {remaining} ثانیه صبر کنید',
-                    code='CODE_REGENERATE_COOLDOWN',
+                    message=f"لطفاً {remaining} ثانیه صبر کنید",
+                    code="CODE_REGENERATE_COOLDOWN",
                 )
+
         new_code = cls._generate_verification_code()
         appointment.verification_code = new_code
-        appointment.save(update_fields=['verification_code', 'updated_at'])
+        appointment.save(update_fields=["verification_code", "updated_at"])
+
         return new_code
 
     @classmethod
@@ -197,18 +221,40 @@ class BookingService:
     ) -> bool:
         if appointment.verification_code != entered_code:
             return False
+
         if appointment.status != Appointment.Status.RESERVED:
             raise BookingException(
-                message='این نوبت قابل تایید نیست',
-                code='INVALID_APPOINTMENT_STATUS',
+                message="این نوبت قابل تایید نیست",
+                code="INVALID_APPOINTMENT_STATUS",
             )
+
         appointment.status = Appointment.Status.DONE
         appointment.is_verified = True
         appointment.verified_at = timezone.now()
         appointment.done_at = timezone.now()
-        appointment.save(update_fields=[
-            'status', 'is_verified', 'verified_at', 'done_at', 'updated_at',
-        ])
+        appointment.save(
+            update_fields=[
+                "status",
+                "is_verified",
+                "verified_at",
+                "done_at",
+                "updated_at",
+            ]
+        )
+
+        # ✅ ساخت/بروزرسانی یادآوری تمدید بلافاصله پس از انجام خدمت
+        try:
+            from apps.reminders.services import (
+                ensure_renewal_reminder_for_appointment,
+            )
+
+            ensure_renewal_reminder_for_appointment(appointment)
+        except Exception as exc:
+            logger.warning(
+                f"Failed to ensure renewal reminder for appointment "
+                f"{appointment.id}: {exc}"
+            )
+
         return True
 
     @classmethod
@@ -221,8 +267,8 @@ class BookingService:
     ):
         if appointment.status != Appointment.Status.RESERVED:
             raise BookingException(
-                message='این نوبت قابل لغو نیست',
-                code='CANNOT_CANCEL',
+                message="این نوبت قابل لغو نیست",
+                code="CANNOT_CANCEL",
             )
 
         refund_amount = appointment.deposit_amount
@@ -230,18 +276,24 @@ class BookingService:
         appointment.status = Appointment.Status.CANCELLED_BY_SALON
         appointment.cancellation_reason = reason_text
         appointment.cancelled_at = timezone.now()
-        appointment.save(update_fields=[
-            'status', 'cancellation_reason', 'cancelled_at', 'updated_at',
-        ])
+        appointment.save(
+            update_fields=[
+                "status",
+                "cancellation_reason",
+                "cancelled_at",
+                "updated_at",
+            ]
+        )
 
         if refund_amount > 0:
             from apps.payments.services.payment_service import PaymentService
+
             PaymentService.process_refund(
                 appointment=appointment,
                 refund_amount=refund_amount,
-                reason='لغو توسط سالن — استرداد کامل',
+                reason="لغو توسط سالن — استرداد کامل",
             )
 
     @staticmethod
     def _generate_verification_code() -> str:
-        return ''.join([str(random.randint(0, 9)) for _ in range(4)])
+        return "".join([str(random.randint(0, 9)) for _ in range(4)])
