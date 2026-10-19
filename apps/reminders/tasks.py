@@ -1,15 +1,26 @@
 """
 Celery Tasks برای یادآوری تمدید خدمات
+
+✅ اصلاحات:
+- check_renewal_reminders حالا رکوردهای موجود را هم update می‌کند
+- تاریخ موعد بر اساس تاریخ نوبت/خدمت محاسبه می‌شود، نه today تسک
+- days_remaining در دیتابیس هم بروزرسانی می‌شود
 """
+
 import logging
+from datetime import datetime
+
 import jdatetime
 from celery import shared_task
 from django.utils import timezone
-from datetime import datetime
-from apps.reminders.models import RenewalReminder
+
 from apps.appointments.models import Appointment
-from apps.services.models import Service
 from apps.core.utils import jalali_to_key
+from apps.reminders.models import RenewalReminder
+from apps.reminders.services import (
+    ensure_renewal_reminder_for_appointment,
+    get_today_jalali,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -17,60 +28,73 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3)
 def check_renewal_reminders(self):
     """
-    بررسی و ایجاد یادآوری‌های تمدید
+    بررسی و ایجاد/بروزرسانی یادآوری‌های تمدید
 
     برای هر نوبت انجام شده (status=DONE):
     1. بررسی اینکه خدمت renewal_days > 0 دارد
-    2. محاسبه تاریخ موعد تمدید
+    2. محاسبه تاریخ موعد تمدید بر اساس تاریخ نوبت
     3. ایجاد RenewalReminder اگر وجود ندارد
+    4. بروزرسانی RenewalReminder اگر وجود دارد ولی مقادیرش قدیمی/غلط است
     """
     try:
-        # دریافت نوبت‌های انجام شده که خدمتشان یادآوری تمدید دارد
-        done_appointments = Appointment.objects.filter(
-            status=Appointment.Status.DONE,
-        ).select_related(
-            'customer', 'business', 'service',
-        ).filter(
-            service__renewal_days__gt=0,
+        done_appointments = list(
+            Appointment.objects.filter(
+                status=Appointment.Status.DONE,
+            )
+            .select_related(
+                "customer",
+                "business",
+                "service",
+            )
+            .filter(
+                service__renewal_days__gt=0,
+            )
         )
 
         created_count = 0
-        today = jdatetime.date.today()
+        updated_count = 0
+        unchanged_count = 0
+        skipped_count = 0
 
-        for appointment in done_appointments:
-            service = appointment.service
-            renewal_days = service.renewal_days
+        if done_appointments:
+            appointment_ids = [appointment.id for appointment in done_appointments]
 
-            # محاسبه تاریخ موعد تمدید
-            due_date = today + jdatetime.timedelta(days=renewal_days)
-            due_date_key = jalali_to_key(due_date.year, due_date.month, due_date.day)
-            # بررسی وجود یادآوری قبلی
-            exists = RenewalReminder.objects.filter(
-                appointment=appointment,
-            ).exists()
+            existing_reminders = {
+                reminder.appointment_id: reminder
+                for reminder in RenewalReminder.objects.filter(
+                    appointment_id__in=appointment_ids
+                )
+            }
 
-            if exists:
-                continue
+            for appointment in done_appointments:
+                _, status = ensure_renewal_reminder_for_appointment(
+                    appointment=appointment,
+                    existing_reminder=existing_reminders.get(appointment.id),
+                )
 
-            # محاسبه روزهای باقی‌مانده
-            days_remaining = (due_date - today).days
+                if status == "created":
+                    created_count += 1
+                elif status == "updated":
+                    updated_count += 1
+                elif status == "unchanged":
+                    unchanged_count += 1
+                elif status == "skipped":
+                    skipped_count += 1
 
-            # ایجاد یادآوری
-            RenewalReminder.objects.create(
-                business=appointment.business,
-                customer=appointment.customer,
-                appointment=appointment,
-                service=service,
-                last_service_date=appointment.date_key,
-                due_date=due_date_key,
-                days_remaining=days_remaining,
-                reminder_sent=False,
-            )
+        logger.info(
+            "Renewal reminders checked — "
+            f"created: {created_count}, "
+            f"updated: {updated_count}, "
+            f"unchanged: {unchanged_count}, "
+            f"skipped: {skipped_count}"
+        )
 
-            created_count += 1
-
-        logger.info(f"Renewal reminders created: {created_count}")
-        return {'created': created_count}
+        return {
+            "created": created_count,
+            "updated": updated_count,
+            "unchanged": unchanged_count,
+            "skipped": skipped_count,
+        }
 
     except Exception as exc:
         logger.error(f"Renewal reminder check failed: {exc}")
@@ -85,42 +109,47 @@ def send_due_reminders(self):
     هر روز ۸ صبح اجرا می‌شود
     """
     try:
-        today = jdatetime.date.today()
+        today = get_today_jalali()
         today_key = jalali_to_key(today.year, today.month, today.day)
 
-        # یادآوری‌هایی که موعدشان امروز است و هنوز ارسال نشده‌اند
+        # یادآوری‌هایی که موعدشان امروز یا گذشته است و هنوز ارسال نشده‌اند
         due_reminders = RenewalReminder.objects.filter(
             due_date__lte=today_key,
             reminder_sent=False,
         ).select_related(
-            'customer', 'business', 'service', 'appointment',
+            "customer",
+            "business",
+            "service",
+            "appointment",
         )
 
         sent_count = 0
+
         for reminder in due_reminders:
             try:
                 # ارسال نوتیفیکیشن
                 from apps.notifications.services import NotificationService
+
                 NotificationService.send(
                     user=reminder.customer,
-                    type='booking_reminder',
-                    title='یادآوری تمدید خدمت ⏰',
+                    type="booking_reminder",
+                    title="یادآوری تمدید خدمت ⏰",
                     body=(
-                        f'زمان تمدید {reminder.service.name} '
-                        f'در {reminder.business.name} فرا رسیده است. '
-                        f'همین حالا نوبت خود را رزرو کنید.'
+                        f"زمان تمدید {reminder.service.name} "
+                        f"در {reminder.business.name} فرا رسیده است. "
+                        f"همین حالا نوبت خود را رزرو کنید."
                     ),
                     data={
-                        'reminder_id': reminder.id,
-                        'service_id': reminder.service.id,
-                        'business_id': reminder.business.id,
+                        "reminder_id": reminder.id,
+                        "service_id": reminder.service.id,
+                        "business_id": reminder.business.id,
                     },
-                    channels=['in_app', 'sms'],
+                    channels=["in_app", "sms"],
                 )
 
                 reminder.reminder_sent = True
                 reminder.sent_date = today_key
-                reminder.save(update_fields=['reminder_sent', 'sent_date'])
+                reminder.save(update_fields=["reminder_sent", "sent_date"])
 
                 sent_count += 1
 
@@ -130,7 +159,7 @@ def send_due_reminders(self):
                 )
 
         logger.info(f"Due reminders sent: {sent_count}")
-        return {'sent': sent_count}
+        return {"sent": sent_count}
 
     except Exception as exc:
         logger.error(f"Send due reminders failed: {exc}")
@@ -146,7 +175,7 @@ def check_new_booking_after_reminder():
         sent_reminders = RenewalReminder.objects.filter(
             reminder_sent=True,
             has_new_booking_after_send=False,
-        ).select_related('customer', 'service')
+        ).select_related("customer", "service")
 
         updated_count = 0
 
@@ -155,7 +184,7 @@ def check_new_booking_after_reminder():
                 continue
 
             try:
-                parts = reminder.sent_date.split('/')
+                parts = reminder.sent_date.split("/")
                 jy, jm, jd = int(parts[0]), int(parts[1]), int(parts[2])
                 gregorian_date = jdatetime.date(jy, jm, jd).togregorian()
                 # شروع روز ارسال (ساعت ۰۰:۰۰)
@@ -177,17 +206,17 @@ def check_new_booking_after_reminder():
                     Appointment.Status.RESERVED,
                     Appointment.Status.DONE,
                 ],
-                created_at__gt=sent_datetime,  # ✅ مقایسه datetime با datetime
+                created_at__gt=sent_datetime,
             ).exists()
 
             if has_new:
                 reminder.has_new_booking_after_send = True
-                reminder.save(update_fields=['has_new_booking_after_send'])
+                reminder.save(update_fields=["has_new_booking_after_send"])
                 updated_count += 1
 
         logger.info(f"New booking after reminder: {updated_count}")
-        return {'updated': updated_count}
+        return {"updated": updated_count}
 
     except Exception as e:
         logger.error(f"Check new booking failed: {e}")
-        return {'updated': 0}
+        return {"updated": 0}

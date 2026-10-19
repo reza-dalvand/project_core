@@ -1,11 +1,13 @@
 """
 وظایف سلری برای مدیریت خودکار نوبت‌ها
+
 ✅ منطق انقضای ۳ روزه:
 - نوبت‌های عادی: اگر تا ۳ روز بعد از نوبت کد تایید وارد نشود
   → لغو خودکار + استرداد بیعانه به مشتری
 - نوبت‌های اعتمادی: بعد از ۳ روز
   → تایید خودکار + تسویه بیعانه به کسب‌وکار
 """
+
 import logging
 from datetime import datetime, timedelta
 
@@ -19,7 +21,11 @@ logger = logging.getLogger(__name__)
 EXPIRY_DAYS = 3
 
 
-@shared_task(bind=True, max_retries=3, name='apps.appointments.tasks.process_expired_appointments')
+@shared_task(
+    bind=True,
+    max_retries=3,
+    name="apps.appointments.tasks.process_expired_appointments",
+)
 def process_expired_appointments(self):
     """
     بررسی خودکار نوبت‌های منقضی‌شده
@@ -38,7 +44,7 @@ def process_expired_appointments(self):
 
     reserved_appointments = Appointment.objects.filter(
         status=Appointment.Status.RESERVED,
-    ).select_related('customer', 'business', 'service')
+    ).select_related("customer", "business", "service")
 
     processed_count = 0
     cancelled_count = 0
@@ -49,7 +55,9 @@ def process_expired_appointments(self):
         try:
             # ─── محاسبه زمان انقضا ───
             gregorian_date = jdatetime.date(
-                appointment.jy, appointment.jm, appointment.jd
+                appointment.jy,
+                appointment.jm,
+                appointment.jd,
             ).togregorian()
 
             apt_datetime = datetime.combine(gregorian_date, appointment.time_slot)
@@ -71,9 +79,28 @@ def process_expired_appointments(self):
                 appointment.is_verified = True
                 appointment.verified_at = timezone.now()
                 appointment.done_at = timezone.now()
-                appointment.save(update_fields=[
-                    'status', 'is_verified', 'verified_at', 'done_at', 'updated_at',
-                ])
+                appointment.save(
+                    update_fields=[
+                        "status",
+                        "is_verified",
+                        "verified_at",
+                        "done_at",
+                        "updated_at",
+                    ]
+                )
+
+                # ✅ ساخت/بروزرسانی یادآوری تمدید بلافاصله پس از تایید خودکار
+                try:
+                    from apps.reminders.services import (
+                        ensure_renewal_reminder_for_appointment,
+                    )
+
+                    ensure_renewal_reminder_for_appointment(appointment)
+                except Exception as reminder_exc:
+                    logger.warning(
+                        f"[EXPIRY] Failed to ensure renewal reminder for "
+                        f"appointment #{appointment.id}: {reminder_exc}"
+                    )
 
                 _notify_business_auto_confirm(appointment)
 
@@ -88,25 +115,33 @@ def process_expired_appointments(self):
                 refund_amount = appointment.deposit_amount
 
                 reason = (
-                    f'لغو خودکار: کد تایید ظرف {EXPIRY_DAYS} روز '
-                    f'پس از نوبت وارد نشد'
+                    f"لغو خودکار: کد تایید ظرف {EXPIRY_DAYS} روز "
+                    f"پس از نوبت وارد نشد"
                 )
 
                 appointment.status = Appointment.Status.CANCELLED_BY_CUSTOMER
                 appointment.cancellation_reason = reason
                 appointment.cancelled_at = timezone.now()
-                appointment.save(update_fields=[
-                    'status', 'cancellation_reason', 'cancelled_at', 'updated_at',
-                ])
+                appointment.save(
+                    update_fields=[
+                        "status",
+                        "cancellation_reason",
+                        "cancelled_at",
+                        "updated_at",
+                    ]
+                )
 
                 # استرداد وجه به مشتری
                 if refund_amount > 0:
                     try:
-                        from apps.payments.services.payment_service import PaymentService
+                        from apps.payments.services.payment_service import (
+                            PaymentService,
+                        )
+
                         PaymentService.process_refund(
                             appointment=appointment,
                             refund_amount=refund_amount,
-                            reason='لغو خودکار — عدم ورود کد تایید',
+                            reason="لغو خودکار — عدم ورود کد تایید",
                         )
                     except Exception as e:
                         logger.error(
@@ -140,21 +175,22 @@ def process_expired_appointments(self):
     )
 
     return {
-        'processed': processed_count,
-        'cancelled': cancelled_count,
-        'confirmed': confirmed_count,
-        'errors': error_count,
+        "processed": processed_count,
+        "cancelled": cancelled_count,
+        "confirmed": confirmed_count,
+        "errors": error_count,
     }
 
 
-def _notify_customer_auto_cancel(appointment, reason=''):
+def _notify_customer_auto_cancel(appointment, reason=""):
     """ارسال اعلان لغو خودکار به مشتری"""
     try:
         # ✅ Import صحیح از apps.notifications.services
         from apps.notifications.services import NotificationService
+
         NotificationService.send_booking_cancelled(
             appointment=appointment,
-            reason=reason or 'عدم ورود کد تایید',
+            reason=reason or "عدم ورود کد تایید",
         )
     except Exception as e:
         logger.warning(
@@ -168,16 +204,17 @@ def _notify_business_auto_confirm(appointment):
     try:
         # ✅ Import صحیح از apps.notifications.services
         from apps.notifications.services import NotificationService
+
         NotificationService.send(
             user=appointment.business.owner,
-            type='booking_done',
-            title='نوبت به‌صورت خودکار تایید شد ✅',
+            type="booking_done",
+            title="نوبت به‌صورت خودکار تایید شد ✅",
             body=(
-                f'نوبت «{appointment.service.name}» به‌صورت خودکار تایید شد. '
-                f'مبلغ بیعانه به حساب شما واریز می‌شود.'
+                f"نوبت «{appointment.service.name}» به‌صورت خودکار تایید شد. "
+                f"مبلغ بیعانه به حساب شما واریز می‌شود."
             ),
-            data={'appointment_id': appointment.id},
-            channels=['in_app'],
+            data={"appointment_id": appointment.id},
+            channels=["in_app"],
         )
     except Exception as e:
         logger.warning(
@@ -186,17 +223,19 @@ def _notify_business_auto_confirm(appointment):
         )
 
 
-# در فایل apps/appointments/tasks.py اضافه شود:
-
-@shared_task(name='apps.appointments.tasks.detect_excessive_cancellations')
+@shared_task(
+    name="apps.appointments.tasks.detect_excessive_cancellations",
+)
 def detect_excessive_cancellations():
     """
     تشخیص خودکار تخلف: ۵ لغو توسط سالن در ۲ روز گذشته
     این تسک فقط تخلف را ثبت می‌کند تا در لیست متخلفین داشبورد نمایش داده شود.
     """
-    from django.utils import timezone
     from datetime import timedelta
+
     from django.db.models import Count
+    from django.utils import timezone
+
     from apps.appointments.models import Appointment
     from apps.businesses.models import BusinessViolation
 
@@ -205,25 +244,29 @@ def detect_excessive_cancellations():
     cutoff = timezone.now() - timedelta(days=DAYS)
 
     # فقط لغوهای توسط سالن ملاک هستند
-    violators = Appointment.objects.filter(
-        status=Appointment.Status.CANCELLED_BY_SALON,
-        cancelled_at__gte=cutoff
-    ).values('business').annotate(
-        cancel_count=Count('id')
-    ).filter(cancel_count__gte=THRESHOLD)
+    violators = (
+        Appointment.objects.filter(
+            status=Appointment.Status.CANCELLED_BY_SALON,
+            cancelled_at__gte=cutoff,
+        )
+        .values("business")
+        .annotate(cancel_count=Count("id"))
+        .filter(cancel_count__gte=THRESHOLD)
+    )
 
     created_count = 0
+
     for v in violators:
-        biz_id = v['business']
-        count = v['cancel_count']
-        
+        biz_id = v["business"]
+        count = v["cancel_count"]
+
         # جلوگیری از ثبت تکراری برای یک بازه (اگر قبلاً فلگ شده و رسیدگی نشده)
         already_flagged = BusinessViolation.objects.filter(
             business_id=biz_id,
             is_resolved=False,
-            created_at__gte=cutoff
+            created_at__gte=cutoff,
         ).exists()
-        
+
         if not already_flagged:
             BusinessViolation.objects.create(
                 business_id=biz_id,
@@ -234,4 +277,5 @@ def detect_excessive_cancellations():
             created_count += 1
 
     logger.info(f"[VIOLATION] Detected {created_count} new business violations.")
-    return {'new_violations_detected': created_count}
+
+    return {"new_violations_detected": created_count}
