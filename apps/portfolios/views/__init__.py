@@ -123,7 +123,10 @@ class PortfolioDetailView(APIView, StandardResponseMixin):
             business__is_active=True,
         )
 
-        serializer = PortfolioDetailSerializer(portfolio)
+        serializer = PortfolioDetailSerializer(
+            portfolio,
+            context={'request': request},
+        )
         return self.success_response(data=serializer.data)
 
 
