@@ -29,24 +29,33 @@ logger = logging.getLogger(__name__)
 
 def _jalali_month_end_key(year: int, month: int) -> str:
     """
-    کلید تاریخ آخرین روز ماه جلالی را بدون وابستگی به
-    jdatetime.jalaali_month_length برمی‌گرداند.
+    کلید تاریخ آخرین روز ماه جلالی را برمی‌گرداند.
+
+    ✅ بدون وابستگی به:
+    - jdatetime.jalaali_month_length
+    - jdatetime.timedelta
+    - jdatetime.date.fromgregorian
 
     منطق:
-    - اولین روز ماه بعد را پیدا می‌کنیم
-    - یک روز به عقب می‌رویم
-    - نتیجه آخرین روز ماه جاری است
+    - روزهای ۳۱، ۳۰ و ۲۹ را به ترتیب تست می‌کنیم
+    - اولین روزی که در آن ماه معتبر باشد، آخرین روز همان ماه است
     """
-    if month == 12:
-        next_month_first = jdatetime.date(year + 1, 1, 1)
-    else:
-        next_month_first = jdatetime.date(year, month + 1, 1)
+    for day in (31, 30, 29):
+        try:
+            jdatetime.date(year, month, day)
+        except ValueError:
+            continue
 
-    next_month_first_gregorian = next_month_first.togregorian()
-    month_end_gregorian = next_month_first_gregorian - timedelta(days=1)
-    month_end = jdatetime.date.fromgregorian(date=month_end_gregorian)
+        return f"{year}/{month:02d}/{day:02d}"
 
-    return f"{month_end.year}/{month_end.month:02d}/{month_end.day:02d}"
+    # این fallback نباید اتفاق بیفتد، ولی برای جلوگیری از 500 نگه داشته شده است.
+    # در صورت وقوع، لاگ بزن تا علت اصلی بررسی شود.
+    logger.warning(
+        "Invalid Jalali month encountered in _jalali_month_end_key: %s/%s",
+        year,
+        month,
+    )
+    return f"{year}/{month:02d}/01"
 
 
 class CreateAppointmentView(APIView, StandardResponseMixin):
