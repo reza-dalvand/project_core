@@ -142,15 +142,10 @@ class AppointmentListSerializer(serializers.ModelSerializer):
 
 class AppointmentDetailSerializer(AppointmentListSerializer):
     """Serializer جزئیات نوبت"""
-    business_address = serializers.CharField(
-        source='business.address', read_only=True
-    )
-    business_city = serializers.CharField(
-        source='business.city.name', read_only=True
-    )
-    service_duration = serializers.IntegerField(
-        source='service.duration', read_only=True
-    )
+
+    business_address = serializers.SerializerMethodField()
+    business_city = serializers.SerializerMethodField()
+    service_duration = serializers.SerializerMethodField()
 
     class Meta(AppointmentListSerializer.Meta):
         fields = AppointmentListSerializer.Meta.fields + [
@@ -159,7 +154,26 @@ class AppointmentDetailSerializer(AppointmentListSerializer):
             'verified_at', 'reminder_sent',
         ]
 
+    def get_business_address(self, obj):
+        try:
+            return obj.business.address or ''
+        except Exception:
+            return ''
 
+    def get_business_city(self, obj):
+        try:
+            city = obj.business.city
+            return getattr(city, 'name', '') or ''
+        except Exception:
+            return ''
+
+    def get_service_duration(self, obj):
+        try:
+            return int(obj.service.duration or 0)
+        except Exception:
+            return 0
+
+        
 class CancelAppointmentSerializer(serializers.Serializer):
     reason_text = serializers.CharField(
         required=False,
