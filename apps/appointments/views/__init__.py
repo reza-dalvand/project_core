@@ -35,10 +35,6 @@ def _jalali_month_end_key(year: int, month: int) -> str:
     - jdatetime.jalaali_month_length
     - jdatetime.timedelta
     - jdatetime.date.fromgregorian
-
-    منطق:
-    - روزهای ۳۱، ۳۰ و ۲۹ را به ترتیب تست می‌کنیم
-    - اولین روزی که در آن ماه معتبر باشد، آخرین روز همان ماه است
     """
     for day in (31, 30, 29):
         try:
@@ -48,8 +44,6 @@ def _jalali_month_end_key(year: int, month: int) -> str:
 
         return f"{year}/{month:02d}/{day:02d}"
 
-    # این fallback نباید اتفاق بیفتد، ولی برای جلوگیری از 500 نگه داشته شده است.
-    # در صورت وقوع، لاگ بزن تا علت اصلی بررسی شود.
     logger.warning(
         "Invalid Jalali month encountered in _jalali_month_end_key: %s/%s",
         year,
@@ -188,6 +182,9 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         business = self.request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
+
+        if business is None:
+            return Appointment.objects.none()
 
         qs = Appointment.objects.filter(
             business=business,

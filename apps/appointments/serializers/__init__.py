@@ -80,7 +80,12 @@ class AppointmentListSerializer(serializers.ModelSerializer):
         ]
 
     def get_customer_name(self, obj):
-        return obj.customer.full_name
+        try:
+            full_name = getattr(obj.customer, "full_name", None)
+        except Exception:
+            full_name = None
+
+        return full_name or getattr(obj.customer, "phone", "") or ""
 
     def get_employee_name(self, obj):
         """در نسخه بدون تیم، نام کارمند خالی است"""
@@ -141,7 +146,13 @@ class AppointmentListSerializer(serializers.ModelSerializer):
 
 
 class AppointmentDetailSerializer(AppointmentListSerializer):
-    """Serializer جزئیات نوبت"""
+    """
+    Serializer جزئیات نوبت
+
+    ✅ نسخه مقاوم:
+    از source های زنجیره‌ای مثل business.city.name استفاده نمی‌کند
+    تا در صورت null بودن یا نبودن فیلد، سرور 500 ندهد.
+    """
 
     business_address = serializers.SerializerMethodField()
     business_city = serializers.SerializerMethodField()
@@ -149,29 +160,46 @@ class AppointmentDetailSerializer(AppointmentListSerializer):
 
     class Meta(AppointmentListSerializer.Meta):
         fields = AppointmentListSerializer.Meta.fields + [
-            'business_address', 'business_city',
+            'business_address',
+            'business_city',
             'service_duration',
-            'verified_at', 'reminder_sent',
+            'verified_at',
+            'reminder_sent',
         ]
 
     def get_business_address(self, obj):
         try:
-            return obj.business.address or ''
+            return obj.business.address or ""
         except Exception:
-            return ''
+            return ""
 
     def get_business_city(self, obj):
         try:
-            city = obj.business.city
-            return getattr(city, 'name', '') or ''
+            city = getattr(obj.business, "city", None)
+
+            if city is None:
+                return ""
+
+            # اگر city یک رشته ساده بود
+            if isinstance(city, str):
+                return city
+
+            # اگر city یک مدل/رابطه بود
+            return getattr(city, "name", "") or ""
         except Exception:
-            return ''
+            return ""
 
     def get_service_duration(self, obj):
         try:
-            return int(obj.service.duration or 0)
+            duration = getattr(obj.service, "duration", None)
+
+            if duration is None:
+                return 0
+
+            return int(duration)
         except Exception:
             return 0
+
 
         
 class CancelAppointmentSerializer(serializers.Serializer):
