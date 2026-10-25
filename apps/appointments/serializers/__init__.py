@@ -82,10 +82,16 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     def get_customer_name(self, obj):
         try:
             full_name = getattr(obj.customer, "full_name", None)
+            if full_name:
+                return full_name
         except Exception:
-            full_name = None
+            pass
 
-        return full_name or getattr(obj.customer, "phone", "") or ""
+        try:
+            return getattr(obj.customer, "phone", "") or ""
+        except Exception:
+            return ""
+        
 
     def get_employee_name(self, obj):
         """در نسخه بدون تیم، نام کارمند خالی است"""
@@ -194,13 +200,13 @@ class AppointmentDetailSerializer(AppointmentListSerializer):
             duration = getattr(obj.service, "duration", None)
 
             if duration is None:
-                return 0
+                return None
 
             return int(duration)
         except Exception:
-            return 0
+            return None
 
-
+        
         
 class CancelAppointmentSerializer(serializers.Serializer):
     reason_text = serializers.CharField(

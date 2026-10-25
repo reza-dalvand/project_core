@@ -33,23 +33,33 @@ def _jalali_month_end_key(year: int, month: int) -> str:
 
     ✅ بدون وابستگی به:
     - jdatetime.jalaali_month_length
-    - jdatetime.timedelta
     - jdatetime.date.fromgregorian
+    - timedelta برای محاسبه پایان ماه
+
+    منطق:
+    - ماه‌های ۱ تا ۶: ۳۱ روز
+    - ماه‌های ۷ تا ۱: ۳ روز
+    - ماه ۲: ۲۹ یا ۳۰ روز بسته به کبیسه بودن سال
     """
-    for day in (31, 30, 29):
+    if 1 <= month <= 6:
+        last_day = 31
+    elif 7 <= month <= 11:
+        last_day = 30
+    elif month == 12:
+        # پیش‌فرض غیرکبیسه
+        last_day = 29
+
+        # اگر ۳۰ اسفند معتبر بود، سال کبیسه است
         try:
-            jdatetime.date(year, month, day)
-        except ValueError:
-            continue
+            jdatetime.date(year, 12, 30)
+            last_day = 30
+        except Exception:
+            last_day = 29
+    else:
+        # fallback امن؛ در شرایط عادی نباید به اینجا برسد
+        return f"{year}/{month:02d}/01"
 
-        return f"{year}/{month:02d}/{day:02d}"
-
-    logger.warning(
-        "Invalid Jalali month encountered in _jalali_month_end_key: %s/%s",
-        year,
-        month,
-    )
-    return f"{year}/{month:02d}/01"
+    return f"{year}/{month:02d}/{last_day:02d}"
 
 
 class CreateAppointmentView(APIView, StandardResponseMixin):
@@ -188,7 +198,11 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
 
         qs = Appointment.objects.filter(
             business=business,
-        ).select_related('service', 'customer').order_by(
+        ).select_related(
+            'business',
+            'service',
+            'customer',
+        ).order_by(
             '-jy', '-jm', '-jd', 'time_slot'
         )
 
@@ -220,13 +234,18 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
             elif date_filter == 'week':
                 week_end = today + jdatetime.timedelta(days=7)
                 week_end_key = f'{week_end.year}/{week_end.month:02d}/{week_end.day:02d}'
-                qs = qs.filter(date_key__gte=today_key, date_key__lte=week_end_key)
+                qs = qs.filter(
+                    date_key__gte=today_key,
+                    date_key__lte=week_end_key,
+                )
 
             elif date_filter == 'month':
-                # ✅ اصلاح شده: محاسبهٔ ایمن پایان ماه بدون jdatetime.jalaali_month_length
                 month_start_key = f'{today.year}/{today.month:02d}/01'
                 month_end_key = _jalali_month_end_key(today.year, today.month)
-                qs = qs.filter(date_key__gte=month_start_key, date_key__lte=month_end_key)
+                qs = qs.filter(
+                    date_key__gte=month_start_key,
+                    date_key__lte=month_end_key,
+                )
 
         # ─── فیلتر بازه دلخواه ───
         date_from = self.request.query_params.get('date_from')
@@ -249,6 +268,7 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         return qs
 
 
+    
 class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات نوبت"""
     permission_classes = [permissions.IsAuthenticated]
