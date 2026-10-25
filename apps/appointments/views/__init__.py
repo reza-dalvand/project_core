@@ -240,11 +240,11 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
                 )
 
             elif date_filter == 'month':
-                month_start_key = f'{today.year}/{today.month:02d}/01'
-                month_end_key = _jalali_month_end_key(today.year, today.month)
+                # ✅ مهم‌ترین تغییر:
+                # به جای محاسبه پایان ماه، مستقیماً بر اساس سال و ماه جلالی فیلتر می‌کنیم.
                 qs = qs.filter(
-                    date_key__gte=month_start_key,
-                    date_key__lte=month_end_key,
+                    jy=today.year,
+                    jm=today.month,
                 )
 
         # ─── فیلتر بازه دلخواه ───
