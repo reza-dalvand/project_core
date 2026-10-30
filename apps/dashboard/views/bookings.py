@@ -135,11 +135,9 @@ def appointments_list_view(request):
         week_end_key = f'{week_end.year}/{week_end.month:02d}/{week_end.day:02d}'
         queryset = queryset.filter(date_key__gte=today_key, date_key__lte=week_end_key)
     elif date_filter == 'month':
-        month_start_key = f'{today.year}/{today.month:02d}/01'
-        month_end_key = jalali_month_end_key(today.year, today.month)
         queryset = queryset.filter(
-            date_key__gte=month_start_key,
-            date_key__lte=month_end_key,
+            jy=today.year,
+            jm=today.month,
         )
 
     paginator = Paginator(queryset, 25)
@@ -488,11 +486,9 @@ def schedules_list_view(request):
             date_key__gte=today_key, date_key__lte=week_end_key
         )
     elif date_filter == 'month':
-        month_start_key = f'{today.year}/{today.month:02d}/01'
-        month_end_key = jalali_month_end_key(today.year, today.month)
         queryset = queryset.filter(
-            date_key__gte=month_start_key,
-            date_key__lte=month_end_key,
+            jy=today.year,
+            jm=today.month,
         )
     elif date_filter == 'past':
         queryset = queryset.filter(date_key__lt=today_key)
