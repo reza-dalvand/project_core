@@ -27,40 +27,6 @@ from apps.appointments.services.booking_service import BookingService, BookingEx
 logger = logging.getLogger(__name__)
 
 
-def _jalali_month_end_key(year: int, month: int) -> str:
-    """
-    کلید تاریخ آخرین روز ماه جلالی را برمی‌گرداند.
-
-    ✅ بدون وابستگی به:
-    - jdatetime.jalaali_month_length
-    - jdatetime.date.fromgregorian
-    - timedelta برای محاسبه پایان ماه
-
-    منطق:
-    - ماه‌های ۱ تا ۶: ۳۱ روز
-    - ماه‌های ۷ تا ۱: ۳ روز
-    - ماه ۲: ۲۹ یا ۳۰ روز بسته به کبیسه بودن سال
-    """
-    if 1 <= month <= 6:
-        last_day = 31
-    elif 7 <= month <= 11:
-        last_day = 30
-    elif month == 12:
-        # پیش‌فرض غیرکبیسه
-        last_day = 29
-
-        # اگر ۳۰ اسفند معتبر بود، سال کبیسه است
-        try:
-            jdatetime.date(year, 12, 30)
-            last_day = 30
-        except Exception:
-            last_day = 29
-    else:
-        # fallback امن؛ در شرایط عادی نباید به اینجا برسد
-        return f"{year}/{month:02d}/01"
-
-    return f"{year}/{month:02d}/{last_day:02d}"
-
 
 class CreateAppointmentView(APIView, StandardResponseMixin):
     """ایجاد نوبت جدید"""

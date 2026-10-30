@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 from django.utils import timezone
 from django.db import DatabaseError, transaction as db_transaction
 from apps.appointments.models import Appointment
+from apps.core.utils import jalali_month_end_key
 from apps.services.models import Service
 from apps.schedules.models import ServiceSchedule
 from apps.dashboard.decorators import admin_login_required, role_required
@@ -135,10 +136,10 @@ def appointments_list_view(request):
         queryset = queryset.filter(date_key__gte=today_key, date_key__lte=week_end_key)
     elif date_filter == 'month':
         month_start_key = f'{today.year}/{today.month:02d}/01'
-        month_end_day = jdatetime.jalaali_month_length(today.year, today.month)
-        month_end_key = f'{today.year}/{today.month:02d}/{month_end_day:02d}'
+        month_end_key = jalali_month_end_key(today.year, today.month)
         queryset = queryset.filter(
-            date_key__gte=month_start_key, date_key__lte=month_end_key
+            date_key__gte=month_start_key,
+            date_key__lte=month_end_key,
         )
 
     paginator = Paginator(queryset, 25)
@@ -488,10 +489,10 @@ def schedules_list_view(request):
         )
     elif date_filter == 'month':
         month_start_key = f'{today.year}/{today.month:02d}/01'
-        month_end_day = jdatetime.jalaali_month_length(today.year, today.month)
-        month_end_key = f'{today.year}/{today.month:02d}/{month_end_day:02d}'
+        month_end_key = jalali_month_end_key(today.year, today.month)
         queryset = queryset.filter(
-            date_key__gte=month_start_key, date_key__lte=month_end_key
+            date_key__gte=month_start_key,
+            date_key__lte=month_end_key,
         )
     elif date_filter == 'past':
         queryset = queryset.filter(date_key__lt=today_key)
