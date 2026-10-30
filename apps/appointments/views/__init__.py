@@ -2,6 +2,8 @@
 Views برای مدیریت نوبت‌ها — با تاریخ جلالی
 """
 import logging
+from datetime import timedelta
+
 import jdatetime
 from rest_framework import generics, permissions, status
 from rest_framework.views import APIView
@@ -23,6 +25,7 @@ from apps.appointments.serializers import (
 from apps.appointments.services.booking_service import BookingService, BookingException
 
 logger = logging.getLogger(__name__)
+
 
 
 class CreateAppointmentView(APIView, StandardResponseMixin):
@@ -150,13 +153,22 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         summary='نوبت‌های کسب‌وکار من',
     )
     def get_queryset(self):
+        from apps.core.utils import today_jalali_key
+
         business = self.request.user.businesses.filter(
             is_active=True, status='approved'
         ).first()
 
+        if business is None:
+            return Appointment.objects.none()
+
         qs = Appointment.objects.filter(
             business=business,
-        ).select_related('service', 'customer').order_by(
+        ).select_related(
+            'business',
+            'service',
+            'customer',
+        ).order_by(
             '-jy', '-jm', '-jd', 'time_slot'
         )
 
@@ -177,7 +189,9 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         # ─── فیلتر بازه زمانی ───
         date_filter = self.request.query_params.get('date_filter')
         if date_filter:
-            today = jdatetime.date.today()
+            today_key = today_jalali_key()
+            jy, jm, jd = map(int, today_key.split('/'))
+            today = jdatetime.date(jy, jm, jd)
             today_key = f'{today.year}/{today.month:02d}/{today.day:02d}'
 
             if date_filter == 'today':
@@ -186,14 +200,18 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
             elif date_filter == 'week':
                 week_end = today + jdatetime.timedelta(days=7)
                 week_end_key = f'{week_end.year}/{week_end.month:02d}/{week_end.day:02d}'
-                qs = qs.filter(date_key__gte=today_key, date_key__lte=week_end_key)
+                qs = qs.filter(
+                    date_key__gte=today_key,
+                    date_key__lte=week_end_key,
+                )
 
             elif date_filter == 'month':
-                # ✅ اصلاح شده: استفاده از تابع دقیق طول ماه جلالی
-                month_start_key = f'{today.year}/{today.month:02d}/01'
-                month_end_day = jdatetime.jalaali_month_length(today.year, today.month)
-                month_end_key = f'{today.year}/{today.month:02d}/{month_end_day:02d}'
-                qs = qs.filter(date_key__gte=month_start_key, date_key__lte=month_end_key)
+                # ✅ مهم‌ترین تغییر:
+                # به جای محاسبه پایان ماه، مستقیماً بر اساس سال و ماه جلالی فیلتر می‌کنیم.
+                qs = qs.filter(
+                    jy=today.year,
+                    jm=today.month,
+                )
 
         # ─── فیلتر بازه دلخواه ───
         date_from = self.request.query_params.get('date_from')
@@ -216,6 +234,7 @@ class BusinessAppointmentsView(generics.ListAPIView, StandardResponseMixin):
         return qs
 
 
+    
 class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
     """جزئیات نوبت"""
     permission_classes = [permissions.IsAuthenticated]
@@ -243,7 +262,6 @@ class AppointmentDetailView(generics.RetrieveAPIView, StandardResponseMixin):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return self.success_response(data=serializer.data)
-
 
 
 class CancelByBusinessView(APIView, StandardResponseMixin):

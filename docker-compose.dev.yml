@@ -61,7 +61,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - DEBUG=True
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - .:/app
       - dev_media:/app/media
