@@ -26,12 +26,14 @@ ARVAN_SECRET_KEY = ''
 ARVAN_CDN_URL = ''
 
 # ─── Allowed Hosts ───
-ALLOWED_HOSTS = [
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
     '192.168.1.43',
-]
+    'develop.beauclub.ir',
+    '109.122.252.118',
+])
 
 # ─── CORS — باز برای توسعه ───
 CORS_ALLOW_ALL_ORIGINS = True
